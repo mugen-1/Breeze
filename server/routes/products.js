@@ -118,8 +118,9 @@ router.get('/', async (req, res) => {
 // ---- GET /api/products/:id ----
 router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ status: 'error', message: 'id phải là số nguyên dương' });
+  // LƯU Ý: seed Phase 1 đánh id sản phẩm từ 0 => id=0 hợp lệ (khớp validate ở cart.js).
+  if (!Number.isInteger(id) || id < 0) {
+    return res.status(400).json({ status: 'error', message: 'id phải là số nguyên không âm' });
   }
 
   try {

@@ -221,7 +221,7 @@
             </ul>
             <ul class="drawer-links">
                 <li><a href="login.html">Đăng nhập</a></li>
-                <li><a href="cart.html">Đơn hàng của tôi</a></li>
+                <li><a href="orders.html">Đơn hàng của tôi</a></li>
                 <li><a href="lienheshop.html">Phản hồi</a></li>
             </ul>
         </nav>
@@ -254,7 +254,9 @@
 
             <div class="cart-summary">
                 <div class="cart-total">Tổng cộng: <span id="cart-total-price">0đ</span></div>
+                <div id="checkout-msg" class="checkout-msg" style="display:none; font-size:14px; font-weight:600; text-align:right;"></div>
                 <button class="btn-checkout" onclick="checkout()">Thanh Toán</button>
+                <a href="orders.html" id="view-orders-link" class="cart-continue" style="display:none;">Xem đơn hàng của tôi →</a>
                 <a href="index.html" class="cart-continue">← Tiếp tục mua sắm</a>
             </div>
         </div>
@@ -300,6 +302,11 @@
     </footer>
 
     <script src="js/i18n.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/api-config.js"></script>
+    <script src="js/auth-helper.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/cart-drawer.js"></script>
     <script>
@@ -357,13 +364,58 @@
         function changeQty(name, delta) { updateQty(name, delta); renderCart(); }
         function removeItem(name) { removeFromCart(name); renderCart(); }
 
+        function _showCheckoutMsg(text, isError) {
+            var msg = document.getElementById('checkout-msg');
+            if (!msg) return;
+            msg.style.display = 'block';
+            msg.textContent = text;
+            msg.style.color = isError ? '#e84118' : '#2e7d32';
+        }
+
         function checkout() {
             var cp = _cp();
-            alert(cp.checkoutAlert || 'Chức năng thanh toán đang được phát triển!');
+
+            // Chưa đăng nhập -> yêu cầu đăng nhập trước.
+            if (!(window.AuthHelper && window.AuthHelper.isLoggedIn())) {
+                _showCheckoutMsg(cp.loginRequired || 'Vui lòng đăng nhập để thanh toán.', true);
+                setTimeout(function () { window.location.href = 'login.html'; }, 1300);
+                return;
+            }
+
+            if (getCart().length === 0) {
+                _showCheckoutMsg(cp.empty || 'Giỏ hàng của bạn đang trống.', true);
+                return;
+            }
+
+            var btn = document.querySelector('.btn-checkout');
+            if (btn) { btn.disabled = true; btn.textContent = cp.placingOrder || 'Đang tạo đơn hàng...'; }
+
+            window.AuthHelper.apiFetch('/api/orders', { method: 'POST', body: JSON.stringify({}) })
+                .then(function (r) { return r.json().then(function (b) { return { status: r.status, body: b }; }); })
+                .then(function (res) {
+                    if (res.status === 201) {
+                        _showCheckoutMsg((cp.orderSuccess || 'Đặt hàng thành công! Mã đơn #') + res.body.order.id, false);
+                        var vl = document.getElementById('view-orders-link');
+                        if (vl) { vl.textContent = cp.viewOrders || 'Xem đơn hàng của tôi →'; vl.style.display = 'inline-block'; }
+                        if (typeof window.refreshCart === 'function') window.refreshCart(); // server đã xoá giỏ -> đồng bộ
+                    } else if (res.status === 409) {
+                        _showCheckoutMsg(cp.stockError || 'Một số sản phẩm không đủ tồn kho.', true);
+                    } else {
+                        _showCheckoutMsg((res.body && res.body.message) || cp.checkoutFailed || 'Không tạo được đơn hàng.', true);
+                    }
+                })
+                .catch(function (e) {
+                    console.error('[checkout] lỗi:', e);
+                    _showCheckoutMsg(cp.checkoutFailed || 'Không tạo được đơn hàng. Vui lòng thử lại.', true);
+                })
+                .finally(function () {
+                    if (btn) { btn.disabled = false; btn.textContent = cp.checkout || 'Thanh Toán'; }
+                });
         }
 
         document.addEventListener('DOMContentLoaded', renderCart);
         document.addEventListener('langchange', renderCart);
+        document.addEventListener('cartchange', renderCart); // đồng bộ server / merge khi đăng nhập
     </script>
     <script src="js/drawer-menu.js"></script>
     <script src="js/reveal.js"></script>

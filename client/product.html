@@ -312,7 +312,7 @@
             </ul>
             <ul class="drawer-links">
                 <li><a href="login.html">Đăng nhập</a></li>
-                <li><a href="cart.html">Đơn hàng của tôi</a></li>
+                <li><a href="orders.html">Đơn hàng của tôi</a></li>
                 <li><a href="lienheshop.html">Phản hồi</a></li>
             </ul>
         </nav>
@@ -478,65 +478,161 @@
         </div>
     </footer>
 
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/api-config.js"></script>
+    <script src="js/auth-helper.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/cart-drawer.js"></script>
     <script>
     (function () {
-        /* Dữ liệu sản phẩm (rút gọn từ ao-nam.html). Sau này thay bằng nguồn động. */
-        var PRODUCTS = {
-            winday:    { name: 'Giữa 2 nhịp thở ngày đêm', price: '105,000đ',
-                desc: 'Áo polo Winday phối tay kẻ họa tiết be - đen, cổ bẻ hai lớp sang trọng. Chất liệu piqué cotton co giãn nhẹ, thoáng mát, giữ form tốt.',
-                images: ['img/gc40.png', 'img/gc41.png', 'img/gc46.png'] },
-            chowonhee: { name: 'Yêu mình trong những khoảng lặng', price: '75,000đ',
-                desc: 'Áo polo Cho Won Hee họa tiết monogram, phối viền cổ sọc ba màu, thiết kế basic dễ phối đồ. Chất liệu cotton bền đẹp, form regular fit.',
-                images: ['img/gc44.png', 'img/gc45.png', 'img/gc47.png'] },
-            thuytran:  { name: 'Duyên đứt gánh', price: '115,000đ',
-                desc: 'Áo polo Thủy Trần dệt kim sọc dọc, phối viền cổ và tay sọc đỏ - trắng nổi bật, túi ngực thêu logo GUCCI. Dệt kim dày dặn, giữ form tốt.',
-                images: ['img/gc50.png', 'img/gc51.png', 'img/gc49.png'] },
-            bachiem:   { name: 'Ba chị em', price: '95,000đ',
-                desc: 'Áo thun GUCCI form rộng, in logo ánh nhũ nổi bật trước ngực. Chất liệu cotton mềm mại, form basic dễ phối đồ, phong cách năng động.',
-                images: ['img/gc56.png', 'img/gc57.png', 'img/gc48.png'] },
-            thamvong:  { name: 'Tham vọng', price: '159,000đ',
-                desc: 'Áo thun GUCCI in logo cổ điển phối vạch sọc xanh - đỏ đặc trưng. Chất liệu cotton bền đẹp, form regular fit, phong cách streetwear cá tính.',
-                images: ['img/gc54.png', 'img/gc48.png', 'img/gc49.png'] },
-            neubiet:   { name: 'Nếu biết trăm năm là hữu hạn', price: '239,000đ',
-                desc: 'Áo thun GUCCI BOUTIQUE phối vạch sọc xanh - đỏ và logo chữ nổi bật, viền tay bo xù phong cách vintage. Cotton thoáng mát, form oversize.',
-                images: ['img/gc53.png', 'img/gc52.png', 'img/gc54.png'] }
-        };
+        /* Chi tiết sản phẩm ĐỘNG: đọc ?id (số) -> GET /api/products/:id.
+           Đặt data-id lên .product-item để addToCart lấy đúng product_id (đồng bộ server-cart). */
+        var API_BASE = window.API_BASE || '';
 
-        function getId() {
-            try { return new URLSearchParams(window.location.search).get('id'); }
-            catch (e) { return null; }
+        function currentLang() {
+            return (window.__i18n && window.__i18n.current) || localStorage.getItem('ql_lang') || 'en';
+        }
+        function pName(p) { return currentLang() === 'en' ? (p.name_en || p.name_vi) : (p.name_vi || p.name_en); }
+        function pDesc(p) { return currentLang() === 'en' ? (p.description_en || p.description_vi || '') : (p.description_vi || p.description_en || ''); }
+        function money(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
-        var id = getId();
-        var product = (id && PRODUCTS[id]) || PRODUCTS.winday;
+        function getId() {
+            try {
+                var raw = new URLSearchParams(window.location.search).get('id');
+                if (raw === null || raw === '' || isNaN(Number(raw))) return null;
+                return Number(raw);
+            } catch (e) { return null; }
+        }
 
+        var root = document.getElementById('pd-root');
+        var nameEl = document.getElementById('pd-name');
+        var priceEl = document.getElementById('pd-price');
+        var descEl = document.getElementById('pd-desc');
         var mainImg = document.getElementById('pd-main-img');
         var thumbsWrap = document.getElementById('pd-thumbs');
+        var addBtn = document.querySelector('.pd-add');
 
-        // Bind nội dung
-        document.getElementById('pd-name').textContent = product.name;
-        document.getElementById('pd-price').textContent = product.price;
-        document.getElementById('pd-desc').textContent = product.desc;
-        document.title = product.name + ' - GUCCI';
-        mainImg.alt = product.name;
-        mainImg.src = product.images[0];
+        var current = null;
+        var relatedProducts = [];
 
-        // Render thumbnail + click đổi ảnh chính
-        thumbsWrap.innerHTML = '';
-        product.images.forEach(function (src, i) {
-            var b = document.createElement('button');
-            b.type = 'button';
-            b.className = 'pd-thumb' + (i === 0 ? ' active' : '');
-            b.innerHTML = '<img src="' + src + '" alt="' + product.name + '">';
-            b.addEventListener('click', function () {
-                mainImg.src = src;
-                thumbsWrap.querySelectorAll('.pd-thumb').forEach(function (t) { t.classList.remove('active'); });
-                b.classList.add('active');
+        function renderPrice(p) {
+            if (p.sale_price != null) {
+                priceEl.innerHTML =
+                    '<span class="price-default" style="text-decoration:line-through;color:#999;margin-right:10px;">' + money(p.price) + '</span>' +
+                    '<span class="price-sale">' + money(p.sale_price) + '</span>';
+            } else {
+                priceEl.textContent = money(p.price);
+            }
+        }
+
+        function renderProduct(p) {
+            current = p;
+            root.setAttribute('data-id', p.id);       // <-- product_id cho addToCart
+            nameEl.textContent = pName(p);
+            renderPrice(p);
+            descEl.textContent = pDesc(p);
+            document.title = pName(p) + ' - GUCCI';
+
+            var imgs = (p.images && p.images.length) ? p.images : ['img/gucci.png'];
+            mainImg.src = imgs[0];
+            mainImg.alt = pName(p);
+
+            thumbsWrap.innerHTML = '';
+            imgs.forEach(function (src, i) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'pd-thumb' + (i === 0 ? ' active' : '');
+                b.innerHTML = '<img src="' + esc(src) + '" alt="' + esc(pName(p)) + '">';
+                b.addEventListener('click', function () {
+                    mainImg.src = src;
+                    thumbsWrap.querySelectorAll('.pd-thumb').forEach(function (t) { t.classList.remove('active'); });
+                    b.classList.add('active');
+                });
+                thumbsWrap.appendChild(b);
             });
-            thumbsWrap.appendChild(b);
+
+            if (addBtn) addBtn.disabled = false;
+            loadRelated(p);
+        }
+
+        function showError(msg) {
+            nameEl.textContent = msg;
+            priceEl.textContent = '';
+            descEl.textContent = '';
+            if (addBtn) addBtn.disabled = true;
+        }
+
+        function relatedCard(p) {
+            var imgs = (p.images && p.images.length) ? p.images : ['img/gucci.png'];
+            var priceHTML = p.sale_price != null
+                ? '<div class="product-price"><span class="price-default">' + money(p.price) + '</span> <span class="price-sale">' + money(p.sale_price) + '</span></div>'
+                : '<div class="product-price">' + money(p.price) + '</div>';
+            var nm = esc(pName(p));
+            return '<li><div class="product-item reveal in" data-id="' + p.id + '">' +
+                '<div class="product-top"><a href="product.html?id=' + p.id + '" class="product-thumb">' +
+                    '<img src="' + esc(imgs[0]) + '" alt="' + nm + '"></a></div>' +
+                '<div class="product-info"><a href="product.html?id=' + p.id + '" class="product-name">' + nm + '</a>' + priceHTML + '</div>' +
+                '</div></li>';
+        }
+
+        function loadRelated(p) {
+            if (!p.category_slug) return;
+            fetch(API_BASE + '/api/products?category=' + encodeURIComponent(p.category_slug))
+                .then(function (r) { return r.ok ? r.json() : []; })
+                .then(function (list) {
+                    relatedProducts = (list || []).filter(function (x) { return x.id !== p.id; }).slice(0, 4);
+                    var ul = document.getElementById('pd-related-list');
+                    if (!ul || !relatedProducts.length) return;
+                    ul.innerHTML = relatedProducts.map(relatedCard).join('');
+                    if (typeof window._injectAddToCartButtons === 'function') window._injectAddToCartButtons();
+                    var ct = window.__i18n && window.__i18n.T[currentLang()] && window.__i18n.T[currentLang()].cart;
+                    if (ct) ul.querySelectorAll('.btn-add-cart:not(.added)').forEach(function (b) { b.textContent = ct.add; });
+                })
+                .catch(function (e) { console.error('[product] related lỗi:', e); });
+        }
+
+        // Đổi ngôn ngữ: cập nhật tên/giá/mô tả sản phẩm chính + tên card liên quan.
+        document.addEventListener('langchange', function () {
+            if (current) {
+                nameEl.textContent = pName(current);
+                renderPrice(current);
+                descEl.textContent = pDesc(current);
+                document.title = pName(current) + ' - GUCCI';
+                mainImg.alt = pName(current);
+            }
+            relatedProducts.forEach(function (p) {
+                var el = document.querySelector('#pd-related-list .product-item[data-id="' + p.id + '"] .product-name');
+                if (el) el.textContent = pName(p);
+            });
         });
 
-        // Chọn size (đơn)
+        // Fetch sản phẩm chính.
+        var id = getId();
+        if (id === null) {
+            showError('Không tìm thấy sản phẩm');
+        } else {
+            if (addBtn) addBtn.disabled = true;
+            fetch(API_BASE + '/api/products/' + id)
+                .then(function (r) {
+                    if (r.status === 404) throw new Error('NOTFOUND');
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(renderProduct)
+                .catch(function (e) {
+                    console.error('[product] fetch lỗi:', e);
+                    showError(e.message === 'NOTFOUND' ? 'Không tìm thấy sản phẩm' : 'Không tải được sản phẩm');
+                });
+        }
+
+        // Chọn size (tĩnh).
         document.getElementById('pd-sizes').addEventListener('click', function (e) {
             var btn = e.target.closest('.pd-size');
             if (!btn) return;
@@ -544,7 +640,7 @@
             btn.classList.add('selected');
         });
 
-        // Modal bảng size
+        // Modal bảng size.
         var overlay = document.getElementById('sg-overlay');
         function openSG() { overlay.classList.add('open'); document.body.style.overflow = 'hidden'; }
         function closeSG() { overlay.classList.remove('open'); document.body.style.overflow = ''; }
@@ -555,9 +651,6 @@
     })();
     </script>
 
-    <script src="js/cart.js"></script>
-    <script src="js/cart-drawer.js"></script>
     <script src="js/drawer-menu.js"></script>
-    <script src="js/i18n.js"></script>
     <script src="js/reveal.js"></script>
 </body>

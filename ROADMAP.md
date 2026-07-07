@@ -50,11 +50,28 @@ quanlynhasach/
 - [x] Verified 9/9 (E2E custom token → ID token → /api/me → DB) + 401 khi thiếu/sai token.
 - Ghi chú: service account JSON để ngoài Git (`.gitignore`). Client gửi token (`getIdToken()`) sẽ nối ở phase sau.
 
-## Phase 4 — Cart & Orders (checkout)
-- Chuyển giỏ hàng từ localStorage sang server (hoặc đồng bộ hai chiều) cho user đã đăng nhập.
-- `POST /api/orders` — tạo đơn từ giỏ (transaction: ghi `orders` + `order_items`, snapshot giá).
-- `GET /api/orders` / `GET /api/orders/:id` — lịch sử & chi tiết đơn của user (bảo vệ bằng token).
-- Tính tổng tiền phía server (không tin giá từ client).
+## Phase 4 — Cart & Orders (checkout) ✅ DONE
+- [x] Bảng `dbo.cart_items` (`server/db/migrations/001_cart_items.sql`, idempotent, `UNIQUE(user_id, product_id)`).
+- [x] Cart API (bảo vệ token) — `server/routes/cart.js`:
+  - `GET /api/cart` join products lấy tên/giá/ảnh MỚI NHẤT (không lưu giá ở giỏ).
+  - `POST /api/cart` upsert `{product_id, quantity, mode}` — `set` ghi đè / `add` cộng dồn (MERGE).
+  - `DELETE /api/cart/:productId`.
+- [x] Orders API (bảo vệ token) — `server/routes/orders.js`:
+  - `POST /api/orders` trong **TRANSACTION**: khoá kho (`UPDLOCK`), kiểm tra tồn kho, tạo `orders` +
+    `order_items` (SNAPSHOT tên + giá), trừ stock (UPDATE có điều kiện chống race), xoá giỏ. Thiếu
+    hàng → **409 + rollback** (không đơn treo, không mất kho). Tổng tiền tính ở server.
+  - `GET /api/orders` (kèm items) và `GET /api/orders/:id` (chỉ chủ đơn; đơn người khác → 404).
+- [x] Frontend `client/js/auth-helper.js` — `AuthHelper` (getToken/isLoggedIn/onChange/apiFetch gắn Bearer),
+  phát sự kiện `authchange`. Nạp Firebase + auth-helper trên 9 trang danh mục + `cart.html` + `orders.html`.
+- [x] `client/js/cart.js` viết lại: khách → localStorage như cũ; đăng nhập → thao tác qua API. Khi đăng
+  nhập mà còn giỏ localStorage → **merge lên server 1 lần** rồi xoá. Giữ nguyên API đồng bộ (getCart…),
+  phát `cartchange` để view render lại.
+- [x] `cart.html` — nút Thanh Toán gọi `POST /api/orders`, hiện mã đơn / lỗi stock; chưa login → yêu cầu
+  đăng nhập. Trang mới `orders.html` (GET /api/orders) — i18n VI/EN đầy đủ.
+- [x] Verified: **26/26** backend (mint Firebase ID token thật) + **17/17** browser E2E (Playwright:
+  khách→login→merge→thêm→checkout→stock giảm→giỏ xoá→trang đơn), gồm case thiếu stock rollback. 0 lỗi JS.
+- Ghi chú: `product_id` seed từ **0** nên validate cho phép id ≥ 0. `product.html` (dữ liệu tĩnh cũ) chưa
+  gắn server-cart — luồng thêm giỏ chuẩn đi qua trang danh mục (card có `data-id`).
 
 ## Phase 5 — Admin, Hardening & Deploy
 - Vai trò admin (custom claim Firebase): CRUD sản phẩm/danh mục, xem đơn hàng.
@@ -136,7 +153,20 @@ quanlynhasach/
 | quantity     | INT                  | NOT NULL, CHECK (quantity > 0)     |
 | line_total   | DECIMAL(12,2)        | NOT NULL (unit_price * quantity)   |
 
+### `cart_items` (Phase 4 — `server/db/migrations/001_cart_items.sql`)
+| Cột          | Kiểu                 | Ràng buộc                              |
+|--------------|----------------------|----------------------------------------|
+| id           | INT IDENTITY         | PK                                     |
+| user_id      | INT                  | NOT NULL, FK -> users(id)              |
+| product_id   | INT                  | NOT NULL, FK -> products(id)           |
+| quantity     | INT                  | NOT NULL, CHECK (quantity > 0)         |
+| created_at   | DATETIME2            | DEFAULT SYSUTCDATETIME()               |
+| updated_at   | DATETIME2            | DEFAULT SYSUTCDATETIME()               |
+| —            | UNIQUE(user_id, product_id) | mỗi user 1 dòng / 1 sản phẩm (upsert) |
+
+> Giỏ hàng **không** snapshot giá — luôn đọc giá mới từ `products`. Snapshot chỉ xảy ra khi đặt đơn.
+
 **Quan hệ tóm tắt:**
 `categories 1—n products`, `users 1—n orders`, `orders 1—n order_items`,
-`products 1—n order_items`. Đơn hàng **snapshot** tên + giá sản phẩm để lịch sử
-không đổi khi giá/tên sản phẩm thay đổi về sau.
+`products 1—n order_items`, `users 1—n cart_items`, `products 1—n cart_items`.
+Đơn hàng **snapshot** tên + giá sản phẩm để lịch sử không đổi khi giá/tên sản phẩm thay đổi về sau.
