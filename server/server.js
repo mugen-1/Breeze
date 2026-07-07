@@ -8,9 +8,11 @@ const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const { getPool, sql } = require('./db');
+const { initFirebase } = require('./firebase');
 
 const categoriesRouter = require('./routes/categories');
 const productsRouter = require('./routes/products');
+const meRouter = require('./routes/me');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -49,9 +51,19 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// --- Firebase Admin ----------------------------------------------------------
+// Init sớm để báo lỗi ngay nếu thiếu service account (các route không-auth vẫn chạy).
+try {
+  initFirebase();
+} catch (err) {
+  console.error('[firebase] KHÔNG khởi tạo được Admin SDK:', err.message);
+  console.error('[firebase] /api/me sẽ trả lỗi cho tới khi có server/firebase-service-account.json');
+}
+
 // --- API routes --------------------------------------------------------------
 app.use('/api/categories', categoriesRouter);
 app.use('/api/products', productsRouter);
+app.use('/api/me', meRouter);
 
 // --- Static frontend ---------------------------------------------------------
 // Tiện dev: phục vụ client/ ngay trên cùng origin => mở http://localhost:3000/ao-nam.html

@@ -42,11 +42,13 @@ quanlynhasach/
 - [x] Verified: 15/15 check headless (Playwright) + API curl (render, ảnh, sort, filter, đổi ngôn ngữ, 400/404).
 - Ghi chú: sidebar bị `display:none` trong sale.css → bộ lọc thực tế là drawer "Lọc & Sắp Xếp" (đã nối vào API).
 
-## Phase 3 — Firebase Auth Integration (backend verify)
-- Khởi tạo Firebase Admin SDK từ service account (`FIREBASE_SERVICE_ACCOUNT`).
-- Middleware `verifyFirebaseToken`: đọc `Authorization: Bearer <idToken>`, verify, gắn `req.user`.
-- Đồng bộ user vào bảng `users` (upsert theo `firebase_uid`) khi đăng nhập lần đầu.
-- `GET /api/me` — trả thông tin user hiện tại.
+## Phase 3 — Firebase Auth Integration (backend verify) ✅ DONE
+- [x] `server/firebase.js` — init Firebase Admin SDK (API modular v14: `firebase-admin/app` + `/auth`), lazy + idempotent, đọc `FIREBASE_SERVICE_ACCOUNT` từ `.env`.
+- [x] `server/middleware/auth.js` — `verifyFirebaseToken`: đọc `Authorization: Bearer <idToken>`, verify, gắn `req.user` + `req.firebaseToken`.
+- [x] Upsert user vào `dbo.users` (MERGE theo `firebase_uid`, cập nhật `last_login`) — lần đầu insert, lần sau update, không nhân đôi.
+- [x] `GET /api/me` (`server/routes/me.js`) — trả `id, firebase_uid, email, display_name, role, created_at, last_login`.
+- [x] Verified 9/9 (E2E custom token → ID token → /api/me → DB) + 401 khi thiếu/sai token.
+- Ghi chú: service account JSON để ngoài Git (`.gitignore`). Client gửi token (`getIdToken()`) sẽ nối ở phase sau.
 
 ## Phase 4 — Cart & Orders (checkout)
 - Chuyển giỏ hàng từ localStorage sang server (hoặc đồng bộ hai chiều) cho user đã đăng nhập.
