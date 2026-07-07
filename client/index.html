@@ -1,0 +1,380 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="css/global.css">
+    <link rel="stylesheet" type="text/css" href="css/index-slide.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
+</head>
+
+<body class="home">
+    <header>
+        <div class="logo">
+            <a href="index.html" class="brand">GUCCI</a>
+        </div>
+        <button class="nav-toggle" id="nav-toggle" data-drawer-open aria-label="M&#7903; menu" aria-controls="drawer-menu" aria-expanded="false">&#9776;</button>
+        <div class="menu">
+            <button type="button" class="drawer-trigger" data-drawer-open aria-controls="drawer-menu" aria-expanded="false">
+                <span class="drawer-trigger-bars" aria-hidden="true">&#9776;</span> Danh M&#7909;c
+            </button>
+        </div>
+
+        <div class="box">
+            <form class="sbox" id="search-form" action="search.html" method="get">
+                <input class="stext" type="text" name="q" placeholder="Search">
+                <a class="sbutton" href="javascript:void(0);" onclick="document.getElementById('search-form').submit();">
+                    <i class="fa fa-search"></i>
+                </a>
+            </form>
+        </div>
+
+    </header>
+
+    <!-- Slide-out Drawer Menu -->
+    <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+    <aside class="drawer" id="drawer-menu" role="dialog" aria-modal="true"
+           aria-label="Danh mục" aria-hidden="true" tabindex="-1">
+        <div class="drawer-head">
+            <span class="drawer-title">Danh Mục</span>
+            <button type="button" class="drawer-close" id="drawer-close" aria-label="Đóng menu">&times;</button>
+        </div>
+        <nav class="drawer-nav">
+            <ul class="drawer-acc">
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Nam <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="ao-nam.html">Áo</a></li>
+                        <li><a href="quan-nam.html">Quần</a></li>
+                        <li><a href="giay-nam.html">Giày</a></li>
+                    </ul>
+                </li>
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Nữ <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="ao-nu.html">Áo</a></li>
+                        <li><a href="quan-nu.html">Quần</a></li>
+                        <li><a href="giay-nu.html">Giày</a></li>
+                    </ul>
+                </li>
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Trang Sức Vàng <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="gold-jewellery.html">Vòng tay</a></li>
+                        <li><a href="nhan.html">Nhẫn</a></li>
+                    </ul>
+                </li>
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Túi Xách <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="handbags.html">Túi Xách</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <ul class="drawer-links">
+                <li><a href="login.html">Đăng nhập</a></li>
+                <li><a href="cart.html">Đơn hàng của tôi</a></li>
+                <li><a href="lienheshop.html">Phản hồi</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+
+    <section class="hero">
+        <div class="slideshow-container">
+            <div class="mySlides fade"><img src="img/gc5.png" alt=""></div>   <!-- HERO 1 -->
+            <div class="mySlides fade"><img src="img/gc6.png" alt=""></div>   <!-- HERO 2 -->
+            <div class="mySlides fade"><img src="img/gc7.png" alt=""></div>   <!-- HERO 3 -->
+        </div>
+
+        <div class="hero-scrim"></div>
+
+        <div class="hero-content">
+            <p class="hero-eyebrow">Bộ sưu tập 2026</p>
+            <h1 class="hero-title">Women's Collection</h1>
+            <a href="ao-nu.html" class="hero-btn">Shop Now</a>
+        </div>
+
+        <div class="hero-dots">
+            <span class="dot" onclick="currentSlide(0)"></span>
+            <span class="dot" onclick="currentSlide(1)"></span>
+            <span class="dot" onclick="currentSlide(2)"></span>
+        </div>
+
+        <div class="hero-scroll" aria-hidden="true">
+            <span class="hero-scroll-label">Scroll</span>
+            <span class="hero-scroll-line"></span>
+        </div>
+    </section>
+
+      <script>
+        (function () {
+            var slides = document.getElementsByClassName("mySlides");
+            var dots = document.getElementsByClassName("dot");
+            var slideIndex = 0;
+            var timer = null;
+            var DELAY = 5000; // tự chuyển 5s/lần
+
+            // Hiển thị slide n: crossfade + Ken Burns qua class .is-active
+            function render(n) {
+                slideIndex = (n + slides.length) % slides.length;
+                for (var i = 0; i < slides.length; i++) {
+                    slides[i].classList.toggle("is-active", i === slideIndex);
+                }
+                for (var j = 0; j < dots.length; j++) {
+                    dots[j].classList.toggle("active", j === slideIndex);
+                }
+            }
+
+            function next() { render(slideIndex + 1); }
+
+            function play() {
+                stop();
+                timer = setInterval(next, DELAY);
+            }
+            function stop() {
+                if (timer) { clearInterval(timer); timer = null; }
+            }
+
+            // Click vào dot: nhảy slide và reset đồng hồ tự chạy
+            window.currentSlide = function (n) {
+                render(n);
+                play();
+            };
+
+            render(0);
+            play();
+
+            // Tạm dừng khi hover vào hero, chạy lại khi rời chuột
+            var hero = document.querySelector(".hero");
+            if (hero) {
+                hero.addEventListener("mouseenter", stop);
+                hero.addEventListener("mouseleave", play);
+            }
+
+            // Scroll indicator tự mờ dần khi user cuộn xuống
+            var scrollEl = document.querySelector(".hero-scroll");
+            if (scrollEl) {
+                window.addEventListener("scroll", function () {
+                    var y = window.scrollY || window.pageYOffset || 0;
+                    scrollEl.style.opacity = Math.max(0, 1 - y / 240);
+                }, { passive: true });
+            }
+        })();
+      </script>
+
+
+    <!-- Main content -->
+    <div class="main-content">
+        <div class="headline reveal">
+            <h4>New Arrivals</h4>
+        </div>
+        <ul class="products">
+            <li>
+                <div class="product-item reveal">
+                    <div class="product-top">
+                        <a href="" class="product-thumb">
+                            <img src="img/gc55.png" alt="Yêu mình trong những khoảng lặng">
+                        </a>
+                    </div>
+                    <div class="product-info">
+                        <a href="" class="product-name">Yêu mình trong những khoảng lặng</a>
+                        <div class="product-price">75,000đ</div>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <div class="product-item reveal">
+                    <div class="product-top">
+                        <a href="" class="product-thumb">
+                            <img src="img/gc30.png" alt="Conan Thám Tử Lừng Danh">
+                        </a>
+                    </div>
+                    <div class="product-info">
+                        <a href="" class="product-name">Conan Thám Tử Lừng Danh</a>
+                        <div class="product-price">200,000đ</div>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <div class="product-item reveal">
+                    <div class="product-top">
+                        <a href="" class="product-thumb">
+                            <img src="img/gc25.gif" alt="Duyên đứt gánh">
+                        </a>
+                    </div>
+                    <div class="product-info">
+                        <a href="" class="product-name">Duyên đứt gánh</a>
+                        <div class="product-price">115,000đ</div>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <div class="product-item reveal">
+                    <div class="product-top">
+                        <a href="" class="product-thumb">
+                            <img src="img/gc21.png" alt="101 Bí Ẩn Thú Vị Về Động Vật">
+                        </a>
+                    </div>
+                    <div class="product-info">
+                        <a href="" class="product-name">101 Bí Ẩn Thú Vị Về Động Vật</a>
+                        <div class="product-price">63,000đ</div>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <div class="product-item reveal">
+                    <div class="product-top">
+                        <a href="" class="product-thumb">
+                            <img src="img/gc23.png" alt="Ba chị em">
+                        </a>
+                    </div>
+                    <div class="product-info">
+                        <a href="" class="product-name">Ba chị em</a>
+                        <div class="product-price">95,000đ</div>
+                    </div>
+                </div>
+            </li>
+        </ul>
+
+<!--        <div class="pagination">
+            <a href="#">«</a>
+            <a class="active" href="#">1</a>
+            <a href="#">2</a>
+            <a href="#">3</a>
+            <a href="#">4</a>
+            <a href="#">5</a>
+            <a href="#">6</a>
+            <a href="#">»</a>
+        </div> -->
+    </div>
+    <div id="khung" style="display:none;">
+        <div class="khungchu">
+            
+        </div>
+        <ul class="hinhanh">
+            <!--SP1-->
+            <li>
+                <div class="iteam">
+                    <div class="top">
+                        <a href="https://www.gucci.com/vn/en/st/capsule/gucci-ghost"
+                             class="thumb">
+                            <img src="img/gc23.png" alt="">
+                        </a>
+                        <!--mua ngay-->
+                    </div>
+                    <div class="info">
+                        
+                    </div>
+                </div>
+            </li>
+            <li>
+                <div class="iteam">
+                    <div class="top">
+                        <a href="https://www.gucci.com/vn/en/st/capsule/gucci-ghost"
+                            class="thumb">
+                            <img src="img/gc57.png" alt="">
+                        </a>
+                        <!--mua ngay-->
+                    </div>
+                    <div class="info"> </div>
+                </div>
+            </li>
+            <li>
+                <div class="iteam">
+                    <div class="top">
+                        <a href="https://www.scb.com.vn/vie/uu-dai-chu-the#PERSONAL_GOODWILL_FOODY" class="thumb">
+                            <img src="img/gc58.png" alt="">
+                        </a>
+                        <!--mua ngay-->
+                    </div>
+                    <div class="info">
+                        
+                    </div>
+                </div>
+            </li>
+            <li>
+                <div class="iteam">
+                    <div class="top">
+                        <a href="https://zalopay.vn/dich-vu/sieu-thi-cua-hang-tien-loi " class="thumb">
+                            <img src="img/gc55.png" alt="">
+                        </a>
+                        <!--mua ngay-->
+                    </div>
+                    <div class="info">
+                        
+                    </div> 
+                </div> 
+            </li>
+        </ul>
+    </div> 
+    <footer id="footer" class="footer-cols">
+        <div class="footer-content reveal">
+            <h6 class="footer-logo">GUCCI</h6>
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <p class="footer-col-title" id="footer-help-title">May We Help You?</p>
+                    <ul>
+                        <li><a href="lienheshop.html" data-fk="contact">Liên Hệ Với Chúng Tôi</a></li>
+                        <li><a href="cart.html" data-fk="cart">Giỏ Hàng Của Tôi</a></li>
+                        <li><a href="chinhanhcuahang.html" data-fk="store">Định Vị Cửa Hàng</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <p class="footer-col-title" id="footer-company-title">About Us</p>
+                    <ul>
+                        <li><a href="chinhsachdoitra.html" data-fk="ret">Chính sách đổi trả</a></li>
+                        <li><a href="chinhsachgiaohang.html" data-fk="ship">Chính sách giao hàng</a></li>
+                        <li><a href="chinhsachbaomat.html" data-fk="priv">Chính sách bảo mật</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <p class="footer-col-title" id="footer-lang-title">Language</p>
+                    <div class="footer-lang" id="footer-lang">
+                        <button class="footer-lang-btn" id="footer-lang-btn" type="button">
+                            <span id="footer-lang-current">English</span>
+                            <span class="footer-lang-arrow">&#9662;</span>
+                        </button>
+                        <div class="footer-lang-menu" id="footer-lang-menu">
+                            <button class="footer-lang-opt" data-lang="vi" type="button"><span class="footer-lang-check">&#10003;</span> Tiếng Việt</button>
+                            <button class="footer-lang-opt" data-lang="en" type="button"><span class="footer-lang-check">&#10003;</span> English</button>
+                        </div>
+                    </div>
+                    <p class="footer-col-title footer-country-title" id="footer-country-title">Country/Region</p>
+                    <p class="footer-country" id="footer-country-name">Việt Nam</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+    <script>
+        function toggleFilter(heading) {
+            heading.classList.toggle('collapsed');
+            var list = heading.nextElementSibling;
+            if (list) {
+                list.style.display = list.style.display === 'none' ? '' : 'none';
+            }
+        }
+    </script>
+
+    <script src="js/cart.js"></script>
+    <script src="js/cart-drawer.js"></script>
+    <script src="js/drawer-menu.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/reveal.js"></script>
+</body>
+
+</html>

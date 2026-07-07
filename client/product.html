@@ -1,0 +1,563 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+<link rel="stylesheet" type="text/css" href="css/sale.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
+<style>
+    /* ===== PRODUCT DETAIL ===== */
+    .pd-wrap {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: clamp(24px, 4vw, 56px) clamp(16px, 4vw, 48px) 0;
+    }
+    .pd-layout {
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        gap: clamp(28px, 4vw, 72px);
+        align-items: start;
+    }
+
+    /* Gallery: thumbnail dọc bên trái + 1 ảnh lớn bên phải */
+    .pd-gallery {
+        display: grid;
+        grid-template-columns: 76px 1fr;
+        gap: 16px;
+    }
+    .pd-main {
+        grid-column: 2;
+        grid-row: 1;
+        position: relative;
+        overflow: hidden;
+        aspect-ratio: 3 / 4;
+        background: var(--c-cream);
+    }
+    .pd-main img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transition: transform 0.7s var(--ease);
+    }
+    .pd-main:hover img {
+        transform: scale(1.08);
+    }
+    .pd-thumbs {
+        grid-column: 1;
+        grid-row: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .pd-thumb {
+        width: 76px;
+        aspect-ratio: 3 / 4;
+        overflow: hidden;
+        cursor: pointer;
+        background: var(--c-cream);
+        border: 1px solid var(--c-line);
+        padding: 0;
+        transition: border-color 0.2s;
+    }
+    .pd-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .pd-thumb.active {
+        border-color: var(--c-ink);
+    }
+
+    /* Cột phải sticky */
+    .pd-info {
+        position: sticky;
+        top: 28px;
+        align-self: start;
+    }
+    .pd-title {
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: clamp(30px, 4vw, 54px);
+        line-height: 1.08;
+        color: var(--c-ink);
+        margin: 0;
+    }
+    .pd-price {
+        font-family: var(--font-ui);
+        font-size: 20px;
+        color: var(--c-ink);
+        margin: 18px 0 22px;
+    }
+    .pd-desc {
+        display: block;
+        font-family: var(--font-ui);
+        font-size: 14px;
+        line-height: 1.75;
+        color: var(--c-muted);
+        max-width: 48ch;
+        margin: 0 0 30px;
+    }
+
+    /* Chọn size */
+    .pd-size-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 12px;
+    }
+    .pd-size-label {
+        font-family: var(--font-ui);
+        font-size: 12px;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: var(--c-ink);
+    }
+    .pd-guide-link {
+        font-family: var(--font-ui);
+        font-size: 13px;
+        color: var(--c-ink);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 0;
+    }
+    .pd-guide-link:hover { opacity: .6; }
+    .pd-sizes {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 30px;
+    }
+    .pd-size {
+        min-width: 54px;
+        height: 50px;
+        padding: 0 6px;
+        border: 1px solid var(--c-line);
+        background: transparent;
+        font-family: var(--font-ui);
+        font-size: 14px;
+        color: var(--c-ink);
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .pd-size:hover { border-color: var(--c-muted); }
+    .pd-size.selected {
+        border-color: var(--c-ink);
+        box-shadow: inset 0 0 0 1px var(--c-ink);
+        font-weight: 600;
+    }
+
+    /* Nút thêm giỏ full-width */
+    .pd-add {
+        display: block;
+        width: 100%;
+        padding: 17px;
+        background: var(--c-ink);
+        color: var(--c-bg);
+        border: none;
+        font-family: var(--font-ui);
+        font-size: 13px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: opacity 0.25s var(--ease);
+    }
+    .pd-add:hover { opacity: .85; }
+    .pd-add.added { background: #2e7d32; }
+
+    /* ===== SIZE GUIDE MODAL ===== */
+    .sg-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, .55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s var(--ease), visibility 0.3s var(--ease);
+        z-index: 2000;
+    }
+    .sg-overlay.open { opacity: 1; visibility: visible; }
+    .sg-modal {
+        background: var(--c-bg);
+        max-width: 520px;
+        width: 100%;
+        padding: 34px 32px;
+        position: relative;
+        transform: translateY(14px);
+        transition: transform 0.3s var(--ease);
+    }
+    .sg-overlay.open .sg-modal { transform: none; }
+    .sg-close {
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        background: none;
+        border: none;
+        font-size: 26px;
+        line-height: 1;
+        cursor: pointer;
+        color: var(--c-ink);
+    }
+    .sg-close:hover { opacity: .6; }
+    .sg-title {
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: 28px;
+        color: var(--c-ink);
+        margin: 0 0 6px;
+    }
+    .sg-sub {
+        font-family: var(--font-ui);
+        font-size: 13px;
+        color: var(--c-muted);
+        margin: 0 0 20px;
+    }
+    .sg-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--font-ui);
+        font-size: 14px;
+        color: var(--c-ink);
+    }
+    .sg-table th, .sg-table td {
+        border: 1px solid var(--c-line);
+        padding: 11px 12px;
+        text-align: center;
+    }
+    .sg-table thead th { background: var(--c-cream); font-weight: 600; }
+
+    /* ===== Section "Có thể bạn thích" ===== */
+    .pd-related { margin-top: clamp(48px, 6vw, 96px); }
+    .pd-related .main-content { padding-top: 0; }
+
+    /* ===== Mobile ===== */
+    @media (max-width: 860px) {
+        .pd-layout { grid-template-columns: 1fr; gap: 28px; }
+        .pd-info { position: static; }
+        .pd-gallery { grid-template-columns: 1fr; }
+        .pd-main { grid-column: 1; }
+        .pd-thumbs {
+            grid-column: 1;
+            grid-row: 2;
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+    }
+</style>
+
+<body class="category-page sitehdr">
+    <div class="policy-header">
+        <button type="button" class="ph-menu" data-drawer-open aria-controls="drawer-menu" aria-expanded="false">
+            <i class="fa fa-bars" aria-hidden="true"></i> <span class="ph-menu-label">Danh Mục</span>
+        </button>
+        <a href="index.html" class="ph-logo">GUCCI</a>
+        <div class="ph-actions">
+            <a href="search.html" aria-label="Tìm kiếm"><i class="fa fa-search" aria-hidden="true"></i></a>
+            <a href="cart.html" aria-label="Giỏ hàng"><i class="fa fa-shopping-bag" aria-hidden="true"></i></a>
+            <a href="login.html" aria-label="Tài khoản"><i class="fa fa-user" aria-hidden="true"></i></a>
+        </div>
+    </div>
+
+    <!-- Slide-out Drawer Menu -->
+    <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+    <aside class="drawer" id="drawer-menu" role="dialog" aria-modal="true"
+           aria-label="Danh mục" aria-hidden="true" tabindex="-1">
+        <div class="drawer-head">
+            <span class="drawer-title">Danh Mục</span>
+            <button type="button" class="drawer-close" id="drawer-close" aria-label="Đóng menu">&times;</button>
+        </div>
+        <nav class="drawer-nav">
+            <ul class="drawer-acc">
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Nam <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="ao-nam.html">Áo</a></li>
+                        <li><a href="quan-nam.html">Quần</a></li>
+                        <li><a href="giay-nam.html">Giày</a></li>
+                    </ul>
+                </li>
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Nữ <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="ao-nu.html">Áo</a></li>
+                        <li><a href="quan-nu.html">Quần</a></li>
+                        <li><a href="giay-nu.html">Giày</a></li>
+                    </ul>
+                </li>
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Trang Sức Vàng <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="gold-jewellery.html">Vòng tay</a></li>
+                        <li><a href="nhan.html">Nhẫn</a></li>
+                    </ul>
+                </li>
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Túi Xách <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="handbags.html">Túi Xách</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <ul class="drawer-links">
+                <li><a href="login.html">Đăng nhập</a></li>
+                <li><a href="cart.html">Đơn hàng của tôi</a></li>
+                <li><a href="lienheshop.html">Phản hồi</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- ===== CHI TIẾT SẢN PHẨM ===== -->
+    <div class="pd-wrap">
+        <!-- .product-item để addToCart(this) đọc được name/price/img -->
+        <div class="product-item" id="pd-root">
+            <div class="pd-layout">
+                <!-- Gallery -->
+                <div class="pd-gallery">
+                    <div class="pd-main">
+                        <img id="pd-main-img" src="img/gc40.png" alt="">
+                    </div>
+                    <div class="pd-thumbs" id="pd-thumbs">
+                        <!-- thumbnail được render bằng JS theo ?id -->
+                    </div>
+                </div>
+
+                <!-- Thông tin -->
+                <div class="pd-info">
+                    <h1 class="pd-title product-name" id="pd-name">Sản phẩm</h1>
+                    <div class="pd-price product-price" id="pd-price">0đ</div>
+                    <p class="pd-desc" id="pd-desc"></p>
+
+                    <div class="pd-size-head">
+                        <span class="pd-size-label">Chọn size</span>
+                        <button type="button" class="pd-guide-link" id="sg-open">Bảng size</button>
+                    </div>
+                    <div class="pd-sizes" id="pd-sizes">
+                        <button type="button" class="pd-size" data-size="S">S</button>
+                        <button type="button" class="pd-size selected" data-size="M">M</button>
+                        <button type="button" class="pd-size" data-size="L">L</button>
+                        <button type="button" class="pd-size" data-size="XL">XL</button>
+                    </div>
+
+                    <button type="button" class="pd-add" onclick="addToCart(this)">Thêm vào giỏ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== CÓ THỂ BẠN THÍCH ===== -->
+    <div class="pd-wrap pd-related">
+        <div class="main-content">
+            <div class="headline reveal">
+                <h4>Có thể bạn thích</h4>
+            </div>
+            <ul class="products" id="pd-related-list">
+                <li>
+                    <div class="product-item reveal">
+                        <div class="product-top">
+                            <a href="product.html?id=chowonhee" class="product-thumb">
+                                <img src="img/gc44.png" alt="Yêu mình trong những khoảng lặng">
+                            </a>
+                        </div>
+                        <div class="product-info">
+                            <a href="product.html?id=chowonhee" class="product-name">Yêu mình trong những khoảng lặng</a>
+                            <div class="product-price">75,000đ</div>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <div class="product-item reveal">
+                        <div class="product-top">
+                            <a href="product.html?id=thuytran" class="product-thumb">
+                                <img src="img/gc50.png" alt="Duyên đứt gánh">
+                            </a>
+                        </div>
+                        <div class="product-info">
+                            <a href="product.html?id=thuytran" class="product-name">Duyên đứt gánh</a>
+                            <div class="product-price">115,000đ</div>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <div class="product-item reveal">
+                        <div class="product-top">
+                            <a href="product.html?id=bachiem" class="product-thumb">
+                                <img src="img/gc56.png" alt="Ba chị em">
+                            </a>
+                        </div>
+                        <div class="product-info">
+                            <a href="product.html?id=bachiem" class="product-name">Ba chị em</a>
+                            <div class="product-price">95,000đ</div>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <div class="product-item reveal">
+                        <div class="product-top">
+                            <a href="product.html?id=neubiet" class="product-thumb">
+                                <img src="img/gc53.png" alt="Nếu biết trăm năm là hữu hạn">
+                            </a>
+                        </div>
+                        <div class="product-info">
+                            <a href="product.html?id=neubiet" class="product-name">Nếu biết trăm năm là hữu hạn</a>
+                            <div class="product-price">239,000đ</div>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ===== MODAL BẢNG SIZE ===== -->
+    <div class="sg-overlay" id="sg-overlay">
+        <div class="sg-modal" role="dialog" aria-modal="true" aria-label="Bảng size">
+            <button type="button" class="sg-close" id="sg-close" aria-label="Đóng">&times;</button>
+            <h2 class="sg-title">Bảng size</h2>
+            <p class="sg-sub">Số đo tham khảo (cm). Chọn size lớn hơn nếu bạn thích form rộng.</p>
+            <table class="sg-table">
+                <thead>
+                    <tr><th>Size</th><th>Ngực</th><th>Dài áo</th><th>Vai</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>S</td><td>92</td><td>67</td><td>43</td></tr>
+                    <tr><td>M</td><td>98</td><td>69</td><td>45</td></tr>
+                    <tr><td>L</td><td>104</td><td>71</td><td>47</td></tr>
+                    <tr><td>XL</td><td>110</td><td>73</td><td>49</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <footer id="footer" class="footer-cols">
+        <div class="footer-content reveal">
+            <h6 class="footer-logo">GUCCI</h6>
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <p class="footer-col-title" id="footer-help-title">May We Help You?</p>
+                    <ul>
+                        <li><a href="lienheshop.html" data-fk="contact">Liên Hệ Với Chúng Tôi</a></li>
+                        <li><a href="cart.html" data-fk="cart">Giỏ Hàng Của Tôi</a></li>
+                        <li><a href="chinhanhcuahang.html" data-fk="store">Định Vị Cửa Hàng</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <p class="footer-col-title" id="footer-company-title">About Us</p>
+                    <ul>
+                        <li><a href="chinhsachdoitra.html" data-fk="ret">Chính sách đổi trả</a></li>
+                        <li><a href="chinhsachgiaohang.html" data-fk="ship">Chính sách giao hàng</a></li>
+                        <li><a href="chinhsachbaomat.html" data-fk="priv">Chính sách bảo mật</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <p class="footer-col-title" id="footer-lang-title">Language</p>
+                    <div class="footer-lang" id="footer-lang">
+                        <button class="footer-lang-btn" id="footer-lang-btn" type="button">
+                            <span id="footer-lang-current">English</span>
+                            <span class="footer-lang-arrow">&#9662;</span>
+                        </button>
+                        <div class="footer-lang-menu" id="footer-lang-menu">
+                            <button class="footer-lang-opt" data-lang="vi" type="button"><span class="footer-lang-check">&#10003;</span> Tiếng Việt</button>
+                            <button class="footer-lang-opt" data-lang="en" type="button"><span class="footer-lang-check">&#10003;</span> English</button>
+                        </div>
+                    </div>
+                    <p class="footer-col-title footer-country-title" id="footer-country-title">Country/Region</p>
+                    <p class="footer-country" id="footer-country-name">Việt Nam</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    (function () {
+        /* Dữ liệu sản phẩm (rút gọn từ ao-nam.html). Sau này thay bằng nguồn động. */
+        var PRODUCTS = {
+            winday:    { name: 'Giữa 2 nhịp thở ngày đêm', price: '105,000đ',
+                desc: 'Áo polo Winday phối tay kẻ họa tiết be - đen, cổ bẻ hai lớp sang trọng. Chất liệu piqué cotton co giãn nhẹ, thoáng mát, giữ form tốt.',
+                images: ['img/gc40.png', 'img/gc41.png', 'img/gc46.png'] },
+            chowonhee: { name: 'Yêu mình trong những khoảng lặng', price: '75,000đ',
+                desc: 'Áo polo Cho Won Hee họa tiết monogram, phối viền cổ sọc ba màu, thiết kế basic dễ phối đồ. Chất liệu cotton bền đẹp, form regular fit.',
+                images: ['img/gc44.png', 'img/gc45.png', 'img/gc47.png'] },
+            thuytran:  { name: 'Duyên đứt gánh', price: '115,000đ',
+                desc: 'Áo polo Thủy Trần dệt kim sọc dọc, phối viền cổ và tay sọc đỏ - trắng nổi bật, túi ngực thêu logo GUCCI. Dệt kim dày dặn, giữ form tốt.',
+                images: ['img/gc50.png', 'img/gc51.png', 'img/gc49.png'] },
+            bachiem:   { name: 'Ba chị em', price: '95,000đ',
+                desc: 'Áo thun GUCCI form rộng, in logo ánh nhũ nổi bật trước ngực. Chất liệu cotton mềm mại, form basic dễ phối đồ, phong cách năng động.',
+                images: ['img/gc56.png', 'img/gc57.png', 'img/gc48.png'] },
+            thamvong:  { name: 'Tham vọng', price: '159,000đ',
+                desc: 'Áo thun GUCCI in logo cổ điển phối vạch sọc xanh - đỏ đặc trưng. Chất liệu cotton bền đẹp, form regular fit, phong cách streetwear cá tính.',
+                images: ['img/gc54.png', 'img/gc48.png', 'img/gc49.png'] },
+            neubiet:   { name: 'Nếu biết trăm năm là hữu hạn', price: '239,000đ',
+                desc: 'Áo thun GUCCI BOUTIQUE phối vạch sọc xanh - đỏ và logo chữ nổi bật, viền tay bo xù phong cách vintage. Cotton thoáng mát, form oversize.',
+                images: ['img/gc53.png', 'img/gc52.png', 'img/gc54.png'] }
+        };
+
+        function getId() {
+            try { return new URLSearchParams(window.location.search).get('id'); }
+            catch (e) { return null; }
+        }
+
+        var id = getId();
+        var product = (id && PRODUCTS[id]) || PRODUCTS.winday;
+
+        var mainImg = document.getElementById('pd-main-img');
+        var thumbsWrap = document.getElementById('pd-thumbs');
+
+        // Bind nội dung
+        document.getElementById('pd-name').textContent = product.name;
+        document.getElementById('pd-price').textContent = product.price;
+        document.getElementById('pd-desc').textContent = product.desc;
+        document.title = product.name + ' - GUCCI';
+        mainImg.alt = product.name;
+        mainImg.src = product.images[0];
+
+        // Render thumbnail + click đổi ảnh chính
+        thumbsWrap.innerHTML = '';
+        product.images.forEach(function (src, i) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'pd-thumb' + (i === 0 ? ' active' : '');
+            b.innerHTML = '<img src="' + src + '" alt="' + product.name + '">';
+            b.addEventListener('click', function () {
+                mainImg.src = src;
+                thumbsWrap.querySelectorAll('.pd-thumb').forEach(function (t) { t.classList.remove('active'); });
+                b.classList.add('active');
+            });
+            thumbsWrap.appendChild(b);
+        });
+
+        // Chọn size (đơn)
+        document.getElementById('pd-sizes').addEventListener('click', function (e) {
+            var btn = e.target.closest('.pd-size');
+            if (!btn) return;
+            this.querySelectorAll('.pd-size').forEach(function (s) { s.classList.remove('selected'); });
+            btn.classList.add('selected');
+        });
+
+        // Modal bảng size
+        var overlay = document.getElementById('sg-overlay');
+        function openSG() { overlay.classList.add('open'); document.body.style.overflow = 'hidden'; }
+        function closeSG() { overlay.classList.remove('open'); document.body.style.overflow = ''; }
+        document.getElementById('sg-open').addEventListener('click', openSG);
+        document.getElementById('sg-close').addEventListener('click', closeSG);
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) closeSG(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSG(); });
+    })();
+    </script>
+
+    <script src="js/cart.js"></script>
+    <script src="js/cart-drawer.js"></script>
+    <script src="js/drawer-menu.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/reveal.js"></script>
+</body>
