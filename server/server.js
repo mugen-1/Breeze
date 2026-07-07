@@ -13,6 +13,8 @@ const { initFirebase } = require('./firebase');
 const categoriesRouter = require('./routes/categories');
 const productsRouter = require('./routes/products');
 const meRouter = require('./routes/me');
+const cartRouter = require('./routes/cart');
+const ordersRouter = require('./routes/orders');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -64,6 +66,8 @@ try {
 app.use('/api/categories', categoriesRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/me', meRouter);
+app.use('/api/cart', cartRouter);
+app.use('/api/orders', ordersRouter);
 
 // --- Static frontend ---------------------------------------------------------
 // Tiện dev: phục vụ client/ ngay trên cùng origin => mở http://localhost:3000/ao-nam.html

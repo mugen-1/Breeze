@@ -144,6 +144,9 @@
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') close();
         });
+
+        // Giỏ đổi (đồng bộ server / merge khi đăng nhập) -> render lại drawer + badge
+        document.addEventListener('cartchange', function () { render(); ensurePhBadge(); });
     }
 
     if (document.readyState === 'loading') {

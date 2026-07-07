@@ -25,7 +25,29 @@
                 checkout: 'Thanh Toán',
                 continueLink: '← Tiếp tục mua sắm',
                 removeTitle: 'Xóa',
-                checkoutAlert: 'Chức năng thanh toán đang được phát triển!'
+                checkoutAlert: 'Chức năng thanh toán đang được phát triển!',
+                loginRequired: 'Vui lòng đăng nhập để thanh toán.',
+                placingOrder: 'Đang tạo đơn hàng...',
+                orderSuccess: 'Đặt hàng thành công! Mã đơn #',
+                stockError: 'Một số sản phẩm không đủ tồn kho. Vui lòng giảm số lượng rồi thử lại.',
+                checkoutFailed: 'Không tạo được đơn hàng. Vui lòng thử lại.',
+                viewOrders: 'Xem đơn hàng của tôi →'
+            },
+            orders: {
+                heading: 'Đơn Hàng Của Tôi',
+                empty: 'Bạn chưa có đơn hàng nào.',
+                loginRequired: 'Vui lòng đăng nhập để xem đơn hàng của bạn.',
+                signIn: 'Đăng nhập',
+                orderNo: 'Đơn hàng #',
+                date: 'Ngày đặt',
+                status: 'Trạng thái',
+                total: 'Tổng tiền',
+                qty: 'SL',
+                unitPrice: 'Đơn giá',
+                lineTotal: 'Thành tiền',
+                continueShopping: '← Tiếp tục mua sắm',
+                loadError: 'Không tải được đơn hàng. Kiểm tra server đã chạy chưa?',
+                statusMap: { pending: 'Chờ xử lý', paid: 'Đã thanh toán', shipped: 'Đang giao', cancelled: 'Đã huỷ' }
             },
             drawer: { signin: 'Đăng nhập', orders: 'Đơn hàng của tôi' }
         },
@@ -51,7 +73,29 @@
                 checkout: 'Checkout',
                 continueLink: '← Continue Shopping',
                 removeTitle: 'Remove',
-                checkoutAlert: 'Checkout feature is under development!'
+                checkoutAlert: 'Checkout feature is under development!',
+                loginRequired: 'Please sign in to checkout.',
+                placingOrder: 'Placing order...',
+                orderSuccess: 'Order placed! Order #',
+                stockError: 'Some items are out of stock. Please reduce the quantity and try again.',
+                checkoutFailed: 'Could not place the order. Please try again.',
+                viewOrders: 'View my orders →'
+            },
+            orders: {
+                heading: 'My Orders',
+                empty: 'You have no orders yet.',
+                loginRequired: 'Please sign in to view your orders.',
+                signIn: 'Sign In',
+                orderNo: 'Order #',
+                date: 'Order date',
+                status: 'Status',
+                total: 'Total',
+                qty: 'Qty',
+                unitPrice: 'Unit price',
+                lineTotal: 'Subtotal',
+                continueShopping: '← Continue shopping',
+                loadError: 'Could not load orders. Is the server running?',
+                statusMap: { pending: 'Pending', paid: 'Paid', shipped: 'Shipping', cancelled: 'Cancelled' }
             },
             drawer: { signin: 'Sign In', orders: 'My Orders' },
             policy: {
@@ -415,7 +459,7 @@
         d.querySelectorAll('.drawer-links li a').forEach(function (a) {
             var href = a.getAttribute('href') || '';
             if (href === 'login.html') a.textContent = t.drawer.signin;
-            else if (href === 'cart.html') a.textContent = t.drawer.orders;
+            else if (href === 'orders.html') a.textContent = t.drawer.orders;
             else if (href === 'lienheshop.html') a.textContent = t.nav.feedback;
         });
     }
