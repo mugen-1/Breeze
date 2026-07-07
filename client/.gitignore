@@ -1,0 +1,2 @@
+# Frontend dùng Firebase qua npm (chỉ để dev/local) — không commit dependencies
+node_modules/

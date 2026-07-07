@@ -4,9 +4,13 @@
 
 require('dotenv').config();
 
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const { getPool, sql } = require('./db');
+
+const categoriesRouter = require('./routes/categories');
+const productsRouter = require('./routes/products');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -45,7 +49,17 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// --- API routes --------------------------------------------------------------
+app.use('/api/categories', categoriesRouter);
+app.use('/api/products', productsRouter);
+
+// --- Static frontend ---------------------------------------------------------
+// Tiện dev: phục vụ client/ ngay trên cùng origin => mở http://localhost:3000/ao-nam.html
+// (fetch API cùng origin, không vướng CORS). Production sẽ tách CDN ở Phase 5.
+app.use(express.static(path.join(__dirname, '..', 'client')));
+
 app.listen(PORT, () => {
   console.log(`[server] Gucci Shop API listening on http://localhost:${PORT}`);
   console.log(`[server] Health check: http://localhost:${PORT}/api/health`);
+  console.log(`[server] Frontend:     http://localhost:${PORT}/index.html`);
 });

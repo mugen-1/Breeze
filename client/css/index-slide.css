@@ -1,0 +1,198 @@
+* {
+    box-sizing:border-box
+  }
+  h2 {
+    text-align: center;
+  }
+  /* Slideshow container */
+  .slideshow-container {
+    width: 100%;
+    max-width: 100%;
+    position: relative;
+    margin: 0px auto;
+    overflow: hidden;
+  }
+  /* Ẩn các slider */
+  .mySlides {
+      display: none;
+      height: 480px;
+  }
+  .mySlides img {
+      width: 20%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+      display: block;
+  }
+  /* Định dạng nội dung Caption */
+  .text {
+    color: #f2f2f2;
+    font-size: 15px;
+    padding: 8px 12px;
+    position: absolute;
+    bottom: 8px;
+    width: 100%;
+    text-align: center;
+  }
+   
+  /* định dạng các chấm chuyển đổi các slide */
+  .dot {
+    cursor:pointer;
+    height: 13px;
+    width: 13px;
+    margin: 0 2px;
+    background-color: #444;
+    border-radius: 50%;
+    display: inline-block;
+    transition: background-color 0.6s ease;
+  }
+  /* khi được hover, active đổi màu nền */
+  .active, .dot:hover {
+    background-color: #fff;
+  }
+   
+  /* (Đã bỏ hiệu ứng .fade cũ giật từ opacity .4 — thay bằng crossfade mượt ở khối .hero bên dưới) */
+
+/* ===== HERO FULL-BLEED (chỉ trang chủ) ===== */
+body.home { padding-top: 0; }                 /* huỷ đệm 70px → hero chạm mép trên */
+
+/* navbar trong suốt đè lên ảnh */
+body.home header {
+  background: transparent;
+  height: auto;
+  padding: 34px 50px 18px;                     /* chừa khoảng trống nhỏ phía trên */
+  transition: background .3s ease;
+}
+body.home .logo {                              /* logo canh chính giữa trang */
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+}
+body.home .menu {                              /* danh mục lùi sát trái */
+  justify-content: flex-start;
+}
+body.home .logo .brand {                       /* logo serif */
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(30px, 3.2vw, 44px);
+  letter-spacing: 12px;
+  text-transform: uppercase; color: var(--c-bg);
+  padding-left: 12px;                          /* bù letter-spacing để chữ vẫn cân giữa */
+}
+body.home header .menu li a {                  /* nav: sans, HOA, giãn chữ */
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 600; font-size: 12px;
+  text-shadow: 0 1px 6px rgba(0,0,0,.45);      /* đọc được trên ảnh sáng */
+}
+
+/* khung hero */
+.hero { position: relative; height: 100svh; min-height: 560px; overflow: hidden; }
+.hero .slideshow-container { position: absolute; inset: 0; height: 100%; }
+
+/* Crossfade: các slide chồng lên nhau, chuyển bằng opacity 1.2s */
+.hero .mySlides {
+  position: absolute; inset: 0; height: 100%; text-align: initial;
+  display: block;
+  opacity: 0; visibility: hidden;
+  transition: opacity 1.2s var(--ease), visibility 1.2s var(--ease);
+  z-index: 1;
+}
+.hero .mySlides.is-active {
+  opacity: 1; visibility: visible;
+  z-index: 2;
+}
+.hero .mySlides img {                          /* ghi đè width:20% cũ */
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center;
+  transform: scale(1);
+  will-change: transform;
+}
+/* Ken Burns: slide active phóng nhẹ 1.0 → 1.08 trong 6s, cảm giác điện ảnh */
+.hero .mySlides.is-active img {
+  animation: heroKenBurns 6s ease-out forwards;
+}
+@keyframes heroKenBurns {
+  from { transform: scale(1); }
+  to   { transform: scale(1.08); }
+}
+
+/* scrim tối trên + dưới */
+.hero-scrim {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,0) 22%),
+    linear-gradient(to top,    rgba(0,0,0,.65), rgba(0,0,0,0) 42%);
+}
+
+/* overlay canh giữa-dưới */
+.hero-content {
+  position: absolute; z-index: 3; left: 0; right: 0; bottom: 16%;
+  text-align: center; color: var(--c-bg); padding: 0 20px;
+}
+.hero-eyebrow { font-family: var(--font-ui); text-transform: uppercase; letter-spacing: 4px; font-size: 13px; margin-bottom: 16px; opacity: .9; }
+.hero-title  { font-family: var(--font-display); font-weight: 500; letter-spacing: 1px; line-height: 1.05; font-size: clamp(40px,6.5vw,88px); margin-bottom: 30px; }
+.hero-btn    {
+  display: inline-block; padding: 15px 46px;
+  font-family: var(--font-ui);
+  background: transparent; color: var(--c-bg);
+  border: 1px solid var(--c-bg);
+  text-transform: uppercase; letter-spacing: 2px; font-size: 12px; font-weight: 500;
+  transition: background .4s var(--ease), color .4s var(--ease);
+}
+.hero-btn:hover { background: var(--c-bg); color: var(--c-ink); }
+
+/* dots dời sang phải để nhường chỗ giữa cho scroll indicator */
+.hero-dots { position: absolute; z-index: 3; right: 44px; bottom: 40px; left: auto; text-align: right; }
+
+/* Scroll indicator mảnh: chữ SCROLL + đường kẻ dọc 1px có điểm sáng chạy xuống */
+.hero-scroll {
+  position: absolute; z-index: 3; left: 50%; bottom: 26px;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  color: var(--c-bg); pointer-events: none;
+  transition: opacity .5s var(--ease);
+}
+.hero-scroll-label {
+  font-family: var(--font-ui);
+  font-size: 10px; letter-spacing: 3px; text-transform: uppercase; opacity: .85;
+}
+.hero-scroll-line {
+  width: 1px; height: 48px; overflow: hidden;
+  background: rgba(255, 255, 255, .28);
+  position: relative;
+}
+.hero-scroll-line::after {
+  content: ""; position: absolute; left: 0; top: 0;
+  width: 100%; height: 40%;
+  background: var(--c-bg);
+  animation: heroScrollTravel 2.2s var(--ease) infinite;
+}
+@keyframes heroScrollTravel {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(250%); }
+}
+
+/* ===== MOBILE / HAMBURGER ===== */
+.nav-toggle { display: none; }
+@media (max-width: 768px) {
+  body.home header { padding: 14px 20px; }
+  .nav-toggle {
+    display: block; background: none; border: 0;
+    color: #fff; font-size: 22px; cursor: pointer; z-index: 1002;
+  }
+  header .menu {
+    position: fixed; inset: 0 0 0 auto;
+    width: 74%; max-width: 320px;
+    background: var(--c-ink); flex-direction: column;
+    padding: 90px 28px; gap: 6px;
+    transform: translateX(100%); transition: transform .3s ease; z-index: 1001;
+  }
+  header .menu.open { transform: translateX(0); }
+  body.home .box { display: none; }            /* tránh đè lên hamburger */
+  .hero-content { bottom: 20%; }
+  .hero-title   { font-size: clamp(30px,9vw,48px); }
+  .hero-scroll  { display: none; }             /* gọn gàng trên mobile */
+  .hero-dots    { right: 0; left: 0; bottom: 24px; text-align: center; }
+}

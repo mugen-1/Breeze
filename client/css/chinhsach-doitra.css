@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&display=swap');
+
+/* ===== TRANG CHÍNH SÁCH - nền trắng kiểu Gucci ===== */
+body.policy-page {
+    background: #fff;
+    color: #111;
+    padding-top: 0;
+    font-family: 'Open Sans', sans-serif;
+}
+
+/* ---- Header trên cùng: logo giữa, contact trái, actions phải ---- */
+.policy-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 44px;
+    background: #fff;
+    border-bottom: 1px solid #ececec;
+}
+
+.policy-header a {
+    color: #111;
+    text-decoration: none;
+}
+
+.ph-contact {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    letter-spacing: .5px;
+}
+
+.ph-contact .fa {
+    font-size: 12px;
+}
+
+.ph-logo {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 30px;
+    letter-spacing: 10px;
+    padding-left: 10px;
+    text-transform: uppercase;
+    color: #111;
+    white-space: nowrap;
+}
+
+.ph-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 22px;
+    margin-left: auto;
+}
+
+.ph-actions .fa {
+    font-size: 17px;
+    color: #111;
+    transition: opacity .2s;
+}
+
+.ph-actions a:hover .fa {
+    opacity: .55;
+}
+
+.ph-menu {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    color: #111;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    transition: opacity .2s;
+}
+
+.ph-menu:hover {
+    opacity: .55;
+}
+
+/* ---- Nội dung chính sách ---- */
+.policy {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 64px 24px 90px;
+}
+
+.policy-title {
+    text-align: center;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(30px, 4vw, 44px);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #111;
+    margin-bottom: 22px;
+}
+
+.policy-divider {
+    width: 90px;
+    height: 1px;
+    background: #bbb;
+    margin: 0 auto 52px;
+}
+
+.policy-body section {
+    margin-bottom: 44px;
+}
+
+.policy-body section:last-child {
+    margin-bottom: 0;
+}
+
+.policy-body h2 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #111;
+    margin-bottom: 18px;
+    text-align: center;
+}
+
+.policy-body p {
+    font-size: 14px;
+    line-height: 1.9;
+    color: #444;
+    margin-bottom: 14px;
+}
+
+.policy-body ul {
+    list-style: disc;
+    padding-left: 22px;
+    margin: 0 0 14px;
+}
+
+.policy-body li {
+    font-size: 14px;
+    line-height: 1.9;
+    color: #444;
+    margin-bottom: 8px;
+}
+
+.policy-body strong {
+    color: #111;
+    font-weight: 600;
+}
+
+/* ---- Drawer light (trang nền trắng) ---- */
+body.policy-page .drawer {
+    background: #fff;
+    color: #111;
+    box-shadow: -8px 0 40px rgba(0, 0, 0, .18);
+}
+
+body.policy-page .drawer-head {
+    background: #fff;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+body.policy-page .drawer-title,
+body.policy-page .drawer-close,
+body.policy-page .drawer-acc-btn {
+    color: #111;
+}
+
+body.policy-page .drawer-acc-item {
+    border-bottom: 1px solid #ececec;
+}
+
+body.policy-page .drawer-sub li a {
+    color: #666;
+}
+
+body.policy-page .drawer-sub li a:hover {
+    color: #111;
+}
+
+body.policy-page .drawer-links {
+    border-top: 1px solid #e5e5e5;
+}
+
+body.policy-page .drawer-links li a {
+    color: #888;
+}
+
+body.policy-page .drawer-links li a:hover {
+    color: #111;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 700px) {
+    .policy-header {
+        padding: 16px 18px;
+    }
+    .ph-contact span {
+        display: none;
+    }
+    .ph-logo {
+        font-size: 22px;
+        letter-spacing: 6px;
+    }
+    .ph-actions {
+        gap: 15px;
+    }
+    .ph-menu span {
+        display: none;
+    }
+    .policy {
+        padding: 44px 18px 70px;
+    }
+}

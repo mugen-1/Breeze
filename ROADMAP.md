@@ -32,11 +32,15 @@ quanlynhasach/
 > `price INT` (VND), `sale_price INT NULL`, `images NVARCHAR(MAX)` (JSON mảng đường dẫn ảnh) —
 > xem schema chuẩn bên dưới.
 
-## Phase 2 — Public Product API (read-only)
-- `GET /api/categories` — danh sách danh mục.
-- `GET /api/products` — hỗ trợ filter (category, giá, tìm kiếm), phân trang, sắp xếp.
-- `GET /api/products/:slug` — chi tiết 1 sản phẩm.
-- Frontend `client/js/*` gọi API thay cho dữ liệu hard-code (thay dần, giữ i18n VI/EN).
+## Phase 2 — Public Product API (read-only) ✅ DONE
+- [x] `GET /api/categories` — 9 danh mục (id, slug, name_vi, name_en).
+- [x] `GET /api/products` — lọc `?category=`, `?min=&max=` (giá thực = sale_price nếu có), `?sort=newest|price_asc|price_desc`.
+- [x] `GET /api/products/:id` — chi tiết 1 sản phẩm (images parse JSON → mảng). Lỗi rõ ràng: 400/404/500 + log.
+- [x] Code tách `server/routes/products.js`, `server/routes/categories.js`; parameterized query; server phục vụ tĩnh `client/`.
+- [x] 9 trang category bỏ hard-code, render động qua `client/js/products-render.js` (đúng markup cũ, giữ CSS). Slug đọc từ `<body data-category>`.
+- [x] `client/js/api-config.js` — biến `API_BASE` 1 chỗ. Filter/sort nối vào API. i18n VI/EN đổi tên sản phẩm khi `langchange`.
+- [x] Verified: 15/15 check headless (Playwright) + API curl (render, ảnh, sort, filter, đổi ngôn ngữ, 400/404).
+- Ghi chú: sidebar bị `display:none` trong sale.css → bộ lọc thực tế là drawer "Lọc & Sắp Xếp" (đã nối vào API).
 
 ## Phase 3 — Firebase Auth Integration (backend verify)
 - Khởi tạo Firebase Admin SDK từ service account (`FIREBASE_SERVICE_ACCOUNT`).
