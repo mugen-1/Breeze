@@ -6,6 +6,15 @@
 const { getAuth } = require('../firebase');
 const { getPool, sql } = require('../db');
 
+// Email trong ADMIN_EMAILS (.env, phân tách bằng dấu phẩy) luôn được tự động gán
+// role='admin' mỗi lần đăng nhập — không cần chạy SQL thủ công. Để trống nếu
+// không dùng cơ chế này (chỉ set role qua SQL/set-role.js như trước).
+function adminEmailSet() {
+  const raw = (process.env.ADMIN_EMAILS || '').trim();
+  if (!raw) return new Set();
+  return new Set(raw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
+}
+
 // Insert nếu chưa có, update nếu đã có; trả về row user hiện tại.
 async function upsertUser(decoded) {
   const pool = await getPool();
@@ -30,7 +39,23 @@ async function upsertUser(decoded) {
       FROM dbo.users
       WHERE firebase_uid = @uid;
     `);
-  return result.recordset[0];
+  let user = result.recordset[0];
+
+  // Tự động phong admin nếu email khớp ADMIN_EMAILS và chưa phải admin.
+  const admins = adminEmailSet();
+  if (user.email && admins.has(user.email.toLowerCase()) && user.role !== 'admin') {
+    const upd = await pool
+      .request()
+      .input('uid', sql.VarChar(128), decoded.uid)
+      .query(`
+        UPDATE dbo.users SET role = 'admin' WHERE firebase_uid = @uid;
+        SELECT id, firebase_uid, email, display_name, role, created_at, last_login
+        FROM dbo.users WHERE firebase_uid = @uid;
+      `);
+    user = upd.recordset[0];
+  }
+
+  return user;
 }
 
 async function verifyFirebaseToken(req, res, next) {
