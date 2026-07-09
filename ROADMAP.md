@@ -73,11 +73,13 @@ quanlynhasach/
 - Ghi chú: `product_id` seed từ **0** nên validate cho phép id ≥ 0. `product.html` (dữ liệu tĩnh cũ) chưa
   gắn server-cart — luồng thêm giỏ chuẩn đi qua trang danh mục (card có `data-id`).
 
-## Phase 5 — Admin, Hardening & Deploy
-- Vai trò admin (custom claim Firebase): CRUD sản phẩm/danh mục, xem đơn hàng.
-- Validation (zod/joi), rate limiting, helmet, CORS whitelist, log & error handling tập trung.
-- Cấu hình production (HTTPS, biến môi trường trên host), build/serve `client/` qua Express hoặc CDN.
-- Test (unit + integration) và tài liệu API.
+## Phase 5 — Admin, Hardening & Deploy ✅ DONE
+- [x] Vai trò admin: CRUD sản phẩm/danh mục, xem đơn hàng (`client/admin.html` + `server/routes/admin.js`).
+- [x] Phân quyền role-based qua `server/middleware/requireAdmin.js` (guest → 401, customer → 403, admin → 200) + auto-admin theo `ADMIN_EMAILS` khi đăng nhập (`server/middleware/auth.js`).
+- [x] Hardening: helmet + CORS whitelist + rate limit + body limit + error handler tập trung (`server/middleware/security.js` + `server/server.js`).
+- [x] CHECK constraint cho `orders.status` (`server/db/migrations/002_orders_status_check.sql`).
+- [ ] Cấu hình production (HTTPS, biến môi trường trên host), build/serve `client/` qua Express hoặc CDN.
+- [ ] Test (unit + integration) và tài liệu API.
 
 ---
 
