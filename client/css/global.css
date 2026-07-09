@@ -752,62 +752,10 @@ ul.products-bottom li .product-info a.product-cat {
     display: inline-block !important;
 }
 
-.main-content ul.products {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    gap: 8px;
-    justify-content: flex-start;
-    width: 100%;
-    padding: 0 8px;
-    box-sizing: border-box;
-}
-
-.main-content ul.products > li {
-    flex: 1 1 0 !important;
-    min-width: 0;
-    padding: 0 !important;
-    margin-bottom: 0 !important;
-    background: #000;
-}
-
-.main-content ul.products .product-thumb {
-    display: block;
-    overflow: hidden;
-    background: #0d0d0d;
-    aspect-ratio: 3 / 4;
-}
-
-.main-content ul.products li img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    display: block;
-    transition: transform 0.3s ease;
-}
-
-.main-content ul.products li img:hover {
-    transform: scale(1.05);
-}
-
-.main-content ul.products li .product-info {
-    padding: 12px 14px 18px;
-}
-
-.main-content ul.products li .product-info a.product-cat {
-    font-size: 12px !important;
-    text-transform: none !important;
-    font-weight: 500;
-    line-height: 1.4;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: block;
-}
-
-.main-content ul.products li .product-info .product-price {
-    font-size: 13px !important;
-    margin-top: 6px;
-}
+/* Layout/ảnh/typography của ul.products trong .main-content được chuẩn hoá
+   trong khối "PRODUCT CARD — CHUẨN HOÁ" phía dưới (tránh 2 rule cùng selector
+   xung đột specificity — trước đây object-fit:contain ở đây từng đè nhầm lên
+   object-fit:cover của khối chuẩn hoá, gây ảnh trông cao thấp không đều). */
 /* ===== MEGA MENU ===== */
 .has-mega {
     position: static !important;
@@ -1522,12 +1470,18 @@ body.sitehdr .drawer-links li a:hover { color: #111; }
    PRODUCT CARD — CHUẨN HOÁ (áp chung mọi trang danh mục + index)
    ============================================================ */
 
-/* 1. Grid đều, gap thoáng — huỷ layout flex nowrap cũ */
+/* 1. Grid 5 cột đều tuyệt đối (repeat(5,1fr)) trải gần full-width: không
+      max-width, chỉ chừa 24px 2 bên (bằng gap giữa các card) để 2 ảnh đầu/cuối
+      không dính sát mép web -> khoảng cách đều nhau quanh mọi card. */
 .main-content ul.products {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-    gap: clamp(16px, 2vw, 28px) !important;
-    padding: 0 !important;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 24px !important;
+    width: 100%;
+    max-width: none;
+    margin: 0 !important;
+    padding: 0 24px !important;
+    box-sizing: border-box;
     justify-content: initial !important;
 }
 .main-content ul.products > li {
@@ -1577,7 +1531,7 @@ body.sitehdr .drawer-links li a:hover { color: #111; }
     opacity: 1;
 }
 
-/* 3. Thông tin: căn trái, cách ảnh 14px */
+/* 3. Thông tin: căn trái, thẳng mép ảnh (khoảng cách mép web do container lo). */
 .product-item .product-info {
     position: relative;
     padding: 0 !important;
@@ -1587,7 +1541,14 @@ body.sitehdr .drawer-links li a:hover { color: #111; }
 }
 body .main-content ul.products li .product-info a.product-name,
 .product-item .product-info .product-name {
-    display: block;
+    /* Ép tối đa 2 dòng (line-clamp) + min-height dự phòng cho trình duyệt
+       không hỗ trợ -webkit-line-clamp -> tên dài/ngắn vẫn cùng chiều cao,
+       giá tiền bên dưới luôn nằm cùng 1 baseline giữa các card. */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    min-height: 2.8em;
     font-family: var(--font-ui) !important;
     text-transform: uppercase !important;
     font-size: 12px !important;
@@ -1655,9 +1616,17 @@ body.home .product-item .product-info .product-price {
     color: #fff !important;
 }
 
+@media (max-width: 900px) {
+    .main-content ul.products {
+        grid-template-columns: repeat(3, 1fr);
+        padding: 0 24px !important;
+    }
+}
+
 @media (max-width: 600px) {
     .main-content ul.products {
         grid-template-columns: repeat(2, 1fr);
+        padding: 0 16px !important;
     }
     /* Mobile: hiện luôn quick-add cho dễ chạm */
     .product-item .product-info .btn-add-cart {
