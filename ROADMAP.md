@@ -6,7 +6,7 @@ Firebase Auth **giữ nguyên ở phía client**; backend chỉ **verify Firebas
 qua Firebase Admin SDK.
 
 ```
-quanlynhasach/
+HOG/
 ├─ client/          # Frontend tĩnh hiện tại (HTML/CSS/JS/img) — không đổi cấu trúc nội bộ
 ├─ server/          # Backend Express + SQL Server (đang xây)
 └─ ROADMAP.md
