@@ -11,6 +11,7 @@
   var API_BASE = window.API_BASE || '';
   var listEl = null;
   var category = '';
+  var onsaleMode = false; // trang Khuyến Mãi: gom hàng đang giảm từ mọi danh mục
   var currentProducts = [];
 
   // ---- helpers ----
@@ -130,7 +131,14 @@
   // ---- gom params từ drawer lọc (#fd-drawer) ----
   function buildQuery() {
     var params = [];
-    if (category) params.push('category=' + encodeURIComponent(category));
+    if (onsaleMode) {
+      // Trang Khuyến Mãi: chỉ hàng đang giảm giá, không giới hạn danh mục.
+      params.push('onsale=1');
+    } else {
+      if (category) params.push('category=' + encodeURIComponent(category));
+      // Trang danh mục thường: ẩn hàng đang giảm (chúng chỉ hiện ở trang Khuyến Mãi).
+      params.push('onsale=0');
+    }
 
     // Giá là RADIO (chọn 1 khoảng). Radio "Tất cả" không có data-min/max -> bỏ qua
     // (trả toàn bộ). Chỉ push min/max khi parse ra số nguyên hợp lệ.
@@ -183,7 +191,8 @@
   document.addEventListener('DOMContentLoaded', function () {
     listEl = document.querySelector('ul.products');
     category = (document.body.getAttribute('data-category') || '').trim();
-    if (!listEl || !category) return;
+    onsaleMode = document.body.getAttribute('data-onsale') === '1';
+    if (!listEl || (!category && !onsaleMode)) return;
     wireControls();
     load();
   });

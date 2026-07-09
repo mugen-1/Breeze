@@ -1,46 +1,10 @@
-﻿<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
 <link rel="stylesheet" type="text/css" href="css/sale.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
-<style>
-    /* Giữ hiệu ứng hover đổi ảnh + object-fit:contain riêng cho trang này.
-       Selector prefix .product-item để thắng style card chung trong sale.css. */
-    .product-item .product-thumb {
-        position: relative;
-        display: block;
-        overflow: hidden;
-        aspect-ratio: 3 / 4;
-    }
-    .product-item .product-thumb img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;   /* sách: không cắt bìa */
-        display: block;
-    }
-    .product-item .product-thumb .thumb-hover {
-        position: absolute;
-        top: 0;
-        left: 0;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-    .product-item .product-thumb:hover .thumb-hover {
-        opacity: 1;
-    }
-    .product-item .product-thumb .thumb-fill {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-    /* huỷ zoom-chung 1.04 khi hover để hiệu ứng đổi ảnh mượt, không giật */
-    .product-item:hover .product-thumb img {
-        transform: none;
-    }
 
-</style>
-
-<body class="category-page sitehdr" data-category="ao-nam">
+<body class="category-page sitehdr" data-onsale="1">
     <div class="policy-header">
         <button type="button" class="ph-menu" data-drawer-open aria-controls="drawer-menu" aria-expanded="false">
             <i class="fa fa-bars" aria-hidden="true"></i> <span class="ph-menu-label">Danh Mục</span>
@@ -119,49 +83,47 @@
 
     <div id="wrapper">
         <div class="page-layout">
-            <aside class="sidebar">
-                <div class="sidebar-section">
-                    <p class="sidebar-category-title">Category</p>
-                    <ul class="sidebar-links">
-                        <li><a href="ao-nam.html" class="active">Áo</a></li>
-                        <li><a href="ao-nu.html">Áo</a></li>
-                        <li><a href="gold-jewellery.html">Gold Jewellery</a></li>
-                        <li><a href="handbags.html">Handbags</a></li>
-                        <li><a href="sale.html">Sale</a></li>
-                    </ul>
-                </div>
-                <div class="sidebar-section">
-                    <div class="sidebar-filter-heading" onclick="toggleFilter(this)">
-                        Price Range <span class="toggle-icon">▾</span>
-                    </div>
-                    <ul class="sidebar-filter-list">
-                        <li><label><input type="checkbox" class="price-filter-cb" data-min="0" data-max="49999"> Under 50,000đ</label></li>
-                        <li><label><input type="checkbox" class="price-filter-cb" data-min="50000" data-max="100000"> 50,000đ – 100,000đ</label></li>
-                        <li><label><input type="checkbox" class="price-filter-cb" data-min="100001" data-max="200000"> 100,000đ – 200,000đ</label></li>
-                        <li><label><input type="checkbox" class="price-filter-cb" data-min="200001" data-max="99999999"> Over 200,000đ</label></li>
-                    </ul>
-                </div>
-                <div class="sidebar-section">
-                    <div class="sidebar-filter-heading" onclick="toggleFilter(this)">
-                        Sort <span class="toggle-icon">▾</span>
-                    </div>
-                    <ul class="sidebar-filter-list">
-                        <li><label><input type="radio" name="sort"> Newest</label></li>
-                        <li><label><input type="radio" name="sort"> Price: Low to High</label></li>
-                        <li><label><input type="radio" name="sort"> Price: High to Low</label></li>
-                    </ul>
-                </div>
-            </aside>
-            <div class="main-content">
-                <div class="headline reveal">
-                    <h4>Áo</h4>
-                </div>
-                <ul class="products"></ul>
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <p class="sidebar-category-title">Category</p>
+                <ul class="sidebar-links">
+                    <li><a href="ao-nam.html">Men</a></li>
+                    <li><a href="ao-nu.html">Women</a></li>
+                    <li><a href="gold-jewellery.html">Gold Jewellery</a></li>
+                    <li><a href="handbags.html">Handbags</a></li>
+                    <li><a href="sale.html" class="active">Sale</a></li>
+                </ul>
             </div>
+            <div class="sidebar-section">
+                <div class="sidebar-filter-heading" onclick="toggleFilter(this)">
+                    Price Range <span class="toggle-icon">▾</span>
+                </div>
+                <ul class="sidebar-filter-list">
+                    <li><label><input type="checkbox" class="price-filter-cb" data-min="0" data-max="49999"> Under 50,000đ</label></li>
+                    <li><label><input type="checkbox" class="price-filter-cb" data-min="50000" data-max="100000"> 50,000đ – 100,000đ</label></li>
+                    <li><label><input type="checkbox" class="price-filter-cb" data-min="100001" data-max="200000"> 100,000đ – 200,000đ</label></li>
+                    <li><label><input type="checkbox" class="price-filter-cb" data-min="200001" data-max="99999999"> Over 200,000đ</label></li>
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-filter-heading" onclick="toggleFilter(this)">
+                    Sort <span class="toggle-icon">▾</span>
+                </div>
+                <ul class="sidebar-filter-list">
+                    <li><label><input type="radio" name="sort"> Newest</label></li>
+                    <li><label><input type="radio" name="sort"> Price: Low to High</label></li>
+                    <li><label><input type="radio" name="sort"> Price: High to Low</label></li>
+                </ul>
+            </div>
+        </aside>
+        <div class="main-content">
+        <div class="headline reveal">
+            <h4>Khuyến Mãi</h4>
+        </div>
+        <ul class="products"></ul>
+        </div>
         </div>
     </div>
-
-
     <script>
     function toggleFilter(el) {
         el.classList.toggle('collapsed');
@@ -169,7 +131,6 @@
         list.style.display = list.style.display === 'none' ? '' : 'none';
     }
     </script>
-
     <footer id="footer" class="footer-cols">
         <div class="footer-content reveal">
             <h6 class="footer-logo">GUCCI</h6>
@@ -208,6 +169,9 @@
             </div>
         </div>
     </footer>
+    <script src="js/reveal.js"></script>
+    <script src="js/products-render.js"></script>
+</body>
 
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -219,6 +183,4 @@
     <script src="js/drawer-menu.js"></script>
     <script src="js/i18n.js"></script>
     <script src="js/filter.js"></script>
-    <script src="js/reveal.js"></script>
-    <script src="js/products-render.js"></script>
 </body>

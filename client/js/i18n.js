@@ -5,11 +5,11 @@
     var T = {
         vi: {
             nav: { home: 'Trang Chủ', cat: 'Danh Mục', feedback: 'Phản Hồi', staff: 'Quản Lý NV' },
-            mega: { men: 'Nam', women: 'Nữ', gold: 'Trang Sức Vàng', handbags: 'Túi Xách' },
+            mega: { men: 'Nam', women: 'Nữ', gold: 'Trang Sức Vàng', handbags: 'Túi Xách', sale: 'Khuyến Mãi' },
             megaItems: { shirt: 'Áo', pants: 'Quần', shoes: 'Giày', bracelet: 'Vòng tay', ring: 'Nhẫn' },
-            sidebar: { title: 'Danh Mục', men: 'Nam', women: 'Nữ', gold: 'Trang Sức Vàng', handbags: 'Túi Xách' },
+            sidebar: { title: 'Danh Mục', men: 'Nam', women: 'Nữ', gold: 'Trang Sức Vàng', handbags: 'Túi Xách', sale: 'Khuyến Mãi' },
             filter: { price: 'Khoảng Giá', all: 'Tất cả', u50: 'Dưới 15 triệu', r5010: '15 – 30 triệu', r10020: '30 – 50 triệu', o200: 'Trên 50 triệu', sort: 'Sắp Xếp', newest: 'Mới nhất', asc: 'Giá tăng dần', desc: 'Giá giảm dần' },
-            page: { 'ao-nam.html': 'Áo', 'ao-nu.html': 'Áo', 'gold-jewellery.html': 'Vòng tay', 'handbags.html': 'Túi Xách', 'quan-nam.html': 'Quần', 'giay-nam.html': 'Giày', 'quan-nu.html': 'Quần', 'giay-nu.html': 'Giày', 'nhan.html': 'Nhẫn' },
+            page: { 'ao-nam.html': 'Áo', 'ao-nu.html': 'Áo', 'gold-jewellery.html': 'Vòng tay', 'handbags.html': 'Túi Xách', 'quan-nam.html': 'Quần', 'giay-nam.html': 'Giày', 'quan-nu.html': 'Quần', 'giay-nu.html': 'Giày', 'nhan.html': 'Nhẫn', 'sale.html': 'Khuyến Mãi' },
             footer: { home: 'Trang chủ', ret: 'Chính sách đổi trả', ship: 'Chính sách giao hàng', priv: 'Chính sách bảo mật', branch: 'Chi nhánh cửa hàng', contact: 'Liên Hệ Với Chúng Tôi', cart: 'Giỏ Hàng Của Tôi', store: 'Định Vị Cửa Hàng', helpTitle: 'Chúng Tôi Có Thể Giúp Bạn?', companyTitle: 'Về Chúng Tôi', langTitle: 'Ngôn Ngữ', countryTitle: 'Quốc Gia/Khu Vực', countryName: 'Việt Nam' },
             fd: { title: 'Lọc & Sắp Xếp', clear: 'Xoá tất cả', price: 'Khoảng Giá', sort: 'Sắp Xếp', newest: 'Mới nhất', asc: 'Giá tăng dần', desc: 'Giá giảm dần', all: 'Tất cả', u50: 'Dưới 15 triệu', r5010: '15 – 30 triệu', r10020: '30 – 50 triệu', o200: 'Trên 50 triệu', btn: 'Lọc & Sắp Xếp', showItems: function (n) { return 'Hiện ' + n + ' sản phẩm →'; }, noProduct: 'Không tìm thấy sản phẩm, xin lỗi vì sự bất tiện này' },
             cart: { add: 'Thêm vào giỏ', added: '✓ Đã thêm' },
@@ -53,11 +53,11 @@
         },
         en: {
             nav: { home: 'Home', cat: 'Categories', feedback: 'Feedback', staff: 'Staff Login' },
-            mega: { men: 'Men', women: 'Women', gold: 'Gold Jewellery', handbags: 'Handbags' },
+            mega: { men: 'Men', women: 'Women', gold: 'Gold Jewellery', handbags: 'Handbags', sale: 'Sale' },
             megaItems: { shirt: 'Shirt', pants: 'Pants', shoes: 'Shoes', bracelet: 'Bracelet', ring: 'Ring' },
-            sidebar: { title: 'Categories', men: 'Men', women: 'Women', gold: 'Gold Jewellery', handbags: 'Handbags' },
+            sidebar: { title: 'Categories', men: 'Men', women: 'Women', gold: 'Gold Jewellery', handbags: 'Handbags', sale: 'Sale' },
             filter: { price: 'Price Range', all: 'All', u50: 'Under 15M', r5010: '15 – 30M', r10020: '30 – 50M', o200: 'Over 50M', sort: 'Sort By', newest: 'Newest', asc: 'Price: Low to High', desc: 'Price: High to Low' },
-            page: { 'ao-nam.html': 'Shirt', 'ao-nu.html': 'Shirt', 'gold-jewellery.html': 'Bracelet', 'handbags.html': 'Handbags', 'quan-nam.html': 'Pants', 'giay-nam.html': 'Shoes', 'quan-nu.html': 'Pants', 'giay-nu.html': 'Shoes', 'nhan.html': 'Ring' },
+            page: { 'ao-nam.html': 'Shirt', 'ao-nu.html': 'Shirt', 'gold-jewellery.html': 'Bracelet', 'handbags.html': 'Handbags', 'quan-nam.html': 'Pants', 'giay-nam.html': 'Shoes', 'quan-nu.html': 'Pants', 'giay-nu.html': 'Shoes', 'nhan.html': 'Ring', 'sale.html': 'Sale' },
             footer: { home: 'Home', ret: 'Return Policy', ship: 'Shipping Policy', priv: 'Privacy Policy', branch: 'Store Branches', contact: 'Contact Us', cart: 'My Cart', store: 'Store Locator', helpTitle: 'May We Help You?', companyTitle: 'About Us', langTitle: 'Language', countryTitle: 'Country/Region', countryName: 'Vietnam' },
             fd: { title: 'Filter & Sort', clear: 'Clear All', price: 'Price Range', sort: 'Sort By', newest: 'Newest', asc: 'Price: Low to High', desc: 'Price: High to Low', all: 'All', u50: 'Under 15M', r5010: '15 – 30M', r10020: '30 – 50M', o200: 'Over 50M', btn: 'Filter & Sort', showItems: function (n) { return 'Show ' + n + ' items →'; }, noProduct: 'No products found, sorry for the inconvenience' },
             cart: { add: 'Add to cart', added: '✓ Added' },
@@ -308,6 +308,7 @@
             else if (href === 'gold-jewellery.html') a.textContent = t.megaItems.bracelet;
             else if (href === 'nhan.html') a.textContent = t.megaItems.ring;
             else if (href === 'handbags.html') a.textContent = t.mega.handbags;
+            else if (href === 'sale.html') a.textContent = t.mega.sale;
         });
 
         // Footer (áp dụng cho MỌI trang, kể cả index)
@@ -342,6 +343,7 @@
             else if (href === 'ao-nu.html') a.textContent = t.sidebar.women;
             else if (href === 'gold-jewellery.html') a.textContent = t.sidebar.gold;
             else if (href === 'handbags.html') a.textContent = t.sidebar.handbags;
+            else if (href === 'sale.html') a.textContent = t.sidebar.sale;
         });
 
         // Sidebar filter headings
@@ -437,7 +439,8 @@
             'Nam': t.mega.men, 'Men': t.mega.men,
             'Nữ': t.mega.women, 'Women': t.mega.women,
             'Trang Sức Vàng': t.mega.gold, 'Gold Jewellery': t.mega.gold,
-            'Túi Xách': t.mega.handbags, 'Handbags': t.mega.handbags
+            'Túi Xách': t.mega.handbags, 'Handbags': t.mega.handbags,
+            'Khuyến Mãi': t.mega.sale, 'Sale': t.mega.sale
         };
         d.querySelectorAll('.drawer-acc-btn').forEach(function (btn) {
             var node = btn.firstChild; // text node trước icon
@@ -454,6 +457,7 @@
             else if (href === 'gold-jewellery.html') a.textContent = t.megaItems.bracelet;
             else if (href === 'nhan.html') a.textContent = t.megaItems.ring;
             else if (href === 'handbags.html') a.textContent = t.mega.handbags;
+            else if (href === 'sale.html') a.textContent = t.mega.sale;
         });
 
         d.querySelectorAll('.drawer-links li a').forEach(function (a) {
