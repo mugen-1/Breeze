@@ -18,9 +18,23 @@
         return (window.__i18n && window.__i18n.T[window.__i18n.current] && window.__i18n.T[window.__i18n.current].fd) || {};
     }
 
-    // ===== LỌC SẢN PHẨM =====
+    // Trang động (category) đọc body[data-category] và để products-render.js lo lọc/sort
+    // server-side. Trang này thì filter.js CHỈ dựng UI, không lọc client (tránh 2 lớp đè).
+    function isDynamic() {
+        return document.body.hasAttribute('data-category');
+    }
+
+    // Radio giá đang chọn có mốc thật (khác "Tất cả" — radio "Tất cả" không có data-min).
+    function selectedRange() {
+        const sel = document.querySelector('#fd-drawer .price-filter-cb:checked');
+        if (!sel || sel.dataset.min === undefined || sel.dataset.min === '') return null;
+        return { el: sel, min: parseInt(sel.dataset.min, 10), max: parseInt(sel.dataset.max, 10) };
+    }
+
+    // ===== LỌC SẢN PHẨM (chỉ trang TĨNH; radio -> 1 khoảng giá) =====
     function applyFilters() {
-        const checked = Array.from(document.querySelectorAll('#fd-drawer .price-filter-cb:checked'));
+        if (isDynamic()) return;   // dynamic: products-render.js lọc server-side
+
         const productList = document.querySelector('ul.products');
         if (!productList) return;
 
@@ -34,24 +48,21 @@
             productList.parentElement.appendChild(emptyMsg);
         }
 
-        updateAppliedChips(checked);
+        const range = selectedRange();
+        updateAppliedChips(range);
 
-        if (checked.length === 0) {
+        // "Tất cả" (hoặc không có mốc) -> hiện hết
+        if (!range) {
             products.forEach(p => (p.style.display = ''));
             emptyMsg.style.display = 'none';
             updateShowBtn(products.length);
             return;
         }
 
-        const ranges = checked.map(cb => ({
-            min: parseInt(cb.dataset.min, 10),
-            max: parseInt(cb.dataset.max, 10)
-        }));
-
         let count = 0;
         products.forEach(li => {
             const price = getProductPrice(li);
-            const show = ranges.some(r => price >= r.min && price <= r.max);
+            const show = price >= range.min && price <= range.max;
             li.style.display = show ? '' : 'none';
             if (show) count++;
         });
@@ -65,20 +76,22 @@
         if (btn) btn.textContent = fd().showItems ? fd().showItems(count) : `Hiện ${count} sản phẩm →`;
     }
 
-    function updateAppliedChips(checked) {
+    function updateAppliedChips(range) {
         const container = document.getElementById('fd-applied');
         if (!container) return;
         container.innerHTML = '';
-        if (checked.length === 0) { container.style.display = 'none'; return; }
+        if (!range) { container.style.display = 'none'; return; }
         container.style.display = 'block';
-        checked.forEach(cb => {
-            const label = cb.closest('label').textContent.trim();
-            const chip = document.createElement('button');
-            chip.className = 'fd-chip';
-            chip.textContent = '✕ ' + label;
-            chip.onclick = () => { cb.checked = false; applyFilters(); };
-            container.appendChild(chip);
-        });
+        const label = range.el.closest('label').textContent.trim();
+        const chip = document.createElement('button');
+        chip.className = 'fd-chip';
+        chip.textContent = '✕ ' + label;
+        chip.onclick = () => {
+            const all = document.getElementById('fd-price-all');
+            if (all) all.checked = true;
+            applyFilters();
+        };
+        container.appendChild(chip);
     }
 
     // ===== MỞ / ĐÓNG DRAWER =====
@@ -121,10 +134,11 @@
                 <div class="fd-group">
                     <div class="fd-group-heading">${t.price || 'Khoảng Giá'}</div>
                     <ul class="fd-group-list">
-                        <li><label><input type="checkbox" class="price-filter-cb" data-min="0" data-max="49999"> ${t.u50 || 'Dưới 50,000đ'}</label></li>
-                        <li><label><input type="checkbox" class="price-filter-cb" data-min="50000" data-max="100000"> ${t.r5010 || '50,000đ – 100,000đ'}</label></li>
-                        <li><label><input type="checkbox" class="price-filter-cb" data-min="100001" data-max="200000"> ${t.r10020 || '100,000đ – 200,000đ'}</label></li>
-                        <li><label><input type="checkbox" class="price-filter-cb" data-min="200001" data-max="99999999"> ${t.o200 || 'Trên 200,000đ'}</label></li>
+                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" id="fd-price-all" checked> ${t.all || 'Tất cả'}</label></li>
+                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" data-min="0" data-max="14999999"> ${t.u50 || 'Dưới 15 triệu'}</label></li>
+                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" data-min="15000000" data-max="29999999"> ${t.r5010 || '15 – 30 triệu'}</label></li>
+                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" data-min="30000000" data-max="49999999"> ${t.r10020 || '30 – 50 triệu'}</label></li>
+                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" data-min="50000000" data-max="999999999"> ${t.o200 || 'Trên 50 triệu'}</label></li>
                     </ul>
                 </div>
                 <div class="fd-group">
@@ -147,14 +161,19 @@
         document.getElementById('fd-close').onclick = closeDrawer;
         document.getElementById('fd-show-btn').onclick = closeDrawer;
         document.getElementById('fd-clear-all').onclick = function () {
-            drawer.querySelectorAll('.price-filter-cb').forEach(cb => cb.checked = false);
+            const all = document.getElementById('fd-price-all');
+            if (all) all.checked = true;                                   // giá về "Tất cả"
             drawer.querySelectorAll('input[name="fd-sort"]').forEach(r => r.checked = false);
             applyFilters();
         };
 
-        drawer.querySelectorAll('.price-filter-cb').forEach(cb => {
-            cb.addEventListener('change', applyFilters);
-        });
+        // Trang động: KHÔNG bind lọc client (products-render.js lo server-side). Trang
+        // tĩnh: bind change theo logic radio.
+        if (!isDynamic()) {
+            drawer.querySelectorAll('.price-filter-cb').forEach(cb => {
+                cb.addEventListener('change', applyFilters);
+            });
+        }
     }
 
     // ===== NÚT LỌC TRÊN TRANG =====
