@@ -57,7 +57,17 @@ function parsePriceParam(raw) {
 
 // ---- GET /api/products ----
 router.get('/', async (req, res) => {
-  const { category, min, max, sort } = req.query;
+  const { category, min, max, sort, onsale } = req.query;
+
+  // onsale: '1' => chỉ hàng ĐANG giảm (sale_price != NULL), gom từ mọi danh mục
+  //         '0' => chỉ hàng KHÔNG giảm (dùng cho trang danh mục thường, ẩn hàng sale)
+  //         bỏ trống => không lọc theo trạng thái giảm giá (giữ hành vi cũ).
+  let saleFilter = null;
+  if (onsale === '1') saleFilter = 'p.sale_price IS NOT NULL';
+  else if (onsale === '0') saleFilter = 'p.sale_price IS NULL';
+  else if (onsale !== undefined && onsale !== '') {
+    return res.status(400).json({ status: 'error', message: 'onsale chỉ nhận 0 hoặc 1' });
+  }
 
   const minParsed = parsePriceParam(min);
   if (!minParsed.ok) {
@@ -98,6 +108,9 @@ router.get('/', async (req, res) => {
     if (maxParsed.value !== null) {
       request.input('maxv', sql.Int, maxParsed.value);
       where += ` AND ${EFFECTIVE_PRICE} <= @maxv`;
+    }
+    if (saleFilter) {
+      where += ` AND ${saleFilter}`;
     }
 
     const query = `
