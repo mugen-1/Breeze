@@ -132,14 +132,14 @@
     var params = [];
     if (category) params.push('category=' + encodeURIComponent(category));
 
-    var checked = Array.prototype.slice.call(
-      document.querySelectorAll('#fd-drawer .price-filter-cb:checked')
-    );
-    if (checked.length) {
-      var mins = checked.map(function (cb) { return parseInt(cb.dataset.min, 10); });
-      var maxs = checked.map(function (cb) { return parseInt(cb.dataset.max, 10); });
-      params.push('min=' + Math.min.apply(null, mins));
-      params.push('max=' + Math.max.apply(null, maxs));
+    // Giá là RADIO (chọn 1 khoảng). Radio "Tất cả" không có data-min/max -> bỏ qua
+    // (trả toàn bộ). Chỉ push min/max khi parse ra số nguyên hợp lệ.
+    var selected = document.querySelector('#fd-drawer .price-filter-cb:checked');
+    if (selected) {
+      var min = parseInt(selected.dataset.min, 10);
+      var max = parseInt(selected.dataset.max, 10);
+      if (Number.isInteger(min)) params.push('min=' + min);
+      if (Number.isInteger(max)) params.push('max=' + max);
     }
 
     var sortRadios = document.querySelectorAll('#fd-drawer input[name="fd-sort"]');
