@@ -61,7 +61,18 @@ function dangNhap() {
         .then((userCredential) => {
             const user = userCredential.user;
             localStorage.setItem('userName', user.displayName || user.email);
-            window.location.href = 'index.html';
+            // Gọi /api/me để (a) đồng bộ user vào DB lần đầu / cập nhật last_login,
+            // (b) biết role hiện tại (auto-admin theo ADMIN_EMAILS áp dụng ngay ở đây)
+            // rồi điều hướng: admin -> admin.html, còn lại -> trang chủ.
+            return user.getIdToken().then((token) => {
+                const base = window.API_BASE || '';
+                return fetch(base + '/api/me', { headers: { Authorization: 'Bearer ' + token } })
+                    .then((r) => (r.ok ? r.json() : null))
+                    .catch(() => null);
+            });
+        })
+        .then((me) => {
+            window.location.href = (me && me.role === 'admin') ? 'admin.html' : 'index.html';
         })
         .catch((error) => {
             showMessage('login-msg', ERROR_MESSAGES[error.code] || error.message, true);
