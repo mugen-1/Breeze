@@ -56,11 +56,11 @@
             if (!btn) return;
             var line = e.target.closest('.cart-line');
             if (!line) return;
-            var name = line.getAttribute('data-name');
+            var id = Number(line.getAttribute('data-id'));
             var act = btn.getAttribute('data-act');
-            if (act === 'inc' && typeof updateQty === 'function') updateQty(name, 1);
-            else if (act === 'dec' && typeof updateQty === 'function') updateQty(name, -1);
-            else if (act === 'remove' && typeof removeFromCart === 'function') removeFromCart(name);
+            if (act === 'inc' && typeof updateQty === 'function') updateQty(id, 1);
+            else if (act === 'dec' && typeof updateQty === 'function') updateQty(id, -1);
+            else if (act === 'remove' && typeof removeFromCart === 'function') removeFromCart(id);
             render(); // saveCart bên trong đã tự gọi _updateAllBadges
         });
     }
@@ -85,7 +85,7 @@
             bodyEl.innerHTML = '<div class="cart-empty">Giỏ hàng của bạn đang trống.</div>';
         } else {
             bodyEl.innerHTML = items.map(function (it) {
-                return '<div class="cart-line" data-name="' + esc(it.name) + '">' +
+                return '<div class="cart-line" data-id="' + it.id + '">' +
                     '<img class="cart-line-img" src="' + esc(it.img) + '" alt="">' +
                     '<div class="cart-line-main">' +
                         '<span class="cart-line-name">' + esc(it.name) + '</span>' +

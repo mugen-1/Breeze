@@ -338,7 +338,6 @@
             cart.forEach(function(item) {
                 var subtotal = item.price * item.qty;
                 total += subtotal;
-                var safeName = item.name.replace(/'/g, "\\'");
                 var tr = document.createElement('tr');
                 tr.innerHTML =
                     '<td><img class="cart-item-img" src="' + item.img + '" alt="' + item.name + '" onerror="this.src=\'img/gc8.png\'"></td>' +
@@ -346,13 +345,13 @@
                     '<td>' + formatPrice(item.price) + '</td>' +
                     '<td>' +
                         '<div class="qty-control">' +
-                            '<button class="qty-btn" onclick="changeQty(\'' + safeName + '\', -1)">−</button>' +
+                            '<button class="qty-btn" onclick="changeQty(' + item.id + ', -1)">−</button>' +
                             '<span class="qty-num">' + item.qty + '</span>' +
-                            '<button class="qty-btn" onclick="changeQty(\'' + safeName + '\', 1)">+</button>' +
+                            '<button class="qty-btn" onclick="changeQty(' + item.id + ', 1)">+</button>' +
                         '</div>' +
                     '</td>' +
                     '<td class="item-price">' + formatPrice(subtotal) + '</td>' +
-                    '<td><button class="btn-remove" onclick="removeItem(\'' + safeName + '\')" title="' + (cp.removeTitle || 'Xóa') + '"><i class="fa fa-times"></i></button></td>';
+                    '<td><button class="btn-remove" onclick="removeItem(' + item.id + ')" title="' + (cp.removeTitle || 'Xóa') + '"><i class="fa fa-times"></i></button></td>';
                 bodyEl.appendChild(tr);
             });
 
@@ -361,8 +360,8 @@
 
         window.renderCart = renderCart;
 
-        function changeQty(name, delta) { updateQty(name, delta); renderCart(); }
-        function removeItem(name) { removeFromCart(name); renderCart(); }
+        function changeQty(id, delta) { updateQty(id, delta); renderCart(); }
+        function removeItem(id) { removeFromCart(id); renderCart(); }
 
         function _showCheckoutMsg(text, isError) {
             var msg = document.getElementById('checkout-msg');

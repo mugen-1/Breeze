@@ -182,8 +182,8 @@ function addToCart(btn) {
     _flashAdded(btn);
 }
 
-function removeFromCart(name) {
-    var item = _cart.find(function (p) { return p.name === name; });
+function removeFromCart(id) {
+    var item = _cart.find(function (p) { return p.id === id; });
     if (_serverMode) {
         if (!item) return;
         _cart = _cart.filter(function (p) { return p !== item; });
@@ -193,16 +193,16 @@ function removeFromCart(name) {
             .catch(function (e) { console.error('[cart] xoá giỏ lỗi:', e); });
         return;
     }
-    saveCart(_cart.filter(function (p) { return p.name !== name; }));
+    saveCart(_cart.filter(function (p) { return p.id !== id; }));
 }
 
-function updateQty(name, delta) {
-    const item = _cart.find(function (p) { return p.name === name; });
+function updateQty(id, delta) {
+    const item = _cart.find(function (p) { return p.id === id; });
     if (!item) return;
 
     if (_serverMode) {
         var newQty = item.qty + delta;
-        if (newQty <= 0) { removeFromCart(name); return; }
+        if (newQty <= 0) { removeFromCart(id); return; }
         item.qty = newQty;
         _notify();
         window.AuthHelper.apiFetch('/api/cart', {
@@ -214,7 +214,7 @@ function updateQty(name, delta) {
     }
 
     item.qty += delta;
-    if (item.qty <= 0) saveCart(_cart.filter(function (p) { return p.name !== name; }));
+    if (item.qty <= 0) saveCart(_cart.filter(function (p) { return p.id !== id; }));
     else saveCart(_cart);
 }
 
