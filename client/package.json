@@ -1,4 +1,6 @@
 {
+  "name": "hog",
+  "version": "1.0.0",
   "dependencies": {
     "firebase": "^12.14.0"
   }
