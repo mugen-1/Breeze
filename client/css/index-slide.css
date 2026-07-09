@@ -196,3 +196,16 @@ body.home header .menu li a {                  /* nav: sans, HOA, giãn chữ */
   .hero-scroll  { display: none; }             /* gọn gàng trên mobile */
   .hero-dots    { right: 0; left: 0; bottom: 24px; text-align: center; }
 }
+
+/* ===== HERO BANNER TĨNH "Men's Gucci" (giữa trang, dưới New Arrivals) =====
+   Tái dùng .hero / .hero-scrim / .hero-content / .hero-title / .hero-btn có sẵn.
+   Dùng .hero-figure (KHÔNG .mySlides) để độc lập với slideshow đầu trang — tránh
+   JS getElementsByClassName("mySlides"/"dot") quét nhầm ảnh mới. Ảnh tĩnh 1 tấm,
+   chỉ zoom Ken Burns 1 lần khi hiện (tái dùng keyframes heroKenBurns đã có). */
+.hero--mens .hero-figure { position: absolute; inset: 0; height: 100%; overflow: hidden; }
+.hero--mens .hero-figure img {
+    width: 100%; height: 100%;
+    object-fit: cover; object-position: center;
+    will-change: transform;
+    animation: heroKenBurns 8s ease-out both;
+}
