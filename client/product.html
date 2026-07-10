@@ -254,7 +254,7 @@
         <button type="button" class="ph-menu" data-drawer-open aria-controls="drawer-menu" aria-expanded="false">
             <i class="fa fa-bars" aria-hidden="true"></i> <span class="ph-menu-label">Danh Mục</span>
         </button>
-        <a href="index.html" class="ph-logo">GUCCI</a>
+        <a href="index.html" class="ph-logo">BREEZE</a>
         <div class="ph-actions">
             <a href="search.html" aria-label="Tìm kiếm"><i class="fa fa-search" aria-hidden="true"></i></a>
             <a href="cart.html" aria-label="Giỏ hàng"><i class="fa fa-shopping-bag" aria-hidden="true"></i></a>
@@ -294,10 +294,10 @@
                 </li>
                 <li class="drawer-acc-item">
                     <button type="button" class="drawer-acc-btn" aria-expanded="false">
-                        Trang Sức Vàng <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                        Phụ Kiện <span class="drawer-acc-icon" aria-hidden="true">+</span>
                     </button>
                     <ul class="drawer-sub">
-                        <li><a href="gold-jewellery.html">Vòng tay</a></li>
+                        <li><a href="gold-jewellery.html">Phụ Kiện</a></li>
                         <li><a href="nhan.html">Nhẫn</a></li>
                     </ul>
                 </li>
@@ -449,7 +449,7 @@
 
     <footer id="footer" class="footer-cols">
         <div class="footer-content reveal">
-            <h6 class="footer-logo">GUCCI</h6>
+            <h6 class="footer-logo">BREEZE</h6>
             <div class="footer-grid">
                 <div class="footer-col">
                     <p class="footer-col-title" id="footer-help-title">May We Help You?</p>
@@ -546,9 +546,9 @@
             nameEl.textContent = pName(p);
             renderPrice(p);
             descEl.textContent = pDesc(p);
-            document.title = pName(p) + ' - GUCCI';
+            document.title = pName(p) + ' - BREEZE';
 
-            var imgs = (p.images && p.images.length) ? p.images : ['img/gucci.png'];
+            var imgs = (p.images && p.images.length) ? p.images : ['img/breeze.png'];
             mainImg.src = imgs[0];
             mainImg.alt = pName(p);
 
@@ -578,7 +578,7 @@
         }
 
         function relatedCard(p) {
-            var imgs = (p.images && p.images.length) ? p.images : ['img/gucci.png'];
+            var imgs = (p.images && p.images.length) ? p.images : ['img/breeze.png'];
             var priceHTML = p.sale_price != null
                 ? '<div class="product-price"><span class="price-default">' + money(p.price) + '</span> <span class="price-sale">' + money(p.sale_price) + '</span></div>'
                 : '<div class="product-price">' + money(p.price) + '</div>';
@@ -612,7 +612,7 @@
                 nameEl.textContent = pName(current);
                 renderPrice(current);
                 descEl.textContent = pDesc(current);
-                document.title = pName(current) + ' - GUCCI';
+                document.title = pName(current) + ' - BREEZE';
                 mainImg.alt = pName(current);
             }
             relatedProducts.forEach(function (p) {

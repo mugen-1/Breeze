@@ -1,7 +1,7 @@
 {
-  "name": "gucci-shop-server",
+  "name": "breeze-shop-server",
   "version": "1.0.0",
-  "description": "Backend API for Gucci-style e-commerce (Express + SQL Server + Firebase Admin)",
+  "description": "Backend API for Breeze-style e-commerce (Express + SQL Server + Firebase Admin)",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

@@ -1,4 +1,4 @@
-// Gucci Shop API server.
+// Breeze Shop API server.
 // Bootstrapping step: Express app on port 3000 with a real SQL Server health check.
 // Business logic (products, cart, orders, Firebase token verification) comes later.
 
@@ -99,7 +99,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[server] Gucci Shop API listening on http://localhost:${PORT}`);
+  console.log(`[server] Breeze Shop API listening on http://localhost:${PORT}`);
   console.log(`[server] Health check: http://localhost:${PORT}/api/health`);
   console.log(`[server] Frontend:     http://localhost:${PORT}/index.html`);
 });
