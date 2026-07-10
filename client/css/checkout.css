@@ -86,9 +86,12 @@ body.co-page {
     position: relative;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
     color: var(--co-ink);
     text-decoration: none;
-    font-size: 18px;
+    font-size: 20px;
     transition: opacity .2s ease;
 }
 .co-header-icon:hover { opacity: .6; }
