@@ -6,6 +6,11 @@
    tránh #000 / #fff thuần.
    ============================================================ */
 
+/* Hide legacy dark header from global.css */
+header {
+    display: none !important;
+}
+
 :root {
     /* off-black / off-white, không dùng đen/trắng tuyệt đối */
     --co-ink: #0e0e0e;          /* zinc-950-ish */
