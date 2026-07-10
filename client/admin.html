@@ -529,7 +529,10 @@
                         '<td>' + fmtDate(o.created_at) + '</td>' +
                         '<td class="num">' + money(o.total_amount) + '</td>' +
                         '<td><select class="status-sel" data-order="' + o.id + '">' + opts + '</select></td>' +
-                        '<td><button type="button" class="adm-btn ghost small" data-toggle="' + o.id + '">Chi tiết</button></td>' +
+                        '<td style="white-space:nowrap;">' +
+                            '<button type="button" class="adm-btn ghost small" data-toggle="' + o.id + '">Chi tiết</button> ' +
+                            '<button type="button" class="adm-btn danger small" data-del-order="' + o.id + '">Xoá</button>' +
+                        '</td>' +
                     '</tr>' +
                     '<tr class="oi-detail" id="oi-' + o.id + '" style="display:none;"><td colspan="6">' +
                         '<table><thead><tr><th>Sản phẩm</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th></tr></thead>' +
@@ -546,6 +549,9 @@
                     if (row) row.style.display = (row.style.display === 'none') ? 'table-row' : 'none';
                 });
             });
+            $('order-body').querySelectorAll('[data-del-order]').forEach(function (b) {
+                b.addEventListener('click', function () { deleteOrder(b.getAttribute('data-del-order'), b); });
+            });
 
             // Pager
             var totalPages = data.total_pages || 1;
@@ -556,6 +562,19 @@
             var prev = $('pg-prev'), next = $('pg-next');
             if (prev) prev.addEventListener('click', function () { loadOrders(_orderPage - 1); });
             if (next) next.addEventListener('click', function () { loadOrders(_orderPage + 1); });
+        }
+
+        function deleteOrder(orderId, btn) {
+            if (!window.confirm('Xoá hẳn đơn hàng #' + orderId + '?\nHành động này KHÔNG thể khôi phục.')) return;
+            btn.disabled = true;
+            api('/api/admin/orders/' + orderId, { method: 'DELETE' })
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (res) {
+                    if (!res.ok) { toast((res.j && res.j.message) || 'Xoá thất bại', true); btn.disabled = false; return; }
+                    toast('Đã xoá đơn #' + orderId);
+                    loadOrders(_orderPage); // tải lại trang hiện tại
+                })
+                .catch(function (e) { console.error(e); toast('Lỗi kết nối máy chủ', true); btn.disabled = false; });
         }
 
         function changeStatus(orderId, status, sel) {
