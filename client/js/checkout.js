@@ -52,6 +52,24 @@
         }
     }
 
+    // ---------- Chặn admin (admin không được thanh toán) ----------
+    // Nếu user là admin (kể cả khi gõ thẳng URL checkout.html) -> báo lỗi & rời trang.
+    var adminGuarded = false;
+    function guardAdmin(user) {
+        if (!user || adminGuarded) return;
+        if (!(window.AuthHelper && typeof window.AuthHelper.apiFetch === 'function')) return;
+        window.AuthHelper.apiFetch('/api/me')
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (me) {
+                if (me && me.role === 'admin') {
+                    adminGuarded = true;
+                    window.alert('Tài Khoản Không Đúng — tài khoản admin không thể thanh toán đơn hàng.');
+                    window.location.replace('index.html');
+                }
+            })
+            .catch(function () { /* lỗi mạng -> bỏ qua, không chặn nhầm user thường */ });
+    }
+
     // ---------- Redirect nếu giỏ rỗng ----------
     // Giỏ server nạp bất đồng bộ sau khi Firebase auth xong => hoãn kiểm tra để
     // tránh redirect nhầm khi giỏ chưa kịp về. Mỗi 'cartchange' huỷ hẹn cũ.
@@ -266,6 +284,7 @@
                 renderUser(user);
                 renderSummary();
                 scheduleEmptyCheck(user ? 1200 : 300); // logged-in: chờ giỏ server
+                guardAdmin(user); // admin gõ thẳng URL vẫn bị chặn
             });
         } else {
             renderUser(null);

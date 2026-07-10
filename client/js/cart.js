@@ -272,6 +272,45 @@ document.addEventListener('langchange', function () {
     _notify();
 });
 
+/* ---- Gate thanh toán dùng chung (cart.html + cart-drawer.js) ----
+   Luồng:
+   - Giỏ rỗng                 -> onError('Giỏ hàng ... trống').
+   - Chưa đăng nhập           -> login.html?redirect=checkout.html (login xong quay lại checkout).
+   - Đã đăng nhập & là admin  -> onError('Tài Khoản Không Đúng ...') — admin không được đặt đơn.
+   - Đã đăng nhập, user thường -> chuyển tới checkout.html.
+   onError(msg): cách hiển thị lỗi tuỳ trang (cart.html dùng ô message, drawer dùng alert). */
+function startCheckout(opts) {
+    opts = opts || {};
+    var onError = (typeof opts.onError === 'function') ? opts.onError
+        : function (m) { window.alert(m); };
+
+    if (getCart().length === 0) {
+        onError('Giỏ hàng của bạn đang trống.');
+        return;
+    }
+
+    if (!(window.AuthHelper && window.AuthHelper.isLoggedIn())) {
+        window.location.href = 'login.html?redirect=checkout.html';
+        return;
+    }
+
+    // Đã đăng nhập: kiểm tra role qua /api/me (admin không được thanh toán).
+    window.AuthHelper.apiFetch('/api/me')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (me) {
+            if (me && me.role === 'admin') {
+                onError('Tài Khoản Không Đúng — tài khoản admin không thể thanh toán đơn hàng.');
+                return;
+            }
+            window.location.href = 'checkout.html';
+        })
+        .catch(function () {
+            // Không kiểm tra được role (mạng lỗi) -> vẫn cho user thường tiếp tục.
+            window.location.href = 'checkout.html';
+        });
+}
+window.startCheckout = startCheckout;
+
 document.addEventListener('DOMContentLoaded', function () {
     _injectCartIcon();
     _cart = _readLocal();       // khởi tạo giỏ guest; server mode sẽ ghi đè khi authchange

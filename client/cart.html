@@ -380,8 +380,12 @@
         }
 
         function checkout() {
-            // Redirect tới checkout.html (form thanh toán frontend)
-            window.location.href = 'checkout.html';
+            // Gate dùng chung (cart.js): guest -> login, admin -> báo lỗi, user -> checkout.html
+            if (typeof window.startCheckout === 'function') {
+                window.startCheckout({ onError: function (msg) { _showCheckoutMsg(msg, true); } });
+            } else {
+                window.location.href = 'checkout.html';
+            }
         }
 
         document.addEventListener('DOMContentLoaded', renderCart);

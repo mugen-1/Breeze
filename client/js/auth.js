@@ -72,7 +72,19 @@ function dangNhap() {
             });
         })
         .then((me) => {
-            window.location.href = (me && me.role === 'admin') ? 'admin.html' : 'index.html';
+            const isAdmin = !!(me && me.role === 'admin');
+            // Luồng thanh toán: login.html?redirect=checkout.html
+            const redirect = new URLSearchParams(window.location.search).get('redirect');
+            if (redirect === 'checkout.html') {
+                if (isAdmin) {
+                    // Admin không được đặt đơn -> báo lỗi, ở lại trang login.
+                    showMessage('login-msg', 'Tài Khoản Không Đúng — tài khoản admin không thể thanh toán đơn hàng.', true);
+                    return;
+                }
+                window.location.href = 'checkout.html';
+                return;
+            }
+            window.location.href = isAdmin ? 'admin.html' : 'index.html';
         })
         .catch((error) => {
             showMessage('login-msg', ERROR_MESSAGES[error.code] || error.message, true);
