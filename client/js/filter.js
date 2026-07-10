@@ -135,10 +135,10 @@
                     <div class="fd-group-heading">${t.price || 'Khoảng Giá'}</div>
                     <ul class="fd-group-list">
                         <li><label><input type="radio" name="fd-price" class="price-filter-cb" id="fd-price-all" checked> ${t.all || 'Tất cả'}</label></li>
-                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" data-min="0" data-max="14999999"> ${t.u50 || 'Dưới 15 triệu'}</label></li>
-                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" data-min="15000000" data-max="29999999"> ${t.r5010 || '15 – 30 triệu'}</label></li>
-                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" data-min="30000000" data-max="49999999"> ${t.r10020 || '30 – 50 triệu'}</label></li>
-                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" data-min="50000000" data-max="999999999"> ${t.o200 || 'Trên 50 triệu'}</label></li>
+                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" data-min="0" data-max="199999"> ${t.u50 || 'Dưới 200.000đ'}</label></li>
+                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" data-min="200000" data-max="399999"> ${t.r5010 || '200.000đ – 400.000đ'}</label></li>
+                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" data-min="400000" data-max="699999"> ${t.r10020 || '400.000đ – 700.000đ'}</label></li>
+                        <li><label><input type="radio" name="fd-price" class="price-filter-cb" data-min="700000" data-max="999999999"> ${t.o200 || 'Trên 700.000đ'}</label></li>
                     </ul>
                 </div>
                 <div class="fd-group">

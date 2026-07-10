@@ -37,7 +37,7 @@
 
   // ---- dựng 1 card (markup khớp trang category cũ) ----
   function cardHTML(p) {
-    var imgs = (p.images && p.images.length) ? p.images : ['img/gucci.png'];
+    var imgs = (p.images && p.images.length) ? p.images : ['img/breeze.png'];
     var imgDefault = imgs[0];
     var imgHover = imgs[1] || imgs[0];
     var name = productName(p);

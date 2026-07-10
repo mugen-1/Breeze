@@ -1,10 +1,10 @@
 @echo off
 chcp 65001 >nul
-title Gucci Shop Server - DUNG DONG cua so nay khi dang xem web
+title Breeze Shop Server - DUNG DONG cua so nay khi dang xem web
 cd /d "%~dp0server"
 
 echo ============================================================
-echo    GUCCI SHOP - Khoi dong server backend...
+echo    BREEZE SHOP - Khoi dong server backend...
 echo ------------------------------------------------------------
 echo    - Trinh duyet se tu mo trang san pham sau vai giay.
 echo    - DE YEN cua so nay chay trong luc xem web.

@@ -36,7 +36,7 @@
             '<div class="cart-drawer-body" id="cart-drawer-body"></div>' +
             '<div class="cart-drawer-foot">' +
                 '<div class="cd-total"><span>Tổng cộng</span><span class="cd-total-val" id="cart-drawer-total">0đ</span></div>' +
-                '<a class="cart-btn cart-btn-primary" href="cart.html">Thanh toán</a>' +
+                '<a class="cart-btn cart-btn-primary" href="checkout.html">Thanh toán</a>' +
                 '<a class="cart-btn cart-btn-ghost" href="cart.html">Xem giỏ hàng</a>' +
             '</div>';
 

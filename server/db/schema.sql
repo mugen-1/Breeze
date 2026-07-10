@@ -1,5 +1,5 @@
 /* =====================================================================
-   GucciShopDB — Schema (Phase 1)
+   BreezeShopDB — Schema (Phase 1)
    5 bảng: categories, products, users, orders, order_items
    - Mọi cột chứa tiếng Việt dùng NVARCHAR (Unicode) để không lỗi dấu.
    - Chạy lại an toàn: DROP theo đúng thứ tự khóa ngoại (con trước, cha sau).

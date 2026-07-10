@@ -1,0 +1,462 @@
+/* ============================================================
+   CHECKOUT PAGE — checkout.html
+   Single column, căn giữa, max-width ~640px.
+   Design tokens: Cormorant Garamond (display) + Jost (UI),
+   palette off-black/off-white (zinc-950 #0e0e0e / zinc-50 #f6f4ef),
+   tránh #000 / #fff thuần.
+   ============================================================ */
+
+:root {
+    /* off-black / off-white, không dùng đen/trắng tuyệt đối */
+    --co-ink: #0e0e0e;          /* zinc-950-ish */
+    --co-ink-soft: #2a2a2a;
+    --co-muted: #6b6b6b;
+    --co-muted-2: #8c8c8c;
+    --co-paper: #ffffff;        /* nền trang trắng */
+    --co-card: #fafaf8;         /* nền input/card, hơi xám nhạt */
+    --co-cream: #f5f3f0;        /* background nhạt */
+    --co-line: #e5e3df;         /* viền mảnh */
+    --co-line-strong: #d0ccc4;
+    --co-focus: #1a55c8;        /* xanh focus */
+    --co-err: #b3261e;          /* đỏ lỗi */
+    --co-ok: #1f7a4d;
+}
+
+html, body.co-page {
+    background: var(--co-paper) !important;
+    color: var(--co-ink);
+}
+
+body.co-page {
+    padding-top: 80px;
+    margin: 0;
+}
+
+.co-body {
+    min-height: calc(100vh - 80px);
+    padding: 40px 20px 80px;
+    color: var(--co-ink);
+    background: var(--co-paper);
+}
+
+/* ---- Header trắng ---- */
+.co-header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 80px;
+    background: var(--co-paper);
+    border-bottom: 1px solid var(--co-line);
+    padding: 0 40px;
+}
+
+.co-header-left {
+    flex: 1;
+}
+
+.co-header-logo {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 32px;
+    letter-spacing: 8px;
+    color: var(--co-ink);
+    text-decoration: none;
+    text-transform: uppercase;
+}
+
+.co-header-right {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 26px;
+}
+
+.co-header-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    color: var(--co-ink);
+    text-decoration: none;
+    font-size: 18px;
+    transition: opacity .2s ease;
+}
+.co-header-icon:hover { opacity: .6; }
+
+.cart-badge {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    background: var(--co-err);
+    color: var(--co-paper);
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 10px;
+    line-height: 1;
+}
+.cart-badge:empty, .cart-badge[style*="display:none"] { display: none !important; }
+
+.co-container {
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* ---- 1. Greeting ---- */
+.co-greeting {
+    font-family: var(--font-ui);
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--co-muted);
+    letter-spacing: .3px;
+    margin-bottom: 8px;
+}
+
+/* ---- 2. Hero THANH TOÁN ---- */
+.co-hero {
+    text-align: right;
+    border-bottom: 1px solid var(--co-line);
+    padding-bottom: 22px;
+    margin-bottom: 34px;
+}
+
+.co-hero-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(40px, 9vw, 62px);
+    line-height: 1.02;
+    letter-spacing: 2px;
+    color: var(--co-ink);
+    text-transform: uppercase;
+}
+
+.co-hero-sub {
+    margin-top: 8px;
+    font-family: var(--font-ui);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--co-ink-soft);
+    letter-spacing: .3px;
+}
+
+/* ---- Sections ---- */
+.co-section {
+    padding: 26px 0;
+    border-bottom: 1px solid var(--co-line);
+}
+.co-section:last-of-type { border-bottom: 0; }
+
+.co-section-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 26px;
+    letter-spacing: .5px;
+    color: var(--co-ink);
+    margin-bottom: 18px;
+}
+
+/* heading THANH TOÁN (payment) màu xám nhạt */
+.co-section-title--muted {
+    color: var(--co-muted-2);
+    font-weight: 500;
+}
+
+.co-subheading {
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: var(--co-muted);
+    margin-bottom: 18px;
+}
+
+/* ---- 3. Contact email ---- */
+.co-contact-email {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-ui);
+    font-size: 15px;
+    color: var(--co-ink-soft);
+    background: var(--co-cream);
+    border: 1px solid var(--co-line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    word-break: break-all;
+}
+.co-contact-email .fa { color: var(--co-muted); font-size: 16px; }
+
+/* ---- 4. Address fields ---- */
+.co-row { display: flex; gap: 16px; }
+.co-row-2 > .co-field { flex: 1 1 0; min-width: 0; }
+
+.co-field { margin-bottom: 18px; }
+.co-row + .co-help { margin-top: -8px; }
+
+.co-label {
+    display: block;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--co-ink-soft);
+    letter-spacing: .3px;
+    margin-bottom: 7px;
+}
+
+.co-req { color: var(--co-err); font-weight: 700; }
+.co-optional { color: var(--co-muted-2); font-weight: 400; font-size: 12px; }
+
+.co-input {
+    width: 100%;
+    font-family: var(--font-ui);
+    font-size: 15px;
+    color: var(--co-ink);
+    background: var(--co-card);
+    border: 1px solid var(--co-line-strong);
+    border-radius: 8px;
+    padding: 12px 14px;
+    line-height: 1.3;
+    transition: border-color .15s ease, box-shadow .15s ease;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.co-input::placeholder { color: var(--co-muted-2); }
+
+.co-input:hover:not(:disabled) { border-color: var(--co-line-strong); }
+
+/* Focus rõ ràng cho mọi input/select */
+.co-input:focus-visible {
+    outline: none;
+    border-color: var(--co-focus);
+    box-shadow: 0 0 0 3px rgba(26, 85, 200, .28);
+}
+
+.co-input:disabled {
+    background: var(--co-cream);
+    color: var(--co-muted);
+    cursor: not-allowed;
+    border-style: dashed;
+}
+
+/* Select mũi tên tuỳ biến (inline SVG data-uri, off-black) */
+.co-select {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%230e0e0e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 38px;
+    cursor: pointer;
+}
+.co-select:disabled { cursor: not-allowed; opacity: .7; }
+
+/* Helper + error inline */
+.co-help {
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    color: var(--co-muted);
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
+.co-err {
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--co-err);
+    margin-top: 6px;
+    line-height: 1.4;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+.co-err::before {
+    content: "!";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: var(--co-err);
+    color: var(--co-card);
+    font-size: 10px;
+    font-weight: 700;
+    transform: translateY(1px);
+}
+
+/* Trạng thái lỗi cho field */
+.co-input[aria-invalid="true"] {
+    border-color: var(--co-err);
+    background: #fdf5f4;
+}
+.co-input[aria-invalid="true"]:focus-visible {
+    box-shadow: 0 0 0 3px rgba(179, 38, 30, .25);
+}
+
+/* ---- 5. Payment methods ---- */
+.co-pay {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.co-pay-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 14px;
+    background: var(--co-card);
+    border: 1px solid var(--co-line-strong);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.co-pay-card:hover { border-color: var(--co-ink-soft); }
+
+/* radio ẩn về mặt hình ảnh nhưng vẫn focus được */
+.co-pay-radio {
+    position: absolute;
+    opacity: 0;
+    width: 1px; height: 1px;
+    margin: 0;
+}
+
+.co-pay-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    line-height: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(14,14,14,.06);
+}
+
+.co-pay-label {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--co-ink-soft);
+    letter-spacing: .2px;
+}
+
+.co-pay-check {
+    margin-left: auto;
+    flex: 0 0 auto;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--co-line-strong);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--co-card);
+    font-size: 10px;
+    transition: background .15s ease, border-color .15s ease;
+}
+.co-pay-check .fa { opacity: 0; transition: opacity .15s ease; }
+
+/* selected state */
+.co-pay-radio:checked ~ .co-pay-check {
+    background: var(--co-ink);
+    border-color: var(--co-ink);
+}
+.co-pay-radio:checked ~ .co-pay-check .fa { opacity: 1; }
+
+.co-pay-card:has(.co-pay-radio:checked) {
+    border-color: var(--co-ink);
+    box-shadow: 0 0 0 1px var(--co-ink);
+    background: var(--co-cream);
+}
+
+/* focus rõ ràng trên card khi radio nhận focus (bàn phím) */
+.co-pay-radio:focus-visible ~ .co-pay-check {
+    box-shadow: 0 0 0 3px rgba(26, 85, 200, .35);
+}
+.co-pay-card:focus-within {
+    border-color: var(--co-focus);
+    box-shadow: 0 0 0 3px rgba(26, 85, 200, .28);
+}
+
+/* ---- Submit ---- */
+.co-submit {
+    width: 100%;
+    margin-top: 28px;
+    font-family: var(--font-ui);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--co-cream);
+    background: var(--co-ink);
+    border: 1px solid var(--co-ink);
+    border-radius: 8px;
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: background .18s ease, transform .05s ease;
+}
+.co-submit:hover { background: var(--co-ink-soft); }
+.co-submit:active { transform: translateY(1px); }
+.co-submit:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(26, 85, 200, .45);
+}
+
+.co-form-msg {
+    margin-top: 18px;
+    padding: 13px 16px;
+    border-radius: 8px;
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.45;
+}
+.co-form-msg.is-ok {
+    color: var(--co-ok);
+    background: #e9f4ee;
+    border: 1px solid #b8ddc6;
+}
+.co-form-msg.is-err {
+    color: var(--co-err);
+    background: #fdf5f4;
+    border: 1px solid #edccc9;
+}
+
+/* ---- utils ---- */
+.co-visually-hidden,
+.co-pay legend.co-visually-hidden {
+    position: absolute !important;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ---- responsive ---- */
+@media (max-width: 560px) {
+    .co-row-2 { flex-direction: column; gap: 0; }
+    .co-pay { grid-template-columns: 1fr; }
+    .co-hero-title { letter-spacing: 1px; }
+}
+
+/* ---- prefers-reduced-motion ---- */
+@media (prefers-reduced-motion: reduce) {
+    .co-input, .co-pay-card, .co-pay-check, .co-submit, .co-pay-check .fa {
+        transition: none;
+    }
+}

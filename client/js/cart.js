@@ -62,7 +62,7 @@ function _mapServerItem(it) {
         name_en: it.name_en,
         name: name,
         price: it.unit_price,
-        img: it.image || 'img/gucci.png',
+        img: it.image || 'img/breeze.png',
         qty: it.quantity,
         stock: it.stock,
     };

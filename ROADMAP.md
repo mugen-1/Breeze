@@ -1,4 +1,4 @@
-# Gucci Shop — Backend Roadmap
+# Breeze Shop — Backend Roadmap
 
 Chuyển từ website tĩnh (HTML/CSS/JS thuần + Firebase Auth + giỏ hàng localStorage)
 sang kiến trúc **client / server** với backend Node.js + Express + SQL Server.
@@ -22,9 +22,9 @@ HOG/
 ---
 
 ## Phase 1 — Database & Data Seeding ✅ DONE
-- [x] Tạo 5 bảng trong `GucciShopDB` bằng `server/db/schema.sql` (DROP an toàn theo thứ tự khóa ngoại).
-- [x] Seed 9 `categories` (slug khớp tên file HTML) + **89 `products`** phong cách GUCCI (VI + EN) bằng `server/db/seed.sql`, idempotent (DELETE + RESEED).
-- [x] Ảnh dùng lại từ `client/img` — chỉ những file **thực sự tồn tại** (`gc*`, `anh*`, `gucc1/gucci`); đã cross-check 100% không có ảnh chết.
+- [x] Tạo 5 bảng trong `BreezeShopDB` bằng `server/db/schema.sql` (DROP an toàn theo thứ tự khóa ngoại).
+- [x] Seed 9 `categories` (slug khớp tên file HTML) + **89 `products`** phong cách BREEZE (VI + EN) bằng `server/db/seed.sql`, idempotent (DELETE + RESEED).
+- [x] Ảnh dùng lại từ `client/img` — chỉ những file **thực sự tồn tại** (`gc*`, `anh*`, `gucc1/breeze`); đã cross-check 100% không có ảnh chết.
 - [x] Runner `server/db/run-sql.js` (tách batch theo `GO`) + verify `server/db/verify.js` (đếm sản phẩm/category).
 - [ ] (Chuyển sang Phase 2) Layer truy vấn dùng parameterized query (chống SQL injection).
 

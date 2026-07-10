@@ -197,7 +197,7 @@ body.home header .menu li a {                  /* nav: sans, HOA, giãn chữ */
   .hero-dots    { right: 0; left: 0; bottom: 24px; text-align: center; }
 }
 
-/* ===== HERO BANNER TĨNH "Men's Gucci" (giữa trang, dưới New Arrivals) =====
+/* ===== HERO BANNER TĨNH "Men's Breeze" (giữa trang, dưới New Arrivals) =====
    Tái dùng .hero / .hero-scrim / .hero-content / .hero-title / .hero-btn có sẵn.
    Dùng .hero-figure (KHÔNG .mySlides) để độc lập với slideshow đầu trang — tránh
    JS getElementsByClassName("mySlides"/"dot") quét nhầm ảnh mới. Ảnh tĩnh 1 tấm,
