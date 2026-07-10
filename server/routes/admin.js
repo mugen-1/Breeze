@@ -5,6 +5,7 @@
 //                                            tham chiếu; HARD nếu chưa (tránh vỡ order_items).
 //   GET    /api/admin/orders               — mọi đơn của mọi user, phân trang ?page=&limit=.
 //   PUT    /api/admin/orders/:id/status    — đổi trạng thái đơn (whitelist).
+//   DELETE /api/admin/orders/:id           — xoá hẳn 1 đơn (order_items cascade theo).
 //
 // Nguyên tắc: TIN server, KHÔNG tin client. Mọi input validate + parameterized.
 const express = require('express');
@@ -449,6 +450,31 @@ router.put('/orders/:id/status', async (req, res) => {
   } catch (err) {
     console.error('[admin] update order status error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không cập nhật được trạng thái đơn' });
+  }
+});
+
+// ---- DELETE /api/admin/orders/:id --- xoá hẳn 1 đơn (hard delete) ------------
+// order_items có FK ON DELETE CASCADE -> tự xoá theo, không cần xoá tay.
+router.delete('/orders/:id', async (req, res) => {
+  const idc = reqInt(req.params.id, 1, 'id');
+  if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
+
+  try {
+    const pool = await getPool();
+    const del = await pool.request()
+      .input('id', sql.Int, idc.value)
+      .query(`
+        DELETE FROM dbo.orders
+        OUTPUT DELETED.id
+        WHERE id = @id;`);
+
+    if (del.recordset.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'Không tìm thấy đơn hàng' });
+    }
+    res.json({ status: 'ok', deletedId: del.recordset[0].id });
+  } catch (err) {
+    console.error('[admin] delete order error:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không xoá được đơn hàng' });
   }
 });
 
