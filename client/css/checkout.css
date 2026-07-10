@@ -82,18 +82,25 @@ body.co-page {
     gap: 26px;
 }
 
-.co-header-icon {
+/* Ghi đè .cart-icon-btn của global.css (nó set position:absolute;top:50% gây lệch) */
+.co-header .co-header-icon,
+.co-header .cart-icon-btn {
     position: relative;
+    top: auto;
+    right: auto;
+    transform: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 36px;
     height: 36px;
     color: var(--co-ink);
-    text-decoration: none;
     font-size: 20px;
+    text-decoration: none;
     transition: opacity .2s ease;
 }
+.co-header .cart-icon-btn .fa,
+.co-header .co-header-icon .fa { color: var(--co-ink); }
 .co-header-icon:hover { opacity: .6; }
 
 .cart-badge {
