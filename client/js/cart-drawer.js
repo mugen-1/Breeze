@@ -36,7 +36,7 @@
             '<div class="cart-drawer-body" id="cart-drawer-body"></div>' +
             '<div class="cart-drawer-foot">' +
                 '<div class="cd-total"><span>Tổng cộng</span><span class="cd-total-val" id="cart-drawer-total">0đ</span></div>' +
-                '<a class="cart-btn cart-btn-primary" href="checkout.html">Thanh toán</a>' +
+                '<a class="cart-btn cart-btn-primary" href="checkout.html" id="cart-drawer-checkout">Thanh toán</a>' +
                 '<a class="cart-btn cart-btn-ghost" href="cart.html">Xem giỏ hàng</a>' +
             '</div>';
 
@@ -49,6 +49,17 @@
 
         document.getElementById('cart-drawer-close').addEventListener('click', close);
         backdrop.addEventListener('click', close);
+
+        // Nút "Thanh toán": qua gate dùng chung (guest->login, admin->báo lỗi, user->checkout)
+        var checkoutLink = document.getElementById('cart-drawer-checkout');
+        if (checkoutLink) {
+            checkoutLink.addEventListener('click', function (e) {
+                e.preventDefault();
+                close();
+                if (typeof window.startCheckout === 'function') window.startCheckout();
+                else window.location.href = 'checkout.html';
+            });
+        }
 
         // Tăng/giảm qty + xoá item (delegation)
         bodyEl.addEventListener('click', function (e) {
