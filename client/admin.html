@@ -80,12 +80,43 @@
 
     <!-- Panel chính (các view, chuyển bằng sidebar) -->
     <div id="panel">
-        <!-- Dashboard (tạm rỗng — số liệu ở phase sau) -->
+        <!-- Dashboard: 4 stat card + đơn hàng mới nhất (số thật từ /api/admin/stats) -->
         <section id="view-dashboard">
-            <div class="adm-placeholder">
-                <i class="fa fa-tachometer" aria-hidden="true"></i>
+            <div class="adm-section-head">
                 <h3 data-i18n="dashboard">Dashboard</h3>
-                <p data-i18n="dashMsg">Số liệu tổng quan sẽ hiển thị ở đây.</p>
+            </div>
+            <div class="stat-grid">
+                <div class="stat-card stat-card--hero">
+                    <span class="stat-label" data-i18n="mRevenue">Tổng doanh thu</span>
+                    <span class="stat-value skel" id="stat-revenue">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label" data-i18n="mOrders">Tổng đơn hàng</span>
+                    <span class="stat-value skel" id="stat-orders">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label" data-i18n="mUsers">Số người dùng</span>
+                    <span class="stat-value skel" id="stat-users">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label" data-i18n="mGrowth">Tăng trưởng</span>
+                    <span class="stat-value skel" id="stat-growth">—</span>
+                </div>
+            </div>
+
+            <div class="adm-section-head dash-recent-head">
+                <h3 data-i18n="recentOrders">Đơn hàng mới nhất</h3>
+            </div>
+            <div class="adm-table-wrap">
+                <table class="adm-table">
+                    <thead><tr>
+                        <th class="num">Mã đơn</th><th>Khách hàng</th><th>Ngày đặt</th>
+                        <th class="num">Tổng tiền</th><th>Trạng thái</th>
+                    </tr></thead>
+                    <tbody id="dash-orders-body">
+                        <tr><td colspan="5" class="adm-loading">Đang tải…</td></tr>
+                    </tbody>
+                </table>
             </div>
         </section>
 
@@ -278,7 +309,7 @@
                     if (me.role !== 'admin') { showState('state-forbidden'); return; }
                     $('who').textContent = me.email || me.display_name || me.firebase_uid;
                     showState('panel');
-                    return loadCategories().then(loadProducts).then(function () { return loadOrders(1); });
+                    return loadCategories().then(loadProducts).then(function () { return loadOrders(1); }).then(loadDashboard);
                 })
                 .catch(function (e) { console.error('[admin] auth/me lỗi:', e); showState('state-forbidden'); });
         }
@@ -324,8 +355,8 @@
 
         // --- i18n khung (VI/EN): nhãn sidebar/topbar/placeholder -------------
         var ADM_I18N = {
-            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Đơn hàng', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm kiếm…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.' },
-            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Orders', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search…', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.' }
+            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Đơn hàng', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm kiếm…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất' },
+            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Orders', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search…', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders' }
         };
         function applyAdmLang(lang) {
             var t = ADM_I18N[lang] || ADM_I18N.vi;
@@ -590,6 +621,97 @@
                 })
                 .catch(function (e) { console.error(e); toast('Lỗi kết nối máy chủ', true); if (prev) sel.value = prev; })
                 .then(function () { sel.disabled = false; });
+        }
+
+        // --- Dashboard -------------------------------------------------------
+        function loadDashboard() {
+            loadStats();
+            loadRecentOrders();
+        }
+
+        var STAT_IDS = ['stat-revenue', 'stat-orders', 'stat-users', 'stat-growth'];
+        function statsSkeleton(on) {
+            STAT_IDS.forEach(function (id) {
+                var el = $(id);
+                if (!el) return;
+                el.classList.toggle('skel', on);
+                el.classList.remove('is-up', 'is-down');
+                if (on) el.textContent = '';
+            });
+        }
+
+        function loadStats() {
+            statsSkeleton(true);
+            return api('/api/admin/stats')
+                .then(function (r) { if (!r.ok) throw new Error('stats ' + r.status); return r.json(); })
+                .then(renderStats)
+                .catch(function (e) {
+                    console.error('[admin] load stats lỗi:', e);
+                    statsSkeleton(false);
+                    STAT_IDS.forEach(function (id) { if ($(id)) $(id).textContent = '—'; });
+                });
+        }
+
+        function renderStats(s) {
+            statsSkeleton(false);
+            $('stat-revenue').textContent = money(s.revenue_total || 0);
+            $('stat-orders').textContent = Number(s.orders_count || 0).toLocaleString('vi-VN');
+            $('stat-users').textContent = Number(s.users_count || 0).toLocaleString('vi-VN');
+
+            var g = s.growth_pct;
+            var gEl = $('stat-growth');
+            gEl.classList.remove('is-up', 'is-down');
+            if (g == null) {
+                gEl.textContent = '—';            // chưa đủ dữ liệu tháng trước
+            } else {
+                var sign = g > 0 ? '+' : '';
+                gEl.textContent = sign + Number(g).toLocaleString('vi-VN') + '%';
+                if (g > 0) gEl.classList.add('is-up');
+                else if (g < 0) gEl.classList.add('is-down');
+            }
+        }
+
+        function statusPill(s) {
+            return '<span class="pill status">' + esc(STATUS_LABEL[s] || s) + '</span>';
+        }
+
+        function recentSkeletonRows(n) {
+            var cell = '<td><span class="skel skel-cell"></span></td>';
+            var row = '<tr>' + cell + cell + cell + cell + cell + '</tr>';
+            return new Array(n + 1).join(row);
+        }
+
+        // TÁI DÙNG endpoint đơn hàng chung, chỉ lấy 5 đơn mới nhất (trang 1).
+        function loadRecentOrders() {
+            var tb = $('dash-orders-body');
+            if (tb) tb.innerHTML = recentSkeletonRows(5);
+            return api('/api/admin/orders?page=1&limit=5')
+                .then(function (r) { if (!r.ok) throw new Error('recent orders ' + r.status); return r.json(); })
+                .then(renderRecentOrders)
+                .catch(function (e) {
+                    console.error('[admin] load recent orders lỗi:', e);
+                    if (tb) tb.innerHTML = '<tr><td colspan="5" class="adm-empty">Không tải được đơn hàng.</td></tr>';
+                });
+        }
+
+        function renderRecentOrders(data) {
+            var tb = $('dash-orders-body');
+            if (!tb) return;
+            var orders = (data && data.orders) || [];
+            if (!orders.length) {
+                tb.innerHTML = '<tr><td colspan="5" class="adm-empty">Chưa có đơn hàng nào.</td></tr>';
+                return;
+            }
+            tb.innerHTML = orders.map(function (o) {
+                var cust = o.user_email || o.user_name || ('user #' + o.user_id);
+                return '<tr>' +
+                    '<td class="num">' + o.id + '</td>' +
+                    '<td>' + esc(cust) + '</td>' +
+                    '<td>' + fmtDate(o.created_at) + '</td>' +
+                    '<td class="num">' + money(o.total_amount) + '</td>' +
+                    '<td>' + statusPill(o.status) + '</td>' +
+                '</tr>';
+            }).join('');
         }
 
         // --- Wire up ---------------------------------------------------------
