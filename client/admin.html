@@ -106,13 +106,13 @@
 
             <div class="chart-card">
                 <div class="adm-section-head chart-head">
-                    <h3 data-i18n="revenueChart">Doanh thu 12 tháng</h3>
+                    <h3 data-i18n="revenueChart">Doanh thu theo ngày (tháng này)</h3>
                 </div>
                 <div class="chart-body">
                     <div class="chart-state" id="chart-loading">Đang tải…</div>
                     <div class="chart-state" id="chart-empty" data-i18n="noRevData" style="display:none;">Chưa có dữ liệu doanh thu</div>
                     <canvas id="revenue-chart" role="img"
-                            aria-label="Biểu đồ doanh thu 12 tháng gần nhất"></canvas>
+                            aria-label="Biểu đồ doanh thu theo ngày trong tháng hiện tại"></canvas>
                 </div>
             </div>
 
@@ -394,8 +394,8 @@
 
         // --- i18n khung (VI/EN): nhãn sidebar/topbar/placeholder -------------
         var ADM_I18N = {
-            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Đơn hàng', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm kiếm…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất', revenueChart: 'Doanh thu 12 tháng', noRevData: 'Chưa có dữ liệu doanh thu' },
-            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Orders', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search…', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders', revenueChart: 'Revenue (12 months)', noRevData: 'No revenue data yet' }
+            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Đơn hàng', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm kiếm…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất', revenueChart: 'Doanh thu theo ngày (tháng này)', noRevData: 'Chưa có dữ liệu doanh thu' },
+            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Orders', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search…', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders', revenueChart: 'Daily revenue (this month)', noRevData: 'No revenue data yet' }
         };
         function applyAdmLang(lang) {
             var t = ADM_I18N[lang] || ADM_I18N.vi;
@@ -750,18 +750,18 @@
                 else if (g < 0) gEl.classList.add('is-down');
             }
 
-            renderRevenueChart(s.revenue_by_month || []);
+            renderRevenueChart(s.revenue_by_day || []);
         }
 
         // --- Revenue chart (Chart.js) ---------------------------------------
-        // Dữ liệu 12 tháng ĐÃ gom sẵn ở server (revenue_by_month) — client KHÔNG gom lại.
+        // Dữ liệu theo NGÀY của tháng hiện tại ĐÃ gom sẵn ở server (revenue_by_day) — client KHÔNG gom lại.
         var _revChart = null;
         function cssVar(name) {
             return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
         }
-        function monthLabel(ym) {
-            // 'yyyy-MM' -> 'MM/YY'
-            return String(ym || '').slice(5) + '/' + String(ym || '').slice(2, 4);
+        function dayLabel(ymd) {
+            // 'yyyy-MM-dd' -> 'DD'
+            return String(ymd || '').slice(8);
         }
         function chartLoading() {
             var l = $('chart-loading'), e = $('chart-empty'), c = $('revenue-chart');
@@ -785,7 +785,7 @@
 
             if (empty) empty.style.display = 'none';
             canvas.style.display = '';
-            var labels = data.map(function (m) { return monthLabel(m.ym); });
+            var labels = data.map(function (m) { return dayLabel(m.day); });
             var values = data.map(function (m) { return m.revenue; });
 
             if (_revChart) {
