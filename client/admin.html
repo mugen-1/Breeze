@@ -156,6 +156,21 @@
         <section id="tab-orders" style="display:none;">
             <div class="adm-section-head">
                 <h3>Đơn hàng <span class="adm-count" id="order-count"></span></h3>
+                <div class="adm-toolbar">
+                    <div class="adm-search-sm">
+                        <i class="fa fa-search" aria-hidden="true"></i>
+                        <input type="search" id="order-search" placeholder="Tìm mã đơn / khách hàng…"
+                               aria-label="Tìm đơn theo mã hoặc khách hàng">
+                    </div>
+                    <select id="order-status-filter" class="status-sel" aria-label="Lọc theo trạng thái">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="pending">Chờ xử lý</option>
+                        <option value="paid">Đã thanh toán</option>
+                        <option value="shipped">Đang giao</option>
+                        <option value="completed">Hoàn tất</option>
+                        <option value="cancelled">Đã hủy</option>
+                    </select>
+                </div>
             </div>
             <div class="adm-table-wrap">
                 <table class="adm-table">
@@ -539,8 +554,12 @@
 
         // --- Orders ----------------------------------------------------------
         var _orderPage = 1;
+        var _ordersRaw = [];   // đơn của TRANG hiện tại (server phân trang); filter/search chạy client-side trên mảng này
+
         function loadOrders(page) {
             _orderPage = page || 1;
+            $('order-body').innerHTML = skeletonRows(6, 8);
+            $('order-pager').innerHTML = '';
             return api('/api/admin/orders?page=' + _orderPage + '&limit=10')
                 .then(function (r) { if (!r.ok) throw new Error('orders ' + r.status); return r.json(); })
                 .then(renderOrders)
@@ -550,42 +569,36 @@
                 });
         }
 
-        function renderOrders(data) {
-            var orders = data.orders || [];
-            $('order-count').textContent = '(' + (data.total || 0) + ')';
-            if (!orders.length) {
-                $('order-body').innerHTML = '<tr><td colspan="6" class="adm-empty">Chưa có đơn hàng nào.</td></tr>';
-                $('order-pager').innerHTML = '';
-                return;
-            }
-            $('order-body').innerHTML = orders.map(function (o) {
-                var opts = ORDER_STATUSES.map(function (s) {
-                    return '<option value="' + s + '"' + (s === o.status ? ' selected' : '') + '>' + STATUS_LABEL[s] + '</option>';
-                }).join('');
-                var itemRows = (o.items || []).map(function (it) {
-                    return '<tr><td class="inner">' + esc(it.product_name) + '</td>' +
-                        '<td class="inner">' + money(it.unit_price) + '</td>' +
-                        '<td class="inner">' + it.quantity + '</td>' +
-                        '<td class="inner">' + money(it.line_total) + '</td></tr>';
-                }).join('');
-                var cust = o.user_email || o.user_name || ('user #' + o.user_id);
-                return '<tr>' +
-                        '<td class="num">' + o.id + '</td>' +
-                        '<td>' + esc(cust) + '</td>' +
-                        '<td>' + fmtDate(o.created_at) + '</td>' +
-                        '<td class="num">' + money(o.total_amount) + '</td>' +
-                        '<td><select class="status-sel" data-order="' + o.id + '">' + opts + '</select></td>' +
-                        '<td style="white-space:nowrap;">' +
-                            '<button type="button" class="adm-btn ghost small" data-toggle="' + o.id + '">Chi tiết</button> ' +
-                            '<button type="button" class="adm-btn danger small" data-del-order="' + o.id + '">Xoá</button>' +
-                        '</td>' +
-                    '</tr>' +
-                    '<tr class="oi-detail" id="oi-' + o.id + '" style="display:none;"><td colspan="6">' +
-                        '<table><thead><tr><th>Sản phẩm</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th></tr></thead>' +
-                        '<tbody>' + (itemRows || '<tr><td class="inner" colspan="4">(không có dòng hàng)</td></tr>') + '</tbody></table>' +
-                    '</td></tr>';
+        // Dựng HTML cho 1 đơn (hàng chính + hàng chi tiết ẩn). Giữ nguyên markup cũ.
+        function orderRowHTML(o) {
+            var opts = ORDER_STATUSES.map(function (s) {
+                return '<option value="' + s + '"' + (s === o.status ? ' selected' : '') + '>' + STATUS_LABEL[s] + '</option>';
             }).join('');
+            var itemRows = (o.items || []).map(function (it) {
+                return '<tr><td class="inner">' + esc(it.product_name) + '</td>' +
+                    '<td class="inner">' + money(it.unit_price) + '</td>' +
+                    '<td class="inner">' + it.quantity + '</td>' +
+                    '<td class="inner">' + money(it.line_total) + '</td></tr>';
+            }).join('');
+            var cust = o.user_email || o.user_name || ('user #' + o.user_id);
+            return '<tr>' +
+                    '<td class="num">' + o.id + '</td>' +
+                    '<td>' + esc(cust) + '</td>' +
+                    '<td>' + fmtDate(o.created_at) + '</td>' +
+                    '<td class="num">' + money(o.total_amount) + '</td>' +
+                    '<td><select class="status-sel" data-order="' + o.id + '">' + opts + '</select></td>' +
+                    '<td style="white-space:nowrap;">' +
+                        '<button type="button" class="adm-btn ghost small" data-toggle="' + o.id + '">Chi tiết</button> ' +
+                        '<button type="button" class="adm-btn danger small" data-del-order="' + o.id + '">Xoá</button>' +
+                    '</td>' +
+                '</tr>' +
+                '<tr class="oi-detail" id="oi-' + o.id + '" style="display:none;"><td colspan="6">' +
+                    '<table><thead><tr><th>Sản phẩm</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th></tr></thead>' +
+                    '<tbody>' + (itemRows || '<tr><td class="inner" colspan="4">(không có dòng hàng)</td></tr>') + '</tbody></table>' +
+                '</td></tr>';
+        }
 
+        function attachOrderRowHandlers() {
             $('order-body').querySelectorAll('.status-sel').forEach(function (sel) {
                 sel.addEventListener('change', function () { changeStatus(sel.getAttribute('data-order'), sel.value, sel); });
             });
@@ -598,8 +611,46 @@
             $('order-body').querySelectorAll('[data-del-order]').forEach(function (b) {
                 b.addEventListener('click', function () { deleteOrder(b.getAttribute('data-del-order'), b); });
             });
+        }
 
-            // Pager
+        // Filter theo status + search theo mã đơn / tên khách — client-side trên trang hiện tại.
+        function orderMatches(o) {
+            var stSel = $('order-status-filter');
+            var st = stSel ? stSel.value : '';
+            if (st && o.status !== st) return false;
+            var qEl = $('order-search');
+            var q = qEl ? qEl.value.trim().toLowerCase() : '';
+            if (q) {
+                var hay = (String(o.id) + ' ' + (o.user_email || '') + ' ' + (o.user_name || '')).toLowerCase();
+                if (hay.indexOf(q) === -1) return false;
+            }
+            return true;
+        }
+
+        function applyOrderFilters() {
+            var tb = $('order-body');
+            if (!_ordersRaw.length) {
+                tb.innerHTML = '<tr><td colspan="6" class="adm-empty">Chưa có đơn hàng nào.</td></tr>';
+                return;
+            }
+            var list = _ordersRaw.filter(orderMatches);
+            if (!list.length) {
+                tb.innerHTML = '<tr><td colspan="6" class="adm-empty">Không tìm thấy đơn phù hợp.</td></tr>';
+                return;
+            }
+            tb.innerHTML = list.map(orderRowHTML).join('');
+            attachOrderRowHandlers();
+        }
+
+        function renderOrders(data) {
+            _ordersRaw = data.orders || [];
+            $('order-count').textContent = '(' + (data.total || 0) + ')';
+            applyOrderFilters();
+            renderOrderPager(data);
+        }
+
+        function renderOrderPager(data) {
+            if (!_ordersRaw.length) { $('order-pager').innerHTML = ''; return; }
             var totalPages = data.total_pages || 1;
             $('order-pager').innerHTML =
                 '<button type="button" id="pg-prev"' + (_orderPage <= 1 ? ' disabled' : '') + '>← Trước</button>' +
@@ -785,11 +836,12 @@
             return '<span class="pill status">' + esc(STATUS_LABEL[s] || s) + '</span>';
         }
 
-        function recentSkeletonRows(n) {
+        function skeletonRows(cols, n) {
             var cell = '<td><span class="skel skel-cell"></span></td>';
-            var row = '<tr>' + cell + cell + cell + cell + cell + '</tr>';
+            var row = '<tr>' + new Array(cols + 1).join(cell) + '</tr>';
             return new Array(n + 1).join(row);
         }
+        function recentSkeletonRows(n) { return skeletonRows(5, n); }
 
         // TÁI DÙNG endpoint đơn hàng chung, chỉ lấy 5 đơn mới nhất (trang 1).
         function loadRecentOrders() {
@@ -834,6 +886,8 @@
                 applyAdmLang((e && e.detail && e.detail.lang) || localStorage.getItem('ql_lang') || 'vi');
             });
             $('btn-add-prod').addEventListener('click', function () { openModal(null); });
+            var ordStatus = $('order-status-filter'); if (ordStatus) ordStatus.addEventListener('change', applyOrderFilters);
+            var ordSearch = $('order-search'); if (ordSearch) ordSearch.addEventListener('input', applyOrderFilters);
             $('btn-cancel').addEventListener('click', closeModal);
             $('prod-form').addEventListener('submit', submitProduct);
             $('prod-modal').addEventListener('click', function (e) { if (e.target === $('prod-modal')) closeModal(); });
