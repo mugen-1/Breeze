@@ -2,7 +2,8 @@
    - NGUỒN GIỎ HÀNG: dùng đúng getCart() của cart.js (cùng nguồn cart-drawer.js đang
      dùng — localStorage khi guest, Cart API khi đã đăng nhập). KHÔNG tạo nguồn mới.
    - User (displayName/email): lấy từ Firebase Auth qua window.AuthHelper.
-   - Không gọi backend đặt đơn (ngoài scope): submit chỉ validate + báo inline. */
+   - Submit: validate -> POST /api/orders (server đọc dbo.cart_items dựng đơn), thành công thì
+     refreshCart() + chuyển sang orders.html; báo lỗi inline theo status (400/409/401/500). */
 (function () {
     'use strict';
 
@@ -13,28 +14,120 @@
         return (typeof getCart === 'function' && Array.isArray(getCart())) ? getCart() : [];
     }
 
-    // Định dạng số kiểu VN (dấu chấm ngăn nghìn). Ký hiệu ₫ đặt ở HTML.
-    function money(n) { return Number(n || 0).toLocaleString('vi-VN'); }
+    // ---------- Định dạng tiền VN (Intl.NumberFormat) ----------
+    var VND = new Intl.NumberFormat('vi-VN');
+    function num(n) { return VND.format(Number(n) || 0); }   // số thuần: 2.900.000
+    function money(n) { return num(n) + '₫'; }               // kèm ký hiệu: 2.900.000₫
+    var PLACEHOLDER_IMG = 'img/breeze.png';
 
-    function cartCount(items) {
-        return items.reduce(function (s, i) { return s + (Number(i.qty) || 0); }, 0);
-    }
-    function cartTotal(items) {
-        return items.reduce(function (s, i) { return s + (Number(i.price) || 0) * (Number(i.qty) || 0); }, 0);
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // ---------- 2. Tóm tắt giỏ + update badge ở header ----------
+    // ---------- PHASE 2: key định danh duy nhất (phòng thủ) ----------
+    // Có biến thể -> `${id}__${size}__${color}`; không có -> id; thiếu cả id -> `name:<name>` (fallback).
+    // name KHÔNG bao giờ dùng một mình để định danh khi item đã có id.
+    function itemKey(it) {
+        var base = (it.id != null && it.id !== '') ? String(it.id) : ('name:' + (it.name || ''));
+        var size = it.size || '', color = it.color || '';
+        return (size || color) ? (base + '__' + size + '__' + color) : base;
+    }
+
+    // ---------- PHASE 3: chuẩn hoá dữ liệu (single source of truth cho render) ----------
+    // Map field thực tế của giỏ (qty, img) -> field UI (quantity, image); ép kiểu + fallback an toàn.
+    function normalizeItems(raw) {
+        var list = Array.isArray(raw) ? raw : [];
+        var byKey = {}, out = [];
+        list.forEach(function (it) {
+            var price = Number(it.price);
+            if (!isFinite(price)) price = 0;                 // NaN/Infinity -> 0
+            var qty = parseInt(it.qty, 10);
+            if (!isFinite(qty) || qty < 1) qty = 1;          // lỗi / < 1 -> 1
+            var img = (it.img != null && String(it.img).trim()) ? String(it.img) : PLACEHOLDER_IMG;
+            var key = itemKey(it);
+            if (byKey[key]) {                                // phòng thủ: gộp trùng key (cộng dồn qty)
+                byKey[key].quantity += qty;
+                byKey[key].lineTotal = byKey[key].price * byKey[key].quantity;
+                return;
+            }
+            var norm = {
+                key: key,
+                id: (it.id != null ? it.id : null),
+                name: (it.name != null ? String(it.name) : ''),
+                size: (it.size != null ? String(it.size) : ''),
+                color: (it.color != null ? String(it.color) : ''),
+                image: img,
+                price: price,
+                quantity: qty,
+                lineTotal: price * qty                       // tính 1 nơi duy nhất
+            };
+            byKey[key] = norm;
+            out.push(norm);
+        });
+        return out;
+    }
+
+    // ---------- PHASE 4: render 1 hàng sản phẩm (layout Adidas) ----------
+    function itemRowHTML(it) {
+        var meta = [];
+        if (it.size) meta.push('Size: ' + esc(it.size));
+        if (it.color) meta.push('Màu: ' + esc(it.color));
+        meta.push('SL: ' + it.quantity);
+        return '' +
+            '<div class="co-oi-item">' +
+                '<img class="co-oi-thumb" src="' + esc(it.image) + '" alt="" ' +
+                     'onerror="this.onerror=null;this.src=\'' + PLACEHOLDER_IMG + '\'">' +
+                '<div class="co-oi-info">' +
+                    '<p class="co-oi-name">' + esc(it.name) + '</p>' +
+                    '<p class="co-oi-meta">' + meta.join(' · ') + '</p>' +
+                '</div>' +
+                '<div class="co-oi-prices">' +
+                    '<p class="co-oi-unit">' + money(it.price) + '</p>' +
+                    '<p class="co-oi-linetotal">' + money(it.lineTotal) + '</p>' +
+                '</div>' +
+            '</div>';
+    }
+
+    // ---------- 2 + PHASE 5: render tóm tắt giỏ + tổng tiền + badge ----------
+    var SHIPPING_FEE = 0; // "Miễn phí" — đổi tại đây nếu sau này data có phí ship
     function renderSummary() {
-        var items = getCartSafe();
-        var total = cartTotal(items);
-        var count = cartCount(items);
+        var items = normalizeItems(getCartSafe());
+        var subtotal = items.reduce(function (s, it) { return s + it.lineTotal; }, 0);
+        var count = items.reduce(function (s, it) { return s + it.quantity; }, 0);
+        var ship = SHIPPING_FEE;
+        var total = subtotal + ship;
+
+        // Danh sách item (hoặc trạng thái rỗng — không crash, không vỡ layout)
+        var listEl = $('co-oi-list');
+        if (listEl) {
+            listEl.innerHTML = items.length
+                ? items.map(itemRowHTML).join('')
+                : '<p class="co-oi-empty">Chưa có sản phẩm.</p>';
+        }
+
+        // Khối tổng kết
+        var subEl = $('co-oi-subtotal'), shipEl = $('co-oi-ship'),
+            oiCountEl = $('co-oi-count'), oiTotalEl = $('co-oi-total');
+        if (oiCountEl) oiCountEl.textContent = count;                 // = tổng quantity, không phải số dòng
+        if (subEl) subEl.textContent = money(subtotal);
+        if (shipEl) shipEl.textContent = ship > 0 ? money(ship) : 'Miễn phí';
+        if (oiTotalEl) oiTotalEl.textContent = money(total);
+
+        // Hero (đang ẩn) + nút "Đặt hàng": HTML đã có sẵn ký hiệu ₫ -> chỉ set phần số.
         var countEl = $('co-count'), totalEl = $('co-total'), totalBtnEl = $('co-total-btn');
         if (countEl) countEl.textContent = count;
-        if (totalEl) totalEl.textContent = money(total);
-        if (totalBtnEl) totalBtnEl.textContent = money(total);
-        // Cập nhật badge ở header .co-header
+        if (totalEl) totalEl.textContent = num(total);
+        if (totalBtnEl) totalBtnEl.textContent = num(total);
+
+        // Badge header
         var badgeEl = document.querySelector('.co-header .cart-badge');
         if (badgeEl) badgeEl.textContent = count;
+
+        // PHASE 5: đối chiếu tổng hiển thị = tổng lineTotal thật
+        console.log('[checkout] ∑lineTotal(subtotal)=', subtotal,
+                    '| ship=', ship, '| total=', total, '| SL=', count, '| số dòng=', items.length);
         return items;
     }
 
@@ -236,10 +329,22 @@
                 if (input.getAttribute('aria-invalid') === 'true') setError(input, err, null);
             });
         });
+        // Nút "Đặt hàng" xám / không bấm được cho tới khi chọn 1 phương thức thanh toán.
+        var submitBtn = form.querySelector('.co-submit');
+        function updatePayGate() {
+            var checked = document.querySelector('input[name="payment"]:checked');
+            if (submitBtn) {
+                submitBtn.disabled = !checked;
+                submitBtn.setAttribute('aria-disabled', checked ? 'false' : 'true');
+            }
+        }
+        updatePayGate();
+
         document.querySelectorAll('input[name="payment"]').forEach(function (r) {
             r.addEventListener('change', function () {
                 var payErr = $('f-pay-err');
                 if (payErr) { payErr.textContent = ''; payErr.hidden = true; }
+                updatePayGate();
             });
         });
 
@@ -258,10 +363,84 @@
                 return;
             }
 
-            // Ngoài scope: KHÔNG gọi Orders API. Chỉ xác nhận UI hợp lệ.
-            showFormMsg('Thông tin hợp lệ. (Bản demo giao diện — chưa gửi đơn tới máy chủ.)', 'ok');
+            // Validate OK -> tạo đơn thật qua Orders API (server đọc dbo.cart_items để dựng đơn).
             var btn = form.querySelector('.co-submit');
-            if (btn) btn.setAttribute('disabled', 'true');
+            function enableBtn() {
+                if (btn) { btn.disabled = false; btn.setAttribute('aria-disabled', 'false'); }
+            }
+            function disableBtn() {
+                if (btn) { btn.disabled = true; btn.setAttribute('aria-disabled', 'true'); }
+            }
+
+            // Ghép payload từ các field đã có (Họ trước Tên theo tiếng Việt).
+            var payload = {
+                shipping_name: ($('f-lastname') ? $('f-lastname').value.trim() : '') + ' ' +
+                               ($('f-firstname') ? $('f-firstname').value.trim() : ''),
+                shipping_phone: normalizePhone($('f-phone') ? $('f-phone').value : ''),
+                shipping_address: [
+                    $('f-street') ? $('f-street').value.trim() : '',
+                    $('f-ward') ? $('f-ward').value.trim() : '',
+                    $('f-district') ? $('f-district').value.trim() : '',
+                    $('f-city') ? $('f-city').value.trim() : ''
+                ].filter(Boolean).join(', ')
+            };
+
+            if (!(window.AuthHelper && typeof window.AuthHelper.apiFetch === 'function')) {
+                showFormMsg('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.', 'err');
+                window.location.href = 'login.html?redirect=checkout.html';
+                return;
+            }
+
+            disableBtn(); // chống double-submit trước khi gọi API
+
+            window.AuthHelper.apiFetch('/api/orders', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            }).then(function (res) {
+                // Đọc status trước, rồi parse JSON (lỗi có thể không kèm body).
+                return res.json().catch(function () { return {}; })
+                    .then(function (data) { return { status: res.status, data: data }; });
+            }).then(function (r) {
+                var data = r.data || {};
+
+                if (r.status === 201) {
+                    if (typeof window.refreshCart === 'function') window.refreshCart();
+                    var order = data.order || {};
+                    showFormMsg('Đặt hàng thành công! Mã đơn #' + order.id +
+                        '. Đang chuyển tới trang đơn hàng...', 'ok');
+                    setTimeout(function () { window.location.href = 'orders.html'; }, 1200);
+                    return; // giữ nút disabled vì đang rời trang
+                }
+
+                if (r.status === 400) {
+                    showFormMsg(data.message || 'Giỏ hàng trống, không thể đặt đơn', 'err');
+                    enableBtn();
+                    return;
+                }
+
+                if (r.status === 409) {
+                    var lines = (data.items || []).map(function (it) {
+                        return it.name + ' (còn ' + it.stock + ', cần ' + it.requested + ')';
+                    });
+                    showFormMsg((data.message || 'Một số sản phẩm không đủ tồn kho') +
+                        (lines.length ? ': ' + lines.join('; ') : ''), 'err');
+                    if (typeof window.refreshCart === 'function') window.refreshCart();
+                    enableBtn();
+                    return;
+                }
+
+                if (r.status === 401) {
+                    showFormMsg('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.', 'err');
+                    window.location.href = 'login.html?redirect=checkout.html';
+                    return;
+                }
+
+                showFormMsg(data.message || 'Không tạo được đơn hàng, vui lòng thử lại.', 'err');
+                enableBtn();
+            }).catch(function () {
+                showFormMsg('Lỗi kết nối, vui lòng thử lại.', 'err');
+                enableBtn();
+            });
         });
     }
 
