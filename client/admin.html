@@ -564,19 +564,42 @@
 
         // --- Orders ----------------------------------------------------------
         var _orderPage = 1;
-        var _ordersRaw = [];   // đơn của TRANG hiện tại (server phân trang); filter/search chạy client-side trên mảng này
+        var _orderFilters = { status: '', q: '' };  // gửi xuống server; lọc TOÀN BỘ đơn, không chỉ 1 trang
+        var _orderSearchTimer = null;
+
+        // Đọc trạng thái filter/search từ UI vào _orderFilters.
+        function readOrderFilters() {
+            var stSel = $('order-status-filter');
+            var qEl = $('order-search');
+            _orderFilters.status = stSel ? stSel.value : '';
+            _orderFilters.q = qEl ? qEl.value.trim() : '';
+        }
+
+        function orderQuery() {
+            var params = ['page=' + _orderPage, 'limit=10'];
+            if (_orderFilters.status) params.push('status=' + encodeURIComponent(_orderFilters.status));
+            if (_orderFilters.q) params.push('q=' + encodeURIComponent(_orderFilters.q));
+            return '/api/admin/orders?' + params.join('&');
+        }
 
         function loadOrders(page) {
             _orderPage = page || 1;
             $('order-body').innerHTML = skeletonRows(6, 8);
             $('order-pager').innerHTML = '';
-            return api('/api/admin/orders?page=' + _orderPage + '&limit=10')
+            return api(orderQuery())
                 .then(function (r) { if (!r.ok) throw new Error('orders ' + r.status); return r.json(); })
                 .then(renderOrders)
                 .catch(function (e) {
                     console.error('[admin] load orders lỗi:', e);
                     $('order-body').innerHTML = '<tr><td colspan="6" class="adm-empty">Không tải được đơn hàng.</td></tr>';
                 });
+        }
+
+        // Đổi filter -> nạp lại từ server (về trang 1). Search có debounce để đỡ gọi API mỗi phím.
+        function onOrderFilterChange() { readOrderFilters(); loadOrders(1); }
+        function onOrderSearchInput() {
+            if (_orderSearchTimer) clearTimeout(_orderSearchTimer);
+            _orderSearchTimer = setTimeout(function () { readOrderFilters(); loadOrders(1); }, 300);
         }
 
         // Dựng HTML cho 1 đơn (hàng chính + hàng chi tiết ẩn). Giữ nguyên markup cũ.
@@ -623,45 +646,25 @@
             });
         }
 
-        // Filter theo status + search theo mã đơn / tên khách — client-side trên trang hiện tại.
-        function orderMatches(o) {
-            var stSel = $('order-status-filter');
-            var st = stSel ? stSel.value : '';
-            if (st && o.status !== st) return false;
-            var qEl = $('order-search');
-            var q = qEl ? qEl.value.trim().toLowerCase() : '';
-            if (q) {
-                var hay = (String(o.id) + ' ' + (o.user_email || '') + ' ' + (o.user_name || '')).toLowerCase();
-                if (hay.indexOf(q) === -1) return false;
-            }
-            return true;
-        }
-
-        function applyOrderFilters() {
-            var tb = $('order-body');
-            if (!_ordersRaw.length) {
-                tb.innerHTML = '<tr><td colspan="6" class="adm-empty">Chưa có đơn hàng nào.</td></tr>';
-                return;
-            }
-            var list = _ordersRaw.filter(orderMatches);
-            if (!list.length) {
-                tb.innerHTML = '<tr><td colspan="6" class="adm-empty">Không tìm thấy đơn phù hợp.</td></tr>';
-                return;
-            }
-            tb.innerHTML = list.map(orderRowHTML).join('');
-            attachOrderRowHandlers();
-        }
-
         function renderOrders(data) {
-            _ordersRaw = data.orders || [];
-            $('order-count').textContent = '(' + (data.total || 0) + ')';
-            applyOrderFilters();
+            var orders = (data && data.orders) || [];
+            $('order-count').textContent = '(' + ((data && data.total) || 0) + ')';
+            var tb = $('order-body');
+            if (!orders.length) {
+                // Phân biệt: đang lọc mà rỗng vs thật sự chưa có đơn nào.
+                var filtering = _orderFilters.status || _orderFilters.q;
+                tb.innerHTML = '<tr><td colspan="6" class="adm-empty">' +
+                    (filtering ? 'Không tìm thấy đơn phù hợp.' : 'Chưa có đơn hàng nào.') + '</td></tr>';
+                $('order-pager').innerHTML = '';
+                return;
+            }
+            tb.innerHTML = orders.map(orderRowHTML).join('');
+            attachOrderRowHandlers();
             renderOrderPager(data);
         }
 
         function renderOrderPager(data) {
-            if (!_ordersRaw.length) { $('order-pager').innerHTML = ''; return; }
-            var totalPages = data.total_pages || 1;
+            var totalPages = (data && data.total_pages) || 1;
             $('order-pager').innerHTML =
                 '<button type="button" id="pg-prev"' + (_orderPage <= 1 ? ' disabled' : '') + '>← Trước</button>' +
                 '<span>Trang ' + _orderPage + ' / ' + totalPages + '</span>' +
@@ -945,8 +948,8 @@
                 applyAdmLang((e && e.detail && e.detail.lang) || localStorage.getItem('ql_lang') || 'vi');
             });
             $('btn-add-prod').addEventListener('click', function () { openModal(null); });
-            var ordStatus = $('order-status-filter'); if (ordStatus) ordStatus.addEventListener('change', applyOrderFilters);
-            var ordSearch = $('order-search'); if (ordSearch) ordSearch.addEventListener('input', applyOrderFilters);
+            var ordStatus = $('order-status-filter'); if (ordStatus) ordStatus.addEventListener('change', onOrderFilterChange);
+            var ordSearch = $('order-search'); if (ordSearch) ordSearch.addEventListener('input', onOrderSearchInput);
             $('btn-cancel').addEventListener('click', closeModal);
             $('prod-form').addEventListener('submit', submitProduct);
             $('prod-modal').addEventListener('click', function (e) { if (e.target === $('prod-modal')) closeModal(); });

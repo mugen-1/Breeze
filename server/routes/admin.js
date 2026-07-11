@@ -383,6 +383,9 @@ async function fetchItemsByOrderIds(pool, orderIds) {
 }
 
 // ---- GET /api/admin/orders ---  mọi đơn của mọi user, phân trang -------------
+// Lọc server-side (áp TRƯỚC phân trang nên đúng trên TOÀN BỘ đơn, không chỉ 1 trang):
+//   ?status=<1 trong ORDER_STATUSES>   — lọc theo trạng thái (whitelist).
+//   ?q=<chuỗi>                         — tìm theo mã đơn / email / tên khách (LIKE, có ESCAPE).
 router.get('/orders', async (req, res) => {
   let page = Number(req.query.page);
   let limit = Number(req.query.limit);
@@ -390,22 +393,62 @@ router.get('/orders', async (req, res) => {
   limit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 20;
   const offset = (page - 1) * limit;
 
+  // Validate status theo whitelist (giống chỗ đổi trạng thái).
+  const { status, q } = req.query;
+  let statusVal = null;
+  if (status !== undefined && status !== '') {
+    if (!ORDER_STATUSES.includes(status)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'status không hợp lệ. Hợp lệ: ' + ORDER_STATUSES.join(', '),
+      });
+    }
+    statusVal = status;
+  }
+  // Chuẩn hoá search: cắt tối đa 100 ký tự, escape ký tự đặc biệt của LIKE.
+  let likeVal = null;
+  if (q !== undefined && String(q).trim() !== '') {
+    const raw = String(q).trim().slice(0, 100);
+    likeVal = '%' + raw.replace(/[\\%_[]/g, (c) => '\\' + c) + '%';
+  }
+
+  // Gắn cùng bộ điều kiện WHERE + input cho cả câu COUNT lẫn câu SELECT.
+  function applyFilters(request) {
+    const clauses = [];
+    if (statusVal) { request.input('status', sql.VarChar(20), statusVal); clauses.push('o.status = @status'); }
+    if (likeVal) {
+      request.input('q', sql.NVarChar(120), likeVal);
+      clauses.push("(CAST(o.id AS varchar(20)) LIKE @q ESCAPE '\\' " +
+        "OR u.email LIKE @q ESCAPE '\\' OR u.display_name LIKE @q ESCAPE '\\')");
+    }
+    return clauses.length ? ('WHERE ' + clauses.join(' AND ')) : '';
+  }
+
   try {
     const pool = await getPool();
-    const countRes = await pool.request().query('SELECT COUNT(*) AS total FROM dbo.orders;');
+
+    const countReq = pool.request();
+    const whereCount = applyFilters(countReq);
+    const countRes = await countReq.query(`
+      SELECT COUNT(*) AS total
+      FROM dbo.orders o
+      JOIN dbo.users u ON u.id = o.user_id
+      ${whereCount};`);
     const total = countRes.recordset[0].total;
 
-    const ordersRes = await pool.request()
+    const listReq = pool.request()
       .input('offset', sql.Int, offset)
-      .input('limit', sql.Int, limit)
-      .query(`
-        SELECT o.id, o.user_id, u.email AS user_email, u.display_name AS user_name,
-               o.status, o.total_amount, o.currency,
-               o.shipping_name, o.shipping_phone, o.shipping_address, o.created_at
-        FROM dbo.orders o
-        JOIN dbo.users u ON u.id = o.user_id
-        ORDER BY o.created_at DESC, o.id DESC
-        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;`);
+      .input('limit', sql.Int, limit);
+    const whereList = applyFilters(listReq);
+    const ordersRes = await listReq.query(`
+      SELECT o.id, o.user_id, u.email AS user_email, u.display_name AS user_name,
+             o.status, o.total_amount, o.currency,
+             o.shipping_name, o.shipping_phone, o.shipping_address, o.created_at
+      FROM dbo.orders o
+      JOIN dbo.users u ON u.id = o.user_id
+      ${whereList}
+      ORDER BY o.created_at DESC, o.id DESC
+      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;`);
 
     const orders = ordersRes.recordset;
     const itemsMap = await fetchItemsByOrderIds(pool, orders.map((o) => o.id));
