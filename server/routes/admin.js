@@ -478,4 +478,80 @@ router.delete('/orders/:id', async (req, res) => {
   }
 });
 
+// ---- GET /api/admin/stats --- số liệu tổng hợp cho Dashboard --------------------
+// Trả: đếm sản phẩm/đơn/người dùng, tổng doanh thu (đơn KHÔNG cancelled),
+// % tăng trưởng doanh thu tháng này so tháng trước, và doanh thu 12 tháng gần nhất.
+// Doanh thu luôn LOẠI đơn 'cancelled'. Nhóm theo FORMAT(created_at,'yyyy-MM') trên SQL,
+// rồi JS bù đủ 12 tháng (tháng trống = revenue 0, orders 0) theo giờ UTC (created_at lưu UTC).
+router.get('/stats', async (req, res) => {
+  // Dựng danh sách 12 khoá 'yyyy-MM' (cũ -> mới), kết thúc ở tháng hiện tại (UTC).
+  const ymKey = (y, m0) => `${y}-${String(m0 + 1).padStart(2, '0')}`;
+  const now = new Date();
+  const curY = now.getUTCFullYear();
+  const curM = now.getUTCMonth(); // 0-11
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    let mm = curM - i;
+    let yy = curY;
+    while (mm < 0) { mm += 12; yy -= 1; }
+    months.push(ymKey(yy, mm));
+  }
+  // Mốc lọc: đầu tháng đầu tiên trong cửa sổ 12 tháng (UTC).
+  const cutoff = new Date(Date.UTC(curY, curM - 11, 1));
+
+  try {
+    const pool = await getPool();
+
+    // Các con số đếm + tổng doanh thu trong 1 truy vấn.
+    const totalsRes = await pool.request().query(`
+      SELECT
+        (SELECT COUNT(*) FROM dbo.products) AS products_count,
+        (SELECT COUNT(*) FROM dbo.orders)   AS orders_count,
+        (SELECT COUNT(*) FROM dbo.users)    AS users_count,
+        (SELECT COALESCE(SUM(total_amount), 0)
+           FROM dbo.orders WHERE status <> 'cancelled') AS revenue_total;`);
+    const t = totalsRes.recordset[0];
+
+    // Doanh thu + số đơn theo tháng (loại 'cancelled'), giới hạn cửa sổ 12 tháng.
+    const monthlyRes = await pool.request()
+      .input('cutoff', sql.DateTime2, cutoff)
+      .query(`
+        SELECT FORMAT(created_at, 'yyyy-MM') AS ym,
+               COALESCE(SUM(total_amount), 0) AS revenue,
+               COUNT(*) AS orders
+        FROM dbo.orders
+        WHERE status <> 'cancelled' AND created_at >= @cutoff
+        GROUP BY FORMAT(created_at, 'yyyy-MM');`);
+
+    const byYm = {};
+    for (const r of monthlyRes.recordset) {
+      byYm[r.ym] = { revenue: Number(r.revenue) || 0, orders: Number(r.orders) || 0 };
+    }
+    const revenue_by_month = months.map((ym) => ({
+      ym,
+      revenue: byYm[ym] ? byYm[ym].revenue : 0,
+      orders: byYm[ym] ? byYm[ym].orders : 0,
+    }));
+
+    // Tăng trưởng: tháng này so tháng trước. Tháng trước = 0 => null (tránh chia 0).
+    const thisRev = revenue_by_month[11].revenue;
+    const prevRev = revenue_by_month[10].revenue;
+    const growth_pct = prevRev === 0
+      ? null
+      : Math.round(((thisRev - prevRev) / prevRev) * 100 * 100) / 100;
+
+    res.json({
+      products_count: Number(t.products_count) || 0,
+      orders_count: Number(t.orders_count) || 0,
+      users_count: Number(t.users_count) || 0,
+      revenue_total: Number(t.revenue_total) || 0,
+      growth_pct,
+      revenue_by_month,
+    });
+  } catch (err) {
+    console.error('[admin] stats error:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không tải được số liệu thống kê' });
+  }
+});
+
 module.exports = router;
