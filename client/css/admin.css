@@ -143,6 +143,20 @@ table.adm-table th {
 }
 table.adm-table td { padding:11px 14px; border-bottom:1px solid #f2f2f2; color:#333; vertical-align:middle; }
 table.adm-table tr:last-child td { border-bottom:none; }
+/* Hover row (bỏ qua hàng chi tiết oi-detail có nền riêng) */
+table.adm-table > tbody > tr:not(.oi-detail):hover > td { background:var(--c-cream); }
+
+/* --- Toolbar filter/search (panel Đơn hàng) --- */
+.adm-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.adm-search-sm { position:relative; display:flex; align-items:center; }
+.adm-search-sm .fa { position:absolute; left:10px; color:var(--c-muted); font-size:12px; pointer-events:none; }
+.adm-search-sm input {
+    box-sizing:border-box; width:230px; max-width:100%; padding:6px 10px 6px 28px;
+    border:1px solid var(--c-line); background:var(--c-bg);
+    font-family:inherit; font-size:13px; color:var(--c-ink);
+}
+.adm-search-sm input:focus { outline:2px solid var(--c-ink); outline-offset:-1px; }
+#order-status-filter:focus-visible, .adm-search-sm input:focus-visible { outline:2px solid var(--c-ink); outline-offset:1px; }
 table.adm-table td.num, table.adm-table th.num { text-align:right; white-space:nowrap; }
 .adm-thumb { width:42px; height:42px; object-fit:cover; background:#f4f4f4; border:1px solid #eee; }
 .adm-slug { color:#999; font-size:12px; }
