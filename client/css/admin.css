@@ -104,6 +104,17 @@ body.adm-authed .adm-main { margin-left:232px; }
 .dash-recent-head { margin-top:4px; }
 .pill.status { background:var(--c-cream); color:var(--c-ink); border:1px solid var(--c-line); }
 
+/* --- Revenue chart --- */
+.chart-card { border:1px solid var(--c-line); padding:22px 24px 24px; margin-bottom:44px; }
+.chart-head { margin-bottom:18px; }
+.chart-body { position:relative; height:320px; }
+.chart-body canvas { width:100% !important; height:100% !important; }
+.chart-state {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:var(--c-muted); font-size:14px; text-align:center;
+}
+@media (max-width: 560px) { .chart-body { height:260px; } }
+
 /* --- Skeleton loading (stat value + hàng bảng) --- */
 .skel {
     display:inline-block; min-width:96px; height:.9em; border-radius:3px; color:transparent;

@@ -104,6 +104,18 @@
                 </div>
             </div>
 
+            <div class="chart-card">
+                <div class="adm-section-head chart-head">
+                    <h3 data-i18n="revenueChart">Doanh thu 12 tháng</h3>
+                </div>
+                <div class="chart-body">
+                    <div class="chart-state" id="chart-loading">Đang tải…</div>
+                    <div class="chart-state" id="chart-empty" data-i18n="noRevData" style="display:none;">Chưa có dữ liệu doanh thu</div>
+                    <canvas id="revenue-chart" role="img"
+                            aria-label="Biểu đồ doanh thu 12 tháng gần nhất"></canvas>
+                </div>
+            </div>
+
             <div class="adm-section-head dash-recent-head">
                 <h3 data-i18n="recentOrders">Đơn hàng mới nhất</h3>
             </div>
@@ -251,6 +263,8 @@
     <script src="js/firebase-config.js"></script>
     <script src="js/api-config.js"></script>
     <script src="js/auth-helper.js"></script>
+    <!-- Chart.js: chỉ dùng cho biểu đồ doanh thu Dashboard (dependency mới duy nhất phase này) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
     <script>
     (function () {
         'use strict';
@@ -355,8 +369,8 @@
 
         // --- i18n khung (VI/EN): nhãn sidebar/topbar/placeholder -------------
         var ADM_I18N = {
-            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Đơn hàng', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm kiếm…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất' },
-            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Orders', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search…', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders' }
+            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Đơn hàng', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm kiếm…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất', revenueChart: 'Doanh thu 12 tháng', noRevData: 'Chưa có dữ liệu doanh thu' },
+            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Orders', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search…', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders', revenueChart: 'Revenue (12 months)', noRevData: 'No revenue data yet' }
         };
         function applyAdmLang(lang) {
             var t = ADM_I18N[lang] || ADM_I18N.vi;
@@ -642,6 +656,7 @@
 
         function loadStats() {
             statsSkeleton(true);
+            chartLoading();
             return api('/api/admin/stats')
                 .then(function (r) { if (!r.ok) throw new Error('stats ' + r.status); return r.json(); })
                 .then(renderStats)
@@ -649,6 +664,7 @@
                     console.error('[admin] load stats lỗi:', e);
                     statsSkeleton(false);
                     STAT_IDS.forEach(function (id) { if ($(id)) $(id).textContent = '—'; });
+                    renderRevenueChart([]); // lỗi -> hiện empty state biểu đồ
                 });
         }
 
@@ -669,6 +685,100 @@
                 if (g > 0) gEl.classList.add('is-up');
                 else if (g < 0) gEl.classList.add('is-down');
             }
+
+            renderRevenueChart(s.revenue_by_month || []);
+        }
+
+        // --- Revenue chart (Chart.js) ---------------------------------------
+        // Dữ liệu 12 tháng ĐÃ gom sẵn ở server (revenue_by_month) — client KHÔNG gom lại.
+        var _revChart = null;
+        function cssVar(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+        function monthLabel(ym) {
+            // 'yyyy-MM' -> 'MM/YY'
+            return String(ym || '').slice(5) + '/' + String(ym || '').slice(2, 4);
+        }
+        function chartLoading() {
+            var l = $('chart-loading'), e = $('chart-empty'), c = $('revenue-chart');
+            if (l) l.style.display = '';
+            if (e) e.style.display = 'none';
+            if (c) c.style.display = 'none';
+        }
+        function renderRevenueChart(months) {
+            var loading = $('chart-loading'), empty = $('chart-empty'), canvas = $('revenue-chart');
+            if (!canvas) return;
+            if (loading) loading.style.display = 'none';
+
+            var data = months || [];
+            var allZero = !data.length || data.every(function (m) { return !m.revenue; });
+            if (allZero || typeof Chart === 'undefined') {
+                if (empty) empty.style.display = '';
+                canvas.style.display = 'none';
+                if (_revChart) { _revChart.destroy(); _revChart = null; }
+                return;
+            }
+
+            if (empty) empty.style.display = 'none';
+            canvas.style.display = '';
+            var labels = data.map(function (m) { return monthLabel(m.ym); });
+            var values = data.map(function (m) { return m.revenue; });
+
+            if (_revChart) {
+                _revChart.data.labels = labels;
+                _revChart.data.datasets[0].data = values;
+                _revChart.update();
+                return;
+            }
+
+            var ink = cssVar('--c-ink') || '#0e0e0e';
+            var accent = cssVar('--c-accent') || '#1a1a1a';
+            var line = cssVar('--c-line') || '#e6e3dd';
+            var muted = cssVar('--c-muted') || '#6b6b6b';
+            var uiFont = cssVar('--font-ui') || 'Jost, sans-serif';
+
+            _revChart = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Doanh thu',
+                        data: values,
+                        backgroundColor: accent,
+                        hoverBackgroundColor: ink,
+                        borderWidth: 0,
+                        borderRadius: 2,
+                        maxBarThickness: 34
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: ink,
+                            titleFont: { family: uiFont },
+                            bodyFont: { family: uiFont },
+                            callbacks: { label: function (ctx) { return money(ctx.parsed.y); } }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: muted, font: { family: uiFont, size: 11 } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: line },
+                            ticks: {
+                                color: muted, font: { family: uiFont, size: 11 },
+                                callback: function (v) { return Number(v).toLocaleString('vi-VN'); }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         function statusPill(s) {
