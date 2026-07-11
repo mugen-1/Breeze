@@ -523,24 +523,18 @@ router.delete('/orders/:id', async (req, res) => {
 
 // ---- GET /api/admin/stats --- số liệu tổng hợp cho Dashboard --------------------
 // Trả: đếm sản phẩm/đơn/người dùng, tổng doanh thu (đơn KHÔNG cancelled),
-// % tăng trưởng doanh thu tháng này so tháng trước, và doanh thu 12 tháng gần nhất.
-// Doanh thu luôn LOẠI đơn 'cancelled'. Nhóm theo FORMAT(created_at,'yyyy-MM') trên SQL,
-// rồi JS bù đủ 12 tháng (tháng trống = revenue 0, orders 0) theo giờ UTC (created_at lưu UTC).
+// % tăng trưởng doanh thu tháng này so tháng trước, và doanh thu THEO NGÀY của tháng hiện tại.
+// Doanh thu luôn LOẠI đơn 'cancelled'. Nhóm theo DAY(created_at) trên SQL, JS bù đủ mọi ngày
+// trong tháng (ngày trống = revenue 0, orders 0) theo giờ UTC (created_at lưu UTC).
 router.get('/stats', async (req, res) => {
-  // Dựng danh sách 12 khoá 'yyyy-MM' (cũ -> mới), kết thúc ở tháng hiện tại (UTC).
-  const ymKey = (y, m0) => `${y}-${String(m0 + 1).padStart(2, '0')}`;
   const now = new Date();
   const curY = now.getUTCFullYear();
   const curM = now.getUTCMonth(); // 0-11
-  const months = [];
-  for (let i = 11; i >= 0; i--) {
-    let mm = curM - i;
-    let yy = curY;
-    while (mm < 0) { mm += 12; yy -= 1; }
-    months.push(ymKey(yy, mm));
-  }
-  // Mốc lọc: đầu tháng đầu tiên trong cửa sổ 12 tháng (UTC).
-  const cutoff = new Date(Date.UTC(curY, curM - 11, 1));
+  const ym = `${curY}-${String(curM + 1).padStart(2, '0')}`;
+  const monthStart = new Date(Date.UTC(curY, curM, 1));
+  const nextMonthStart = new Date(Date.UTC(curY, curM + 1, 1));
+  const prevMonthStart = new Date(Date.UTC(curY, curM - 1, 1));
+  const daysInMonth = new Date(Date.UTC(curY, curM + 1, 0)).getUTCDate();
 
   try {
     const pool = await getPool();
@@ -555,33 +549,47 @@ router.get('/stats', async (req, res) => {
            FROM dbo.orders WHERE status <> 'cancelled') AS revenue_total;`);
     const t = totalsRes.recordset[0];
 
-    // Doanh thu + số đơn theo tháng (loại 'cancelled'), giới hạn cửa sổ 12 tháng.
-    const monthlyRes = await pool.request()
-      .input('cutoff', sql.DateTime2, cutoff)
+    // Doanh thu + số đơn theo NGÀY trong tháng hiện tại (loại 'cancelled').
+    const dailyRes = await pool.request()
+      .input('start', sql.DateTime2, monthStart)
+      .input('end', sql.DateTime2, nextMonthStart)
       .query(`
-        SELECT FORMAT(created_at, 'yyyy-MM') AS ym,
+        SELECT DAY(created_at) AS d,
                COALESCE(SUM(total_amount), 0) AS revenue,
                COUNT(*) AS orders
         FROM dbo.orders
-        WHERE status <> 'cancelled' AND created_at >= @cutoff
-        GROUP BY FORMAT(created_at, 'yyyy-MM');`);
+        WHERE status <> 'cancelled' AND created_at >= @start AND created_at < @end
+        GROUP BY DAY(created_at);`);
 
-    const byYm = {};
-    for (const r of monthlyRes.recordset) {
-      byYm[r.ym] = { revenue: Number(r.revenue) || 0, orders: Number(r.orders) || 0 };
+    const byDay = {};
+    for (const r of dailyRes.recordset) {
+      byDay[r.d] = { revenue: Number(r.revenue) || 0, orders: Number(r.orders) || 0 };
     }
-    const revenue_by_month = months.map((ym) => ({
-      ym,
-      revenue: byYm[ym] ? byYm[ym].revenue : 0,
-      orders: byYm[ym] ? byYm[ym].orders : 0,
-    }));
+    const revenue_by_day = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      revenue_by_day.push({
+        day: `${ym}-${String(d).padStart(2, '0')}`,
+        revenue: byDay[d] ? byDay[d].revenue : 0,
+        orders: byDay[d] ? byDay[d].orders : 0,
+      });
+    }
 
-    // Tăng trưởng: tháng này so tháng trước. Tháng trước = 0 => null (tránh chia 0).
-    const thisRev = revenue_by_month[11].revenue;
-    const prevRev = revenue_by_month[10].revenue;
+    // Tăng trưởng: doanh thu tháng này so tháng trước (loại 'cancelled'). Tháng trước = 0 => null.
+    const growthRes = await pool.request()
+      .input('curStart', sql.DateTime2, monthStart)
+      .input('nextStart', sql.DateTime2, nextMonthStart)
+      .input('prevStart', sql.DateTime2, prevMonthStart)
+      .query(`
+        SELECT
+          (SELECT COALESCE(SUM(total_amount), 0) FROM dbo.orders
+             WHERE status <> 'cancelled' AND created_at >= @curStart AND created_at < @nextStart) AS cur_rev,
+          (SELECT COALESCE(SUM(total_amount), 0) FROM dbo.orders
+             WHERE status <> 'cancelled' AND created_at >= @prevStart AND created_at < @curStart) AS prev_rev;`);
+    const curRev = Number(growthRes.recordset[0].cur_rev) || 0;
+    const prevRev = Number(growthRes.recordset[0].prev_rev) || 0;
     const growth_pct = prevRev === 0
       ? null
-      : Math.round(((thisRev - prevRev) / prevRev) * 100 * 100) / 100;
+      : Math.round(((curRev - prevRev) / prevRev) * 100 * 100) / 100;
 
     res.json({
       products_count: Number(t.products_count) || 0,
@@ -589,7 +597,8 @@ router.get('/stats', async (req, res) => {
       users_count: Number(t.users_count) || 0,
       revenue_total: Number(t.revenue_total) || 0,
       growth_pct,
-      revenue_by_month,
+      month: ym,
+      revenue_by_day,
     });
   } catch (err) {
     console.error('[admin] stats error:', err.message);

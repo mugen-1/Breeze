@@ -1,38 +1,34 @@
 /*
- * Seed dữ liệu DEMO cho Dashboard: bơm KHÁCH + ĐƠN mẫu để stats/chart có số thật
- * (mọi con số vẫn được TÍNH TỪ DB qua /api/admin/stats — script không hardcode số nào).
+ * Seed dữ liệu DEMO cho Dashboard: 20 đơn mẫu (mã đơn 1..20) cho 2 KHÁCH THẬT
+ * truc@gmail.com và truc1@gmail.com, ngày đặt random trong tháng 7. Mọi con số trên
+ * Dashboard vẫn được TÍNH TỪ DB qua /api/admin/stats — script không hardcode số nào.
  *
  * Chạy:  node server/scripts/seed-demo-orders.js
  *
- * AN TOÀN:
- *   - Mọi user seed có firebase_uid tiền tố 'seed_' để tách khỏi data thật.
- *   - IDEMPOTENT: mỗi lần chạy, TRONG 1 transaction sẽ dọn seed cũ trước (xoá đơn của
- *     user 'seed_%' -> order_items cascade theo -> xoá chính user 'seed_%') rồi chèn mới.
- *   - TUYỆT ĐỐI không đụng user/đơn KHÔNG có tiền tố 'seed_'.
+ * LƯU Ý (DB demo BreezeShopDB):
+ *   - IDEMPOTENT: mỗi lần chạy sẽ XOÁ TOÀN BỘ đơn (order_items cascade) và reseed identity
+ *     để mã đơn luôn là 1..20, rồi chèn mới. Cũng dọn user cũ có tiền tố 'seed_' (từ bản seed trước).
+ *   - Không tạo user mới: đơn tham chiếu 2 user THẬT ở trên (lấy id theo email).
+ *   - Không đụng bảng users thật ngoài việc dọn 'seed_%'.
  */
 // Nạp .env theo vị trí file (server/.env) để chạy được từ mọi cwd, kể cả project root.
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { getPool, sql } = require('../db');
 
 // ---- tham số ----
-const NUM_USERS = 10;
-const MIN_ORDERS = 50;
-const MAX_ORDERS = 70;
+const NUM_ORDERS = 20;
+const CUSTOMER_EMAILS = ['truc@gmail.com', 'truc1@gmail.com'];
 
 // Phân bố trạng thái (tổng 100). completed chiếm đa số, cancelled ít.
 const STATUS_WEIGHTS = [
   ['completed', 55], ['paid', 20], ['shipped', 10], ['pending', 8], ['cancelled', 7],
 ];
 
-const VN_NAMES = [
-  'Nguyễn Văn An', 'Trần Thị Bình', 'Lê Hoàng Cường', 'Phạm Thị Dung', 'Hoàng Văn Em',
-  'Vũ Thị Hà', 'Đặng Minh Khôi', 'Bùi Thị Lan', 'Đỗ Văn Minh', 'Ngô Thị Nga',
-  'Dương Văn Phúc', 'Lý Thị Quỳnh', 'Phan Văn Sơn', 'Võ Thị Trang', 'Đinh Văn Uy',
-];
-const VN_STREETS = ['Lê Lợi', 'Nguyễn Huệ', 'Trần Hưng Đạo', 'Hai Bà Trưng', 'Cách Mạng Tháng 8', 'Điện Biên Phủ'];
+const VN_NAMES = ['Nguyễn Văn An', 'Trần Thị Bình', 'Lê Hoàng Cường', 'Phạm Thị Dung', 'Hoàng Văn Em', 'Vũ Thị Hà'];
+const VN_STREETS = ['Lê Lợi', 'Nguyễn Huệ', 'Trần Hưng Đạo', 'Hai Bà Trưng', 'Điện Biên Phủ'];
 const VN_CITIES = ['Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ'];
 
-// ---- helpers ngẫu nhiên ----
+// ---- helpers ----
 function randInt(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function shuffle(arr) {
@@ -45,17 +41,10 @@ function pickStatus() {
   return 'completed';
 }
 
-// Ngày trong "tháng offset" (0 = 11 tháng trước ... 11 = tháng hiện tại), theo UTC.
-const NOW = new Date();
-const CUR_Y = NOW.getUTCFullYear();
-const CUR_M = NOW.getUTCMonth();
-function dateInMonthOffset(offset) {
-  const monthsAgo = 11 - offset;
-  let y = CUR_Y, mo = CUR_M - monthsAgo;
-  while (mo < 0) { mo += 12; y -= 1; }
-  let maxDay = 28;                                   // tránh lệ thuộc độ dài tháng
-  if (y === CUR_Y && mo === CUR_M) maxDay = Math.max(1, NOW.getUTCDate()); // tháng này: không vượt hôm nay
-  return new Date(Date.UTC(y, mo, randInt(1, maxDay), randInt(0, 23), randInt(0, 59), randInt(0, 59)));
+// Ngày random 01/07..30/07 của NĂM HIỆN TẠI (tháng 7 = index 6), theo UTC.
+const CUR_Y = new Date().getUTCFullYear();
+function julyDate() {
+  return new Date(Date.UTC(CUR_Y, 6, randInt(1, 30), randInt(0, 23), randInt(0, 59), randInt(0, 59)));
 }
 
 const DEC = sql.Decimal(18, 2);
@@ -63,7 +52,16 @@ const DEC = sql.Decimal(18, 2);
 (async () => {
   const pool = await getPool();
 
-  // Sản phẩm thật đang bán -> lấy snapshot tên + giá hiệu lực (sale_price nếu có).
+  // 2 khách thật -> lấy id theo email.
+  const uRes = await pool.request().query(`
+    SELECT id, email FROM dbo.users WHERE email IN ('${CUSTOMER_EMAILS.join("','")}');`);
+  const userIds = uRes.recordset.map((u) => u.id);
+  if (userIds.length < CUSTOMER_EMAILS.length) {
+    console.error('Không tìm đủ 2 khách (' + CUSTOMER_EMAILS.join(', ') + '). Dừng.');
+    process.exit(1);
+  }
+
+  // Sản phẩm thật đang bán -> snapshot tên + giá hiệu lực (sale_price nếu có).
   const prodRes = await pool.request().query(`
     SELECT id, name_vi,
            (CASE WHEN sale_price IS NOT NULL THEN sale_price ELSE price END) AS unit_price
@@ -77,38 +75,14 @@ const DEC = sql.Decimal(18, 2);
   const tx = new sql.Transaction(pool);
   await tx.begin();
   try {
-    // 1) Dọn seed cũ (chỉ 'seed_%'): xoá đơn của user seed (order_items cascade) rồi xoá user seed.
-    await new sql.Request(tx).query(`
-      DELETE FROM dbo.orders
-      WHERE user_id IN (SELECT id FROM dbo.users WHERE firebase_uid LIKE 'seed_%');`);
-    await new sql.Request(tx).query(`DELETE FROM dbo.users WHERE firebase_uid LIKE 'seed_%';`);
-
-    // 2) Chèn khách mẫu, created_at rải trong 12 tháng.
-    const names = shuffle(VN_NAMES.slice()).slice(0, NUM_USERS);
-    const userIds = [];
-    for (let i = 0; i < NUM_USERS; i++) {
-      const created = dateInMonthOffset(randInt(0, 11));
-      const r = await new sql.Request(tx)
-        .input('uid', sql.VarChar(128), 'seed_' + (i + 1))
-        .input('email', sql.VarChar(256), 'customer' + (i + 1) + '@example.com')
-        .input('name', sql.NVarChar(200), names[i] || ('Khách ' + (i + 1)))
-        .input('created', sql.DateTime2, created)
-        .query(`
-          INSERT INTO dbo.users (firebase_uid, email, display_name, role, created_at, last_login)
-          OUTPUT INSERTED.id
-          VALUES (@uid, @email, @name, 'customer', @created, @created);`);
-      userIds.push(r.recordset[0].id);
-    }
-
-    // 3) Chèn đơn. Rải đều 12 tháng bằng round-robin (mỗi tháng đều có đơn) rồi xáo trộn.
-    const totalOrders = randInt(MIN_ORDERS, MAX_ORDERS);
-    const monthAssign = [];
-    for (let i = 0; i < totalOrders; i++) monthAssign.push(i % 12);
-    shuffle(monthAssign);
+    // Dọn sạch để mã đơn về 1..20: xoá hết đơn (order_items cascade) + reseed identity.
+    await new sql.Request(tx).query('DELETE FROM dbo.orders;');
+    await new sql.Request(tx).query('DELETE FROM dbo.users WHERE firebase_uid LIKE \'seed_%\';');
+    await new sql.Request(tx).query("DBCC CHECKIDENT('dbo.orders', RESEED, 0);");
 
     let orderCount = 0;
-    for (let i = 0; i < totalOrders; i++) {
-      // Giỏ hàng: 1-4 sản phẩm khác nhau, quantity 1-3.
+    for (let i = 0; i < NUM_ORDERS; i++) {
+      // Giỏ: 1-4 sản phẩm khác nhau, quantity 1-3.
       const nItems = randInt(1, Math.min(4, products.length));
       const chosen = shuffle(products.slice()).slice(0, nItems);
       const items = chosen.map((p) => {
@@ -118,8 +92,8 @@ const DEC = sql.Decimal(18, 2);
       });
       const total = items.reduce((s, it) => s + it.line_total, 0); // total_amount TÍNH TỪ ITEMS
 
-      const uid = pick(userIds);
-      const created = dateInMonthOffset(monthAssign[i]);
+      const uid = pick(userIds);          // khách lộn xộn giữa 2 người
+      const created = julyDate();         // ngày random trong tháng 7
       const status = pickStatus();
 
       const ordRes = await new sql.Request(tx)
@@ -153,7 +127,7 @@ const DEC = sql.Decimal(18, 2);
     }
 
     await tx.commit();
-    console.log(`Đã tạo ${userIds.length} khách, ${orderCount} đơn.`);
+    console.log(`Đã tạo ${orderCount} đơn (mã 1..${orderCount}) cho 2 khách: ${CUSTOMER_EMAILS.join(', ')}.`);
     process.exit(0);
   } catch (e) {
     try { await tx.rollback(); } catch (_) { /* ignore */ }
