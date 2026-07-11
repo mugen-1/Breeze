@@ -405,21 +405,32 @@ router.get('/orders', async (req, res) => {
     }
     statusVal = status;
   }
-  // Chuẩn hoá search: cắt tối đa 100 ký tự, escape ký tự đặc biệt của LIKE.
+  // Chuẩn hoá search:
+  //  - q toàn CHỮ SỐ  -> coi là MÃ ĐƠN, khớp CHÍNH XÁC o.id = q (ra đúng 1 đơn, không dính 12/20…).
+  //  - còn lại        -> tìm theo email / tên khách bằng LIKE (escape ký tự đặc biệt).
+  let qId = null;
   let likeVal = null;
   if (q !== undefined && String(q).trim() !== '') {
     const raw = String(q).trim().slice(0, 100);
-    likeVal = '%' + raw.replace(/[\\%_[]/g, (c) => '\\' + c) + '%';
+    if (/^\d+$/.test(raw)) {
+      const n = Number(raw);
+      // id là INT: quá tầm -> gán -1 để chắc chắn không khớp (thay vì trả nhầm toàn bộ).
+      qId = (Number.isSafeInteger(n) && n >= 0 && n <= 2147483647) ? n : -1;
+    } else {
+      likeVal = '%' + raw.replace(/[\\%_[]/g, (c) => '\\' + c) + '%';
+    }
   }
 
   // Gắn cùng bộ điều kiện WHERE + input cho cả câu COUNT lẫn câu SELECT.
   function applyFilters(request) {
     const clauses = [];
     if (statusVal) { request.input('status', sql.VarChar(20), statusVal); clauses.push('o.status = @status'); }
-    if (likeVal) {
+    if (qId !== null) {
+      request.input('qid', sql.Int, qId);
+      clauses.push('o.id = @qid');
+    } else if (likeVal) {
       request.input('q', sql.NVarChar(120), likeVal);
-      clauses.push("(CAST(o.id AS varchar(20)) LIKE @q ESCAPE '\\' " +
-        "OR u.email LIKE @q ESCAPE '\\' OR u.display_name LIKE @q ESCAPE '\\')");
+      clauses.push("(u.email LIKE @q ESCAPE '\\' OR u.display_name LIKE @q ESCAPE '\\')");
     }
     return clauses.length ? ('WHERE ' + clauses.join(' AND ')) : '';
   }
