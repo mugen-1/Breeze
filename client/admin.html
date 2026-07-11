@@ -12,13 +12,49 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
 </head>
 <body>
-    <div class="adm-bar">
+    <!-- Topbar cố định -->
+    <header class="adm-topbar">
+        <button type="button" class="adm-menu-btn" id="adm-menu-btn" aria-label="Mở/đóng menu"
+                aria-controls="adm-sidebar" aria-expanded="false">
+            <i class="fa fa-bars" aria-hidden="true"></i>
+        </button>
         <a href="index.html" class="adm-logo">BREEZE <small>Admin</small></a>
-        <div class="adm-right" id="bar-right" style="visibility:hidden;">
-            <span id="who"></span>
-            <button type="button" class="adm-logout" id="btn-logout">Đăng xuất</button>
+        <div class="adm-search">
+            <i class="fa fa-search" aria-hidden="true"></i>
+            <input type="search" data-i18n-ph="search" placeholder="Tìm kiếm…" aria-label="Tìm kiếm">
         </div>
-    </div>
+        <div class="adm-topbar-right" id="bar-right" style="visibility:hidden;">
+            <button type="button" class="adm-bell" aria-label="Thông báo">
+                <i class="fa fa-bell-o" aria-hidden="true"></i>
+            </button>
+            <span id="who"></span>
+            <button type="button" class="adm-logout" id="btn-logout" data-i18n="logout">Đăng xuất</button>
+        </div>
+    </header>
+
+    <!-- Sidebar điều hướng -->
+    <aside class="adm-sidebar" id="adm-sidebar">
+        <nav class="adm-nav" aria-label="Điều hướng quản trị">
+            <button type="button" class="adm-nav-item active" data-nav="dashboard" aria-current="page">
+                <i class="fa fa-tachometer" aria-hidden="true"></i> <span data-i18n="dashboard">Dashboard</span>
+            </button>
+            <button type="button" class="adm-nav-item" data-nav="products">
+                <i class="fa fa-shopping-bag" aria-hidden="true"></i> <span data-i18n="products">Sản phẩm</span>
+            </button>
+            <button type="button" class="adm-nav-item" data-nav="orders">
+                <i class="fa fa-file-text-o" aria-hidden="true"></i> <span data-i18n="orders">Đơn hàng</span>
+            </button>
+            <button type="button" class="adm-nav-item" data-nav="users">
+                <i class="fa fa-users" aria-hidden="true"></i> <span data-i18n="users">Người dùng</span>
+            </button>
+            <button type="button" class="adm-nav-item" data-nav="settings">
+                <i class="fa fa-cog" aria-hidden="true"></i> <span data-i18n="settings">Cài đặt</span>
+            </button>
+        </nav>
+    </aside>
+    <div class="adm-backdrop" id="adm-backdrop" aria-hidden="true"></div>
+
+    <main class="adm-main">
 
     <!-- Trạng thái: đang kiểm tra quyền -->
     <div class="adm-gate" id="state-loading">
@@ -42,15 +78,19 @@
         <a href="index.html" class="adm-btn ghost">Về trang chủ</a>
     </div>
 
-    <!-- Panel chính -->
+    <!-- Panel chính (các view, chuyển bằng sidebar) -->
     <div id="panel">
-        <div class="adm-tabs">
-            <button type="button" class="adm-tab active" data-tab="products">Sản phẩm</button>
-            <button type="button" class="adm-tab" data-tab="orders">Đơn hàng</button>
-        </div>
+        <!-- Dashboard (tạm rỗng — số liệu ở phase sau) -->
+        <section id="view-dashboard">
+            <div class="adm-placeholder">
+                <i class="fa fa-tachometer" aria-hidden="true"></i>
+                <h3 data-i18n="dashboard">Dashboard</h3>
+                <p data-i18n="dashMsg">Số liệu tổng quan sẽ hiển thị ở đây.</p>
+            </div>
+        </section>
 
         <!-- Tab sản phẩm -->
-        <section id="tab-products">
+        <section id="tab-products" style="display:none;">
             <div class="adm-section-head">
                 <h3>Sản phẩm <span class="adm-count" id="prod-count"></span></h3>
                 <button type="button" class="adm-btn small" id="btn-add-prod"><i class="fa fa-plus"></i> Thêm sản phẩm</button>
@@ -87,7 +127,26 @@
             </div>
             <div class="adm-pager" id="order-pager"></div>
         </section>
+
+        <!-- Người dùng (tạm rỗng) -->
+        <section id="view-users" style="display:none;">
+            <div class="adm-placeholder">
+                <i class="fa fa-users" aria-hidden="true"></i>
+                <h3 data-i18n="users">Người dùng</h3>
+                <p data-i18n="usersMsg">Quản lý người dùng sẽ có ở đây.</p>
+            </div>
+        </section>
+
+        <!-- Cài đặt (tạm rỗng) -->
+        <section id="view-settings" style="display:none;">
+            <div class="adm-placeholder">
+                <i class="fa fa-cog" aria-hidden="true"></i>
+                <h3 data-i18n="settings">Cài đặt</h3>
+                <p data-i18n="settingsMsg">Tuỳ chọn cấu hình sẽ có ở đây.</p>
+            </div>
+        </section>
     </div>
+    </main>
 
     <!-- Modal thêm/sửa sản phẩm -->
     <div class="modal-backdrop" id="prod-modal">
@@ -200,6 +259,8 @@
             });
             $('panel').style.display = 'none';
             $('bar-right').style.visibility = 'hidden';
+            document.body.classList.toggle('adm-authed', which === 'panel');
+            if (which !== 'panel') closeDrawer();
             if (which === 'panel') {
                 $('panel').style.display = 'block';
                 $('bar-right').style.visibility = 'visible';
@@ -222,17 +283,59 @@
                 .catch(function (e) { console.error('[admin] auth/me lỗi:', e); showState('state-forbidden'); });
         }
 
-        // --- Tabs ------------------------------------------------------------
-        function bindTabs() {
-            var tabs = document.querySelectorAll('.adm-tab');
-            tabs.forEach(function (btn) {
+        // --- Sidebar navigation ----------------------------------------------
+        // Map mục sidebar -> id view. Products/Orders trỏ đúng 2 panel cũ.
+        var NAV_VIEWS = {
+            dashboard: 'view-dashboard',
+            products: 'tab-products',
+            orders: 'tab-orders',
+            users: 'view-users',
+            settings: 'view-settings'
+        };
+        function bindNav() {
+            var items = document.querySelectorAll('.adm-nav-item');
+            items.forEach(function (btn) {
                 btn.addEventListener('click', function () {
-                    tabs.forEach(function (b) { b.classList.remove('active'); });
+                    items.forEach(function (b) { b.classList.remove('active'); b.removeAttribute('aria-current'); });
                     btn.classList.add('active');
-                    var t = btn.getAttribute('data-tab');
-                    $('tab-products').style.display = (t === 'products') ? 'block' : 'none';
-                    $('tab-orders').style.display = (t === 'orders') ? 'block' : 'none';
+                    btn.setAttribute('aria-current', 'page');
+                    var t = btn.getAttribute('data-nav');
+                    Object.keys(NAV_VIEWS).forEach(function (k) {
+                        var el = $(NAV_VIEWS[k]);
+                        if (el) el.style.display = (k === t) ? 'block' : 'none';
+                    });
+                    closeDrawer();
                 });
+            });
+        }
+
+        // --- Drawer (sidebar overlay ở tablet/mobile) ------------------------
+        function openDrawer() {
+            document.body.classList.add('adm-drawer-open');
+            var mb = $('adm-menu-btn'); if (mb) mb.setAttribute('aria-expanded', 'true');
+        }
+        function closeDrawer() {
+            document.body.classList.remove('adm-drawer-open');
+            var mb = $('adm-menu-btn'); if (mb) mb.setAttribute('aria-expanded', 'false');
+        }
+        function toggleDrawer() {
+            if (document.body.classList.contains('adm-drawer-open')) closeDrawer(); else openDrawer();
+        }
+
+        // --- i18n khung (VI/EN): nhãn sidebar/topbar/placeholder -------------
+        var ADM_I18N = {
+            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Đơn hàng', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm kiếm…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.' },
+            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Orders', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search…', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.' }
+        };
+        function applyAdmLang(lang) {
+            var t = ADM_I18N[lang] || ADM_I18N.vi;
+            document.querySelectorAll('[data-i18n]').forEach(function (el) {
+                var k = el.getAttribute('data-i18n');
+                if (t[k] != null) el.textContent = t[k];
+            });
+            document.querySelectorAll('[data-i18n-ph]').forEach(function (el) {
+                var k = el.getAttribute('data-i18n-ph');
+                if (t[k] != null) el.setAttribute('placeholder', t[k]);
             });
         }
 
@@ -491,7 +594,13 @@
 
         // --- Wire up ---------------------------------------------------------
         document.addEventListener('DOMContentLoaded', function () {
-            bindTabs();
+            bindNav();
+            var menuBtn = $('adm-menu-btn'); if (menuBtn) menuBtn.addEventListener('click', toggleDrawer);
+            var backdrop = $('adm-backdrop'); if (backdrop) backdrop.addEventListener('click', closeDrawer);
+            applyAdmLang(localStorage.getItem('ql_lang') || 'vi');
+            document.addEventListener('langchange', function (e) {
+                applyAdmLang((e && e.detail && e.detail.lang) || localStorage.getItem('ql_lang') || 'vi');
+            });
             $('btn-add-prod').addEventListener('click', function () { openModal(null); });
             $('btn-cancel').addEventListener('click', closeModal);
             $('prod-form').addEventListener('submit', submitProduct);
