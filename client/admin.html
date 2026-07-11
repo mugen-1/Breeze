@@ -21,7 +21,8 @@
         <a href="index.html" class="adm-logo">BREEZE <small>Admin</small></a>
         <div class="adm-search">
             <i class="fa fa-search" aria-hidden="true"></i>
-            <input type="search" data-i18n-ph="search" placeholder="Tìm kiếm…" aria-label="Tìm kiếm">
+            <input type="search" id="top-search" data-i18n-ph="search" placeholder="Tìm mã đơn / khách hàng…"
+                   aria-label="Tìm đơn theo mã hoặc khách hàng">
         </div>
         <div class="adm-topbar-right" id="bar-right" style="visibility:hidden;">
             <button type="button" class="adm-bell" aria-label="Thông báo">
@@ -394,8 +395,8 @@
 
         // --- i18n khung (VI/EN): nhãn sidebar/topbar/placeholder -------------
         var ADM_I18N = {
-            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Đơn hàng', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm kiếm…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất', revenueChart: 'Doanh thu theo ngày (tháng này)', noRevData: 'Chưa có dữ liệu doanh thu' },
-            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Orders', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search…', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders', revenueChart: 'Daily revenue (this month)', noRevData: 'No revenue data yet' }
+            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Đơn hàng', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm mã đơn / khách hàng…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất', revenueChart: 'Doanh thu theo ngày (tháng này)', noRevData: 'Chưa có dữ liệu doanh thu' },
+            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Orders', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search order # / customer…', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders', revenueChart: 'Daily revenue (this month)', noRevData: 'No revenue data yet' }
         };
         function applyAdmLang(lang) {
             var t = ADM_I18N[lang] || ADM_I18N.vi;
@@ -950,6 +951,22 @@
             $('btn-add-prod').addEventListener('click', function () { openModal(null); });
             var ordStatus = $('order-status-filter'); if (ordStatus) ordStatus.addEventListener('change', onOrderFilterChange);
             var ordSearch = $('order-search'); if (ordSearch) ordSearch.addEventListener('input', onOrderSearchInput);
+
+            // Search topbar (toàn layout): Enter -> nhảy sang Đơn hàng và tìm (mã đơn = khớp chính xác).
+            var topSearch = $('top-search');
+            if (topSearch) topSearch.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                var v = topSearch.value.trim();
+                if (!v) return;
+                var ordersNav = document.querySelector('.adm-nav-item[data-nav="orders"]');
+                if (ordersNav) ordersNav.click();            // chuyển view + đóng drawer
+                var stSel = $('order-status-filter'); if (stSel) stSel.value = '';  // bỏ lọc status để đơn tìm thấy luôn hiện
+                var os = $('order-search'); if (os) os.value = v;
+                readOrderFilters();
+                loadOrders(1);
+                if (os) os.focus();
+            });
             $('btn-cancel').addEventListener('click', closeModal);
             $('prod-form').addEventListener('submit', submitProduct);
             $('prod-modal').addEventListener('click', function (e) { if (e.target === $('prod-modal')) closeModal(); });
