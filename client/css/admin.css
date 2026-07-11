@@ -103,6 +103,8 @@ body.adm-authed .adm-main { margin-left:232px; }
 .stat-value.is-down::before { content:'\25BC\00A0'; font-size:.55em; vertical-align:middle; }
 .dash-recent-head { margin-top:4px; }
 .pill.status { background:var(--c-cream); color:var(--c-ink); border:1px solid var(--c-line); }
+.pill.role-admin { background:var(--c-ink); color:var(--c-cream); }
+.pill.role-customer { background:var(--c-cream); color:var(--c-ink); border:1px solid var(--c-line); }
 
 /* --- Revenue chart --- */
 .chart-card { border:1px solid var(--c-line); padding:22px 24px 24px; margin-bottom:44px; }

@@ -186,13 +186,22 @@
             <div class="adm-pager" id="order-pager"></div>
         </section>
 
-        <!-- Người dùng (tạm rỗng) -->
+        <!-- Người dùng (chỉ xem) -->
         <section id="view-users" style="display:none;">
-            <div class="adm-placeholder">
-                <i class="fa fa-users" aria-hidden="true"></i>
-                <h3 data-i18n="users">Người dùng</h3>
-                <p data-i18n="usersMsg">Quản lý người dùng sẽ có ở đây.</p>
+            <div class="adm-section-head">
+                <h3><span data-i18n="users">Người dùng</span> <span class="adm-count" id="user-count"></span></h3>
             </div>
+            <div class="adm-table-wrap">
+                <table class="adm-table">
+                    <thead><tr>
+                        <th>Email</th><th>Tên</th><th>Vai trò</th><th>Ngày tạo</th><th>Đăng nhập gần nhất</th>
+                    </tr></thead>
+                    <tbody id="user-body">
+                        <tr><td colspan="5" class="adm-loading">Đang tải…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="adm-pager" id="user-pager"></div>
         </section>
 
         <!-- Cài đặt (tạm rỗng) -->
@@ -338,7 +347,8 @@
                     if (me.role !== 'admin') { showState('state-forbidden'); return; }
                     $('who').textContent = me.email || me.display_name || me.firebase_uid;
                     showState('panel');
-                    return loadCategories().then(loadProducts).then(function () { return loadOrders(1); }).then(loadDashboard);
+                    return loadCategories().then(loadProducts).then(function () { return loadOrders(1); })
+                        .then(loadDashboard).then(function () { return loadUsers(1); });
                 })
                 .catch(function (e) { console.error('[admin] auth/me lỗi:', e); showState('state-forbidden'); });
         }
@@ -874,6 +884,55 @@
                     '<td>' + statusPill(o.status) + '</td>' +
                 '</tr>';
             }).join('');
+        }
+
+        // --- Users (chỉ xem, phân trang giống orders) ------------------------
+        var _userPage = 1;
+        function loadUsers(page) {
+            _userPage = page || 1;
+            $('user-body').innerHTML = skeletonRows(5, 8);
+            $('user-pager').innerHTML = '';
+            return api('/api/admin/users?page=' + _userPage + '&limit=20')
+                .then(function (r) { if (!r.ok) throw new Error('users ' + r.status); return r.json(); })
+                .then(renderUsers)
+                .catch(function (e) {
+                    console.error('[admin] load users lỗi:', e);
+                    $('user-body').innerHTML = '<tr><td colspan="5" class="adm-empty">Không tải được người dùng.</td></tr>';
+                });
+        }
+
+        function rolePill(role) {
+            var isAdmin = String(role || '').toLowerCase() === 'admin';
+            var label = isAdmin ? 'Admin' : 'Khách hàng';
+            return '<span class="pill role-' + (isAdmin ? 'admin' : 'customer') + '">' + esc(label) + '</span>';
+        }
+
+        function renderUsers(data) {
+            var users = (data && data.users) || [];
+            $('user-count').textContent = '(' + ((data && data.total) || 0) + ')';
+            if (!users.length) {
+                $('user-body').innerHTML = '<tr><td colspan="5" class="adm-empty">Chưa có người dùng nào.</td></tr>';
+                $('user-pager').innerHTML = '';
+                return;
+            }
+            $('user-body').innerHTML = users.map(function (u) {
+                return '<tr>' +
+                    '<td>' + esc(u.email || '—') + '</td>' +
+                    '<td>' + esc(u.display_name || '—') + '</td>' +
+                    '<td>' + rolePill(u.role) + '</td>' +
+                    '<td>' + (u.created_at ? fmtDate(u.created_at) : '—') + '</td>' +
+                    '<td>' + (u.last_login ? fmtDate(u.last_login) : '—') + '</td>' +
+                '</tr>';
+            }).join('');
+
+            var totalPages = (data && data.total_pages) || 1;
+            $('user-pager').innerHTML =
+                '<button type="button" id="user-pg-prev"' + (_userPage <= 1 ? ' disabled' : '') + '>← Trước</button>' +
+                '<span>Trang ' + _userPage + ' / ' + totalPages + '</span>' +
+                '<button type="button" id="user-pg-next"' + (_userPage >= totalPages ? ' disabled' : '') + '>Sau →</button>';
+            var prev = $('user-pg-prev'), next = $('user-pg-next');
+            if (prev) prev.addEventListener('click', function () { loadUsers(_userPage - 1); });
+            if (next) next.addEventListener('click', function () { loadUsers(_userPage + 1); });
         }
 
         // --- Wire up ---------------------------------------------------------

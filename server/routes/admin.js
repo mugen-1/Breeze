@@ -554,4 +554,38 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// ---- GET /api/admin/users --- danh sách người dùng, phân trang (chỉ xem) ------
+// Giống /api/admin/orders: ?page=&limit= (mặc định 20, tối đa 100). Chỉ đọc.
+router.get('/users', async (req, res) => {
+  let page = Number(req.query.page);
+  let limit = Number(req.query.limit);
+  page = Number.isInteger(page) && page > 0 ? page : 1;
+  limit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 20;
+  const offset = (page - 1) * limit;
+
+  try {
+    const pool = await getPool();
+    const countRes = await pool.request().query('SELECT COUNT(*) AS total FROM dbo.users;');
+    const total = countRes.recordset[0].total;
+
+    const usersRes = await pool.request()
+      .input('offset', sql.Int, offset)
+      .input('limit', sql.Int, limit)
+      .query(`
+        SELECT id, email, display_name, role, created_at, last_login
+        FROM dbo.users
+        ORDER BY created_at DESC, id DESC
+        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;`);
+
+    res.json({
+      page, limit, total,
+      total_pages: Math.ceil(total / limit),
+      users: usersRes.recordset,
+    });
+  } catch (err) {
+    console.error('[admin] list users error:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không tải được danh sách người dùng' });
+  }
+});
+
 module.exports = router;
