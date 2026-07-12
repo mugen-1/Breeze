@@ -88,7 +88,8 @@ function _enterServerMode() {
     _entering = true;
     _serverMode = true;
 
-    var guest = _readLocal().filter(function (g) { return g.id != null; });
+    // Chỉ id sản phẩm THẬT (số dương) mới merge lên server; bỏ id cục bộ âm (item không có product_id).
+    var guest = _readLocal().filter(function (g) { return typeof g.id === 'number' && g.id > 0; });
 
     var chain = _serverGet();
     if (guest.length) {
@@ -138,8 +139,14 @@ function _flashAdded(btn) {
     }, 1200);
 }
 
+// Đọc trạng thái hết hàng từ .product-item (data-stock="0"). Dùng cho card + nút.
+function _isSoldOut(item) {
+    return !!item && item.getAttribute('data-stock') === '0';
+}
+
 function addToCart(btn) {
     const item = btn.closest('.product-item');
+    if (_isSoldOut(item)) return;                 // chặn thêm giỏ khi hết hàng
     const nameEl = item.querySelector('.product-name') || item.querySelector('.product-cat');
     const salePriceEl = item.querySelector('.price-sale');
     const priceEl = salePriceEl || item.querySelector('.product-price');
@@ -172,12 +179,14 @@ function addToCart(btn) {
         return;
     }
 
-    // guest: dedupe theo id nếu có, ngược lại theo name
+    // guest: dedupe theo id THẬT; sản phẩm không có id -> cấp id cục bộ âm & duy nhất (-Date.now()).
+    // name KHÔNG còn là định danh remove/update (id âm là duy nhất) — name chỉ để gộp dòng trùng tên
+    // trong nhóm không-id, tránh bug cũ removeFromCart(null) xoá sạch mọi item không id.
     const existing = id !== null
         ? _cart.find(function (p) { return p.id === id; })
-        : _cart.find(function (p) { return p.name === name; });
+        : _cart.find(function (p) { return p.id < 0 && p.name === name; });
     if (existing) existing.qty++;
-    else _cart.push({ id: id, name: name, price: price, img: img, qty: 1 });
+    else _cart.push({ id: (id !== null ? id : -Date.now()), name: name, price: price, img: img, qty: 1 });
     saveCart(_cart);
     _flashAdded(btn);
 }
@@ -235,11 +244,20 @@ function _injectCartIcon() {
 
 function _injectAddToCartButtons() {
     document.querySelectorAll('.product-info').forEach(function (info) {
-        if (info.querySelector('.btn-add-cart')) return;
+        if (info.querySelector('.btn-add-cart, .btn-soldout')) return;
+        var item = info.closest('.product-item');
         const btn = document.createElement('button');
-        btn.className = 'btn-add-cart';
-        btn.textContent = 'Thêm vào giỏ';
-        btn.onclick = function () { addToCart(this); };
+        if (_isSoldOut(item)) {
+            // Hết hàng: nút "Hết hàng" bị vô hiệu (KHÔNG class btn-add-cart để i18n không đổi nhãn).
+            btn.className = 'btn-soldout';
+            btn.textContent = 'Hết hàng';
+            btn.disabled = true;
+            btn.setAttribute('aria-disabled', 'true');
+        } else {
+            btn.className = 'btn-add-cart';
+            btn.textContent = 'Thêm vào giỏ';
+            btn.onclick = function () { addToCart(this); };
+        }
         info.appendChild(btn);
     });
 }

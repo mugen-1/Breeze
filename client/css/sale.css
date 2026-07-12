@@ -1446,6 +1446,40 @@ body .main-content ul.products li .product-info .product-price,
     color: #fff !important;
 }
 
+/* ---- Hết hàng (stock <= 0): badge góc ảnh + nút "Hết hàng" vô hiệu ---- */
+.product-item .product-thumb .soldout-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    background: #a12833;
+    color: #fff;
+    font-family: var(--font-ui);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+.product-item.is-soldout .product-thumb img { opacity: .55; }
+.product-item .product-info .btn-soldout {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px 0;
+    background: var(--c-line);
+    color: var(--c-muted);
+    border: none;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    text-align: center;
+    cursor: not-allowed;
+}
+
 @media (max-width: 600px) {
     .main-content ul.products {
         grid-template-columns: repeat(2, 1fr);
