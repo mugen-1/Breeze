@@ -41,10 +41,13 @@
                 </p>
             </header>
 
+            <!-- Grid 2 cột: form (trái) + order summary sticky (phải) -->
+            <div class="co-checkout-grid">
+
             <form id="co-form" novalidate>
 
                 <!-- 3. Section LIÊN HỆ -->
-                <section class="co-section" aria-labelledby="co-contact-h">
+                <section class="co-section co-section--tight" aria-labelledby="co-contact-h">
                     <h2 class="co-section-title" id="co-contact-h">Liên hệ</h2>
                     <p class="co-contact-email">
                         <i class="fa fa-envelope-o" aria-hidden="true"></i>
@@ -217,10 +220,38 @@
 
                 <p class="co-form-msg" id="co-form-msg" role="status" hidden></p>
 
-                <button type="submit" class="co-submit">
+                <button type="submit" class="co-submit" disabled aria-disabled="true">
                     Đặt hàng &nbsp;·&nbsp; <span id="co-total-btn">0</span>₫
                 </button>
             </form>
+
+            <!-- Cột phải: order summary (sticky) -->
+            <div class="co-summary-col">
+                <section class="co-orderinfo" aria-label="Thông tin đơn hàng">
+                    <p class="co-orderinfo-label">Thông tin đơn hàng</p>
+
+                    <!-- Danh sách sản phẩm (render bởi checkout.js) -->
+                    <div class="co-oi-list" id="co-oi-list"></div>
+
+                    <!-- Tổng kết -->
+                    <div class="co-oi-summary">
+                        <div class="co-oi-row">
+                            <span>Tạm tính (<span id="co-oi-count">0</span> sản phẩm)</span>
+                            <span id="co-oi-subtotal">0₫</span>
+                        </div>
+                        <div class="co-oi-row">
+                            <span>Giao hàng</span>
+                            <span id="co-oi-ship">Miễn phí</span>
+                        </div>
+                        <div class="co-oi-row co-oi-row--total">
+                            <span>Tổng</span>
+                            <span id="co-oi-total">0₫</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            </div><!-- /.co-checkout-grid -->
         </div>
     </main>
 
