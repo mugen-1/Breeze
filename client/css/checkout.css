@@ -39,7 +39,7 @@ body.co-page {
 
 .co-body {
     min-height: calc(100vh - 80px);
-    padding: 40px 20px 80px;
+    padding: 24px 20px 60px;
     color: var(--co-ink);
     background: var(--co-paper);
 }
@@ -124,9 +124,22 @@ body.co-page {
 .cart-badge:empty, .cart-badge[style*="display:none"] { display: none !important; }
 
 .co-container {
-    max-width: 640px;
+    max-width: 1120px;
     margin: 0 auto;
     width: 100%;
+    padding: 0 24px;
+}
+
+/* ---- Grid 2 cột: form (trái) + order summary sticky (phải) ---- */
+.co-checkout-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    column-gap: 48px;
+    align-items: start;
+}
+.co-summary-col {
+    position: sticky;
+    top: 24px;
 }
 
 /* ---- 1. Greeting ---- */
@@ -143,8 +156,116 @@ body.co-page {
 .co-hero {
     text-align: right;
     border-bottom: 1px solid var(--co-line);
-    padding-bottom: 22px;
-    margin-bottom: 34px;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+}
+
+/* ---- Thông tin đơn hàng (căn giữa web) ---- */
+/* .co-page ... để thắng specificity của global.css `section:not(.hero){padding-block:clamp(64px,10vw,140px)}` */
+.co-page .co-orderinfo {
+    text-align: left;
+    padding: 2px 0 12px;
+    border-bottom: 1px solid var(--co-line);
+}
+.co-orderinfo-label {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    color: var(--co-muted);
+    margin-bottom: 8px;
+}
+.co-orderinfo-line {
+    font-family: var(--font-ui);
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--co-ink);
+    letter-spacing: .3px;
+}
+.co-orderinfo-total { font-weight: 600; }
+.co-orderinfo-sep { color: var(--co-muted-2); margin: 0 10px; }
+
+/* ---- Order summary: danh sách sản phẩm (layout Adidas) ---- */
+.co-oi-list {
+    max-height: 320px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+.co-oi-item {
+    display: grid;
+    grid-template-columns: 72px 1fr auto;
+    column-gap: 12px;
+    align-items: start;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--co-line);
+}
+.co-oi-item:last-child { border-bottom: 0; }
+.co-oi-thumb {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 4px;
+    background: var(--co-cream);
+    display: block;
+}
+.co-oi-info { min-width: 0; }
+.co-oi-name {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--co-ink);
+    letter-spacing: .2px;
+    line-height: 1.3;
+    word-break: break-word;
+}
+.co-oi-meta {
+    margin-top: 4px;
+    font-family: var(--font-ui);
+    font-size: 12px;
+    color: var(--co-muted);
+    letter-spacing: .2px;
+}
+.co-oi-prices { text-align: right; white-space: nowrap; }
+.co-oi-unit {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    color: var(--co-muted);
+}
+.co-oi-linetotal {
+    margin-top: 4px;
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--co-ink);
+}
+.co-oi-empty {
+    padding: 24px 0;
+    text-align: center;
+    font-family: var(--font-ui);
+    font-size: 14px;
+    color: var(--co-muted);
+}
+
+/* ---- Order summary: tổng kết ---- */
+.co-oi-summary { margin-top: 14px; }
+.co-oi-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 6px 0;
+    font-family: var(--font-ui);
+    font-size: 14px;
+    color: var(--co-ink-soft);
+}
+.co-oi-row--total {
+    margin-top: 6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--co-line);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--co-ink);
 }
 
 .co-hero-title {
@@ -167,11 +288,15 @@ body.co-page {
 }
 
 /* ---- Sections ---- */
-.co-section {
-    padding: 26px 0;
+/* .co-page ... để thắng specificity của global.css `section:not(.hero)` */
+.co-page .co-section {
+    padding: 16px 0;
     border-bottom: 1px solid var(--co-line);
 }
 .co-section:last-of-type { border-bottom: 0; }
+
+/* Section ngắn (Liên hệ) — thu hẹp khoảng cách xuống Địa chỉ */
+.co-page .co-section--tight { padding: 12px 0 8px; }
 
 .co-section-title {
     font-family: var(--font-display);
@@ -179,7 +304,7 @@ body.co-page {
     font-size: 26px;
     letter-spacing: .5px;
     color: var(--co-ink);
-    margin-bottom: 18px;
+    margin-bottom: 12px;
 }
 
 /* heading THANH TOÁN (payment) màu xám nhạt */
@@ -297,6 +422,8 @@ body.co-page {
     align-items: baseline;
     gap: 6px;
 }
+/* Thuộc tính hidden phải thắng display:flex ở trên, nếu không dấu "!" luôn hiện */
+.co-err[hidden] { display: none; }
 .co-err::before {
     content: "!";
     display: inline-flex;
@@ -431,6 +558,18 @@ body.co-page {
     box-shadow: 0 0 0 3px rgba(26, 85, 200, .45);
 }
 
+/* Xám + không bấm được khi chưa chọn phương thức thanh toán */
+.co-submit:disabled,
+.co-submit[disabled] {
+    background: var(--co-line);
+    border-color: var(--co-line);
+    color: var(--co-muted-2);
+    cursor: not-allowed;
+    transform: none;
+}
+.co-submit:disabled:hover,
+.co-submit[disabled]:hover { background: var(--co-line); }
+
 .co-form-msg {
     margin-top: 18px;
     padding: 13px 16px;
@@ -463,6 +602,27 @@ body.co-page {
 }
 
 /* ---- responsive ---- */
+/* Màn hẹp: grid 2 cột -> 1 cột, order summary lên trên form */
+@media (max-width: 900px) {
+    .co-checkout-grid {
+        grid-template-columns: 1fr;
+        column-gap: 0;
+        row-gap: 24px;
+    }
+    .co-summary-col {
+        position: static;
+        top: auto;
+        order: -1;
+    }
+}
+
+/* Mobile: thu hẹp khoảng cách dọc giữa các section thêm ~1 nấc (gap ~16px) */
+@media (max-width: 768px) {
+    .co-page .co-orderinfo { padding: 2px 0 8px; }
+    .co-page .co-section { padding: 12px 0; }
+    .co-page .co-section--tight { padding: 10px 0 6px; }
+}
+
 @media (max-width: 560px) {
     .co-row-2 { flex-direction: column; gap: 0; }
     .co-pay { grid-template-columns: 1fr; }
