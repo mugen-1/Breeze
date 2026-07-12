@@ -79,7 +79,7 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/admin', adminRouter);
 
 // --- Static frontend ---------------------------------------------------------
-// Tiện dev: phục vụ client/ ngay trên cùng origin => mở http://localhost:3000/ao-nam.html
+// Tiện dev: phục vụ client/ ngay trên cùng origin => mở http://localhost:3000/sanpham-ao.html
 // (fetch API cùng origin, không vướng CORS). Production sẽ tách CDN ở Phase 5.
 app.use(express.static(path.join(__dirname, '..', 'client')));
 
