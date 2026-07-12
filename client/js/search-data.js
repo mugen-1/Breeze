@@ -1,11 +1,11 @@
 ﻿const PRODUCTS = [
     // Van Hoc
-    { ten: "Giua 2 nhip tho ngay dem", tenGoc: "Giữa 2 nhịp thở ngày đêm", danhmuc: "Văn Học", trang: "ao-nam.html", gia: "105,000đ", anh: "img/hinhanh7.png" },
-    { ten: "Yeu minh trong nhung khoang lang", tenGoc: "Yêu mình trong những khoảng lặng", danhmuc: "Văn Học", trang: "ao-nam.html", gia: "75,000đ", anh: "img/hinhanh8.png" },
-    { ten: "Duyen dut ganh", tenGoc: "Duyên đứt gánh", danhmuc: "Văn Học", trang: "ao-nam.html", gia: "115,000đ", anh: "img/hinhanh9.png" },
-    { ten: "Ba chi em", tenGoc: "Ba chị em", danhmuc: "Văn Học", trang: "ao-nam.html", gia: "95,000đ", anh: "img/hinhanh100.png" },
-    { ten: "Tham vong", tenGoc: "Tham vọng", danhmuc: "Văn Học", trang: "ao-nam.html", gia: "159,000đ", anh: "img/hinhanh11.png" },
-    { ten: "Neu biet tram nam la huu han", tenGoc: "Nếu biết trăm năm là hữu hạn", danhmuc: "Văn Học", trang: "ao-nam.html", gia: "239,000đ", anh: "img/hinhanh12.png" },
+    { ten: "Giua 2 nhip tho ngay dem", tenGoc: "Giữa 2 nhịp thở ngày đêm", danhmuc: "Văn Học", trang: "sanpham-ao.html", gia: "105,000đ", anh: "img/hinhanh7.png" },
+    { ten: "Yeu minh trong nhung khoang lang", tenGoc: "Yêu mình trong những khoảng lặng", danhmuc: "Văn Học", trang: "sanpham-ao.html", gia: "75,000đ", anh: "img/hinhanh8.png" },
+    { ten: "Duyen dut ganh", tenGoc: "Duyên đứt gánh", danhmuc: "Văn Học", trang: "sanpham-ao.html", gia: "115,000đ", anh: "img/hinhanh9.png" },
+    { ten: "Ba chi em", tenGoc: "Ba chị em", danhmuc: "Văn Học", trang: "sanpham-ao.html", gia: "95,000đ", anh: "img/hinhanh100.png" },
+    { ten: "Tham vong", tenGoc: "Tham vọng", danhmuc: "Văn Học", trang: "sanpham-ao.html", gia: "159,000đ", anh: "img/hinhanh11.png" },
+    { ten: "Neu biet tram nam la huu han", tenGoc: "Nếu biết trăm năm là hữu hạn", danhmuc: "Văn Học", trang: "sanpham-ao.html", gia: "239,000đ", anh: "img/hinhanh12.png" },
 
     // Manga
     { ten: "Conan Tham Tu Lung Danh", tenGoc: "Conan Thám Tử Lừng Danh", danhmuc: "Manga", trang: "manga.html", gia: "200,000đ", anh: "img/sachconan.png" },
@@ -28,14 +28,14 @@
     { ten: "130 Bai Ngu Phap Tieng Anh", tenGoc: "130 Bài Ngữ Pháp Tiếng Anh", danhmuc: "English Books", trang: "gold-jewellery.html", gia: "130,000đ", anh: "img/anh7.png" },
 
     // Sach Tieng Viet
-    { ten: "Ky Nang Quan Ly Tai Chinh Dinh Cao", tenGoc: "Kỹ Năng Quản Lý Tài Chính Đỉnh Cao", danhmuc: "Sách Tiếng Việt", trang: "ao-nu.html", gia: "280,000đ", anh: "img/kynang.png" },
-    { ten: "Bac Hanh Luoc Ky", tenGoc: "Bắc Hành Lược Ký", danhmuc: "Sách Tiếng Việt", trang: "ao-nu.html", gia: "200,000đ", anh: "img/bachanh.png" },
-    { ten: "Tu Dien Tieng Viet", tenGoc: "Từ Điển Tiếng Việt", danhmuc: "Sách Tiếng Việt", trang: "ao-nu.html", gia: "280,000đ", anh: "img/tudien.png" },
-    { ten: "Nhat Linh Cha Toi", tenGoc: "Nhất Linh Cha Tôi", danhmuc: "Sách Tiếng Việt", trang: "ao-nu.html", gia: "200,000đ", anh: "img/nhat.png" },
-    { ten: "Nha Tranh", tenGoc: "Nhà Tranh", danhmuc: "Sách Tiếng Việt", trang: "ao-nu.html", gia: "200,000đ", anh: "img/tranh.png" },
-    { ten: "Sai Gon", tenGoc: "Sài Gòn", danhmuc: "Sách Tiếng Việt", trang: "ao-nu.html", gia: "300,000đ", anh: "img/saigon.png" },
-    { ten: "Hoi Ki Ve Bac Ho", tenGoc: "Hồi Kí Về Bác Hồ", danhmuc: "Sách Tiếng Việt", trang: "ao-nu.html", gia: "229,000đ", anh: "img/hoiki.png" },
-    { ten: "Tim Hieu Tac Gia Phan Khoi", tenGoc: "Tìm Hiểu Tác Gia Phan Khôi", danhmuc: "Sách Tiếng Việt", trang: "ao-nu.html", gia: "229,000đ", anh: "img/tacgia.png" },
+    { ten: "Ky Nang Quan Ly Tai Chinh Dinh Cao", tenGoc: "Kỹ Năng Quản Lý Tài Chính Đỉnh Cao", danhmuc: "Sách Tiếng Việt", trang: "sanpham-ao.html", gia: "280,000đ", anh: "img/kynang.png" },
+    { ten: "Bac Hanh Luoc Ky", tenGoc: "Bắc Hành Lược Ký", danhmuc: "Sách Tiếng Việt", trang: "sanpham-ao.html", gia: "200,000đ", anh: "img/bachanh.png" },
+    { ten: "Tu Dien Tieng Viet", tenGoc: "Từ Điển Tiếng Việt", danhmuc: "Sách Tiếng Việt", trang: "sanpham-ao.html", gia: "280,000đ", anh: "img/tudien.png" },
+    { ten: "Nhat Linh Cha Toi", tenGoc: "Nhất Linh Cha Tôi", danhmuc: "Sách Tiếng Việt", trang: "sanpham-ao.html", gia: "200,000đ", anh: "img/nhat.png" },
+    { ten: "Nha Tranh", tenGoc: "Nhà Tranh", danhmuc: "Sách Tiếng Việt", trang: "sanpham-ao.html", gia: "200,000đ", anh: "img/tranh.png" },
+    { ten: "Sai Gon", tenGoc: "Sài Gòn", danhmuc: "Sách Tiếng Việt", trang: "sanpham-ao.html", gia: "300,000đ", anh: "img/saigon.png" },
+    { ten: "Hoi Ki Ve Bac Ho", tenGoc: "Hồi Kí Về Bác Hồ", danhmuc: "Sách Tiếng Việt", trang: "sanpham-ao.html", gia: "229,000đ", anh: "img/hoiki.png" },
+    { ten: "Tim Hieu Tac Gia Phan Khoi", tenGoc: "Tìm Hiểu Tác Gia Phan Khôi", danhmuc: "Sách Tiếng Việt", trang: "sanpham-ao.html", gia: "229,000đ", anh: "img/tacgia.png" },
 
     // Sale
     { ten: "1000 Hop Am Cho Dan Organ va Piano", tenGoc: "1000 Hợp Âm Cho Đàn Organ và Piano", danhmuc: "Sale", trang: "handbags.html", gia: "276,000đ", anh: "img/piano.png" },
