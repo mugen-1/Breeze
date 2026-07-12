@@ -20,7 +20,7 @@ if not exist "node_modules" (
 )
 
 rem Mo trinh duyet sau 3 giay (cho server san sang) - chay song song
-start "" cmd /c "timeout /t 3 >nul && start http://localhost:3000/ao-nam.html"
+start "" cmd /c "timeout /t 3 >nul && start http://localhost:3000/index.html"
 
 rem Chay server (lenh nay giu cua so mo)
 call npm start
