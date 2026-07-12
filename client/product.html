@@ -165,6 +165,11 @@
     }
     .pd-add:hover { opacity: .85; }
     .pd-add.added { background: #2e7d32; }
+    .pd-add:disabled, .pd-add.sold-out {
+        background: var(--c-line); color: var(--c-muted); cursor: not-allowed; opacity: 1;
+    }
+    .pd-add:disabled:hover { opacity: 1; }
+    .pd-soldout-note { margin: 12px 0 0; color: #a12833; font-size: 13px; letter-spacing: .3px; }
 
     /* ===== SIZE GUIDE MODAL ===== */
     .sg-overlay {
@@ -566,7 +571,28 @@
                 thumbsWrap.appendChild(b);
             });
 
-            if (addBtn) addBtn.disabled = false;
+            // Tồn kho: stock <= 0 => hết hàng. Set data-stock để addToCart (cart.js) chặn thêm giỏ.
+            var st = Number(p.stock);
+            var soldOut = Number.isFinite(st) && st <= 0;
+            root.setAttribute('data-stock', Number.isFinite(st) ? st : '');
+            if (addBtn) {
+                addBtn.disabled = soldOut;
+                addBtn.textContent = soldOut ? 'Hết hàng' : 'Thêm vào giỏ';
+                addBtn.classList.toggle('sold-out', soldOut);
+                var note = document.getElementById('pd-soldout-note');
+                if (soldOut) {
+                    if (!note) {
+                        note = document.createElement('p');
+                        note.id = 'pd-soldout-note';
+                        note.className = 'pd-soldout-note';
+                        note.textContent = 'Sản phẩm tạm hết hàng.';
+                        addBtn.parentNode.insertBefore(note, addBtn.nextSibling);
+                    }
+                    note.style.display = 'block';
+                } else if (note) {
+                    note.style.display = 'none';
+                }
+            }
             loadRelated(p);
         }
 
