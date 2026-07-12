@@ -135,6 +135,11 @@
 
         <!-- Tab sản phẩm -->
         <section id="tab-products" style="display:none;">
+            <div class="prod-filters" role="group" aria-label="Lọc theo tồn kho">
+                <button type="button" class="prod-filter-btn active" data-stock-filter="all" aria-current="true">Tất cả</button>
+                <button type="button" class="prod-filter-btn" data-stock-filter="low">Sắp hết</button>
+                <button type="button" class="prod-filter-btn" data-stock-filter="out">Hết hàng</button>
+            </div>
             <div class="adm-section-head">
                 <h3>Sản phẩm <span class="adm-count" id="prod-count"></span></h3>
                 <button type="button" class="adm-btn small" id="btn-add-prod"><i class="fa fa-plus"></i> Thêm sản phẩm</button>
@@ -144,10 +149,10 @@
                     <thead><tr>
                         <th class="num">ID</th><th>Ảnh</th><th>Tên (VI)</th><th>Danh mục</th>
                         <th class="num">Giá</th><th class="num">Sale</th><th class="num">Kho</th>
-                        <th>Trạng thái</th><th>Thao tác</th>
+                        <th>Tồn kho</th><th>Trạng thái</th><th>Thao tác</th>
                     </tr></thead>
                     <tbody id="prod-body">
-                        <tr><td colspan="9" class="adm-loading">Đang tải…</td></tr>
+                        <tr><td colspan="10" class="adm-loading">Đang tải…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -426,52 +431,100 @@
         }
 
         // --- Products --------------------------------------------------------
+        var LOW_STOCK_THRESHOLD = 10;          // <= ngưỡng "sắp hết" (duy nhất, không lặp lại số)
+        var _prodAll = [];                     // toàn bộ SP đã tải (products không phân trang)
+        var _prodStockFilter = 'all';          // 'all' | 'low' | 'out'
+
+        // Phân loại tồn kho theo stock -> badge.
+        function stockInfo(stock) {
+            var n = Number(stock); if (!Number.isFinite(n)) n = 0;
+            if (n === 0) return { cls: 'stock-out', label: 'Hết hàng' };
+            if (n <= LOW_STOCK_THRESHOLD) return { cls: 'stock-low', label: 'Sắp hết' };
+            return { cls: 'stock-ok', label: 'Còn hàng' };
+        }
+        function stockBadge(stock) {
+            var s = stockInfo(stock);
+            return '<span class="pill ' + s.cls + '">' + s.label + '</span>';
+        }
+        function prodMatchesStock(p) {
+            var n = Number(p.stock); if (!Number.isFinite(n)) n = 0;
+            if (_prodStockFilter === 'low') return n > 0 && n <= LOW_STOCK_THRESHOLD;
+            if (_prodStockFilter === 'out') return n === 0;
+            return true;
+        }
+
         function loadProducts() {
             return api('/api/admin/products')
                 .then(function (r) { if (!r.ok) throw new Error('products ' + r.status); return r.json(); })
                 .then(function (data) { renderProducts(data.products || []); })
                 .catch(function (e) {
                     console.error('[admin] load products lỗi:', e);
-                    $('prod-body').innerHTML = '<tr><td colspan="9" class="adm-empty">Không tải được sản phẩm.</td></tr>';
+                    $('prod-body').innerHTML = '<tr><td colspan="10" class="adm-empty">Không tải được sản phẩm.</td></tr>';
                 });
         }
 
-        function renderProducts(list) {
-            $('prod-count').textContent = '(' + list.length + ')';
-            if (!list.length) {
-                $('prod-body').innerHTML = '<tr><td colspan="9" class="adm-empty">Chưa có sản phẩm nào.</td></tr>';
-                return;
-            }
-            $('prod-body').innerHTML = list.map(function (p) {
-                var cat = catById[p.category_id];
-                var catName = cat ? cat.name_vi : (p.category_slug || p.category_id);
-                var img = (p.images && p.images.length) ? p.images[0] : '';
-                var thumb = img ? '<img class="adm-thumb" src="' + esc(img) + '" alt="" onerror="this.style.visibility=\'hidden\'">' : '<span class="adm-thumb"></span>';
-                return '<tr>' +
-                    '<td class="num">' + p.id + '</td>' +
-                    '<td>' + thumb + '</td>' +
-                    '<td>' + esc(p.name_vi) + '<div class="adm-slug">' + esc(p.slug) + '</div></td>' +
-                    '<td>' + esc(catName) + '</td>' +
-                    '<td class="num">' + money(p.price) + '</td>' +
-                    '<td class="num">' + (p.sale_price != null ? money(p.sale_price) : '—') + '</td>' +
-                    '<td class="num">' + p.stock + '</td>' +
-                    '<td>' + (p.is_active ? '<span class="pill on">Đang bán</span>' : '<span class="pill off">Đã ẩn</span>') + '</td>' +
-                    '<td><div class="adm-actions">' +
-                        '<button type="button" class="adm-btn ghost small" data-edit="' + p.id + '">Sửa</button>' +
-                        '<button type="button" class="adm-btn danger small" data-del="' + p.id + '">Xóa</button>' +
-                    '</div></td>' +
-                '</tr>';
-            }).join('');
+        function prodRowHTML(p) {
+            var cat = catById[p.category_id];
+            var catName = cat ? cat.name_vi : (p.category_slug || p.category_id);
+            var img = (p.images && p.images.length) ? p.images[0] : '';
+            var thumb = img ? '<img class="adm-thumb" src="' + esc(img) + '" alt="" onerror="this.style.visibility=\'hidden\'">' : '<span class="adm-thumb"></span>';
+            return '<tr>' +
+                '<td class="num">' + p.id + '</td>' +
+                '<td>' + thumb + '</td>' +
+                '<td>' + esc(p.name_vi) + '<div class="adm-slug">' + esc(p.slug) + '</div></td>' +
+                '<td>' + esc(catName) + '</td>' +
+                '<td class="num">' + money(p.price) + '</td>' +
+                '<td class="num">' + (p.sale_price != null ? money(p.sale_price) : '—') + '</td>' +
+                '<td class="num">' + p.stock + '</td>' +
+                '<td>' + stockBadge(p.stock) + '</td>' +
+                '<td>' + (p.is_active ? '<span class="pill on">Đang bán</span>' : '<span class="pill off">Đã ẩn</span>') + '</td>' +
+                '<td><div class="adm-actions">' +
+                    '<button type="button" class="adm-btn ghost small" data-edit="' + p.id + '">Sửa</button>' +
+                    '<button type="button" class="adm-btn danger small" data-del="' + p.id + '">Xóa</button>' +
+                '</div></td>' +
+            '</tr>';
+        }
 
-            // Cache theo id để mở form sửa mà không cần fetch lại.
-            _prodCache = {};
-            list.forEach(function (p) { _prodCache[p.id] = p; });
-
+        function attachProdRowHandlers() {
             $('prod-body').querySelectorAll('[data-edit]').forEach(function (b) {
                 b.addEventListener('click', function () { openModal(_prodCache[b.getAttribute('data-edit')]); });
             });
             $('prod-body').querySelectorAll('[data-del]').forEach(function (b) {
                 b.addEventListener('click', function () { deleteProduct(_prodCache[b.getAttribute('data-del')]); });
+            });
+        }
+
+        function renderProducts(list) {
+            _prodAll = list || [];
+            // Cache theo id để mở form sửa (toàn bộ SP, không phụ thuộc filter).
+            _prodCache = {};
+            _prodAll.forEach(function (p) { _prodCache[p.id] = p; });
+            applyProductFilter();
+        }
+
+        function applyProductFilter() {
+            var list = _prodAll.filter(prodMatchesStock);
+            $('prod-count').textContent = '(' + list.length + ')';   // đếm theo tập đang hiển thị
+            if (!list.length) {
+                var msg = _prodStockFilter === 'low' ? 'Không có sản phẩm nào sắp hết'
+                        : _prodStockFilter === 'out' ? 'Không có sản phẩm nào hết hàng'
+                        : 'Chưa có sản phẩm nào';
+                $('prod-body').innerHTML = '<tr><td colspan="10" class="adm-empty">' + msg + '</td></tr>';
+                return;
+            }
+            $('prod-body').innerHTML = list.map(prodRowHTML).join('');
+            attachProdRowHandlers();
+        }
+
+        function bindProductFilters() {
+            var btns = document.querySelectorAll('.prod-filter-btn');
+            btns.forEach(function (b) {
+                b.addEventListener('click', function () {
+                    btns.forEach(function (x) { x.classList.remove('active'); x.removeAttribute('aria-current'); });
+                    b.classList.add('active'); b.setAttribute('aria-current', 'true');
+                    _prodStockFilter = b.getAttribute('data-stock-filter') || 'all';
+                    applyProductFilter();
+                });
             });
         }
         var _prodCache = {};
@@ -949,6 +1002,7 @@
                 applyAdmLang((e && e.detail && e.detail.lang) || localStorage.getItem('ql_lang') || 'vi');
             });
             $('btn-add-prod').addEventListener('click', function () { openModal(null); });
+            bindProductFilters();
             var ordStatus = $('order-status-filter'); if (ordStatus) ordStatus.addEventListener('change', onOrderFilterChange);
             var ordSearch = $('order-search'); if (ordSearch) ordSearch.addEventListener('input', onOrderSearchInput);
 
