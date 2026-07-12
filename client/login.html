@@ -225,6 +225,14 @@
             el.textContent = text;
             el.className = 'auth-msg show ' + type;
         }
+
+        // Bị chuyển hướng từ nút "Đăng xuất" (account-menu) lúc CHƯA đăng nhập.
+        (function () {
+            var notice = new URLSearchParams(window.location.search).get('notice');
+            if (notice === 'need-login' && typeof showMessage === 'function') {
+                showMessage('login-msg', 'Bạn chưa đăng nhập tài khoản', true);
+            }
+        })();
     </script>
     <script src="js/i18n.js"></script>
     <script src="js/reveal.js"></script>
