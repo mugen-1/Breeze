@@ -105,6 +105,20 @@ body.adm-authed .adm-main { margin-left:232px; }
 .pill.status { background:var(--c-cream); color:var(--c-ink); border:1px solid var(--c-line); }
 .pill.role-admin { background:var(--c-ink); color:var(--c-cream); }
 .pill.role-customer { background:var(--c-cream); color:var(--c-ink); border:1px solid var(--c-line); }
+/* Badge tồn kho (contrast AA): xanh dịu / vàng amber / đỏ danger */
+.pill.stock-ok { background:#d4edda; color:#1c6b2c; }
+.pill.stock-low { background:#f9e6c2; color:#7a4f00; }
+.pill.stock-out { background:#f8d7da; color:#a12833; }
+
+/* --- Bộ lọc tồn kho (segmented) trên bảng Sản phẩm --- */
+.prod-filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.prod-filter-btn {
+    background:var(--c-bg); border:1px solid var(--c-line); cursor:pointer; font-family:inherit;
+    font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:var(--c-muted); padding:6px 16px;
+}
+.prod-filter-btn:hover { color:var(--c-ink); border-color:var(--c-ink); }
+.prod-filter-btn.active { background:var(--c-ink); color:var(--c-bg); border-color:var(--c-ink); }
+.prod-filter-btn:focus-visible { outline:2px solid var(--c-ink); outline-offset:2px; }
 
 /* --- Revenue chart --- */
 .chart-card { border:1px solid var(--c-line); padding:22px 24px 24px; margin-bottom:44px; }
