@@ -23,15 +23,15 @@ function dangKy() {
     const xacNhan = document.getElementById('reg-confirm').value;
 
     if (!ten || !email || !matKhau || !xacNhan) {
-        showMessage('signup-msg', 'Vui long dien day du thong tin.', true);
+        showMessage('signup-msg', 'Vui lòng nhập đầy đủ thông tin.', true);
         return;
     }
     if (matKhau !== xacNhan) {
-        showMessage('signup-msg', 'Mat khau xac nhan khong khop.', true);
+        showMessage('signup-msg', 'Mật khẩu xác nhận không khớp.', true);
         return;
     }
     if (matKhau.length < 6) {
-        showMessage('signup-msg', 'Mat khau phai it nhat 6 ky tu.', true);
+        showMessage('signup-msg', 'Mật khẩu phải ít nhất 6 ký tự.', true);
         return;
     }
 
@@ -40,7 +40,7 @@ function dangKy() {
             return userCredential.user.updateProfile({ displayName: ten });
         })
         .then(() => {
-            showMessage('signup-msg', 'Dang ky thanh cong! Dang chuyen trang...', false);
+            showMessage('signup-msg', 'Đăng ký thành công! Đang chuyển trang...', false);
             setTimeout(() => { window.location.href = 'login.html'; }, 1500);
         })
         .catch((error) => {
@@ -78,7 +78,7 @@ function dangNhap() {
             if (redirect === 'checkout.html') {
                 if (isAdmin) {
                     // Admin không được đặt đơn -> báo lỗi, ở lại trang login.
-                    showMessage('login-msg', 'Tài Khoản Không Đúng — tài khoản admin không thể thanh toán đơn hàng.', true);
+                    showMessage('login-msg', 'Tài khoản không hợp lệ.', true);
                     return;
                 }
                 window.location.href = 'checkout.html';
