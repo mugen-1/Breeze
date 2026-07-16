@@ -31,23 +31,18 @@ const PRODUCTS = [
 
   // ---------- sanpham-giay (Giày) ----------
   { id: 22, name: 'Air Jordan 1 Low',               main: 'giay-nam1.png',  hover: 'giay-nam2.png'  },
-  { id: 26, name: 'Sandal Da Nam',                  main: 'giay-nam7.png',  hover: 'giay-nam8.png'  },
-  { id: 30, name: 'Sandal Thể Thao',                main: 'giay-nam13.png', hover: 'giay-nam14.png' },
+  { id: 26, name: 'Running Shoes',                  main: 'giay1.png',  hover: 'giay2.png'  },
+  { id: 30, name: 'Air Max 90 Shoes',                main: 'giay3.png', hover: 'giay4.png' },
 
   // ---------- handbags ----------
-  { id: 32, name: 'Túi Vải Canvas',                 main: '', hover: '' },
-  { id: 35, name: 'Túi Dây Rút Đi Biển',            main: '', hover: '' },
-  { id: 39, name: 'Túi Đeo Vai Denim',              main: '', hover: '' },
+  { id: 32, name: 'Crossbody Bag',                 main: 'tui15.png', hover: 'tui16.png' },
+  { id: 35, name: 'Storage Bag',            main: 'tui17.png', hover: 'tui18.png' },
+  { id: 39, name: 'Drawstring Bag',              main: 'tui19.png', hover: 'tui20.png' },
 
   // ---------- gold-jewellery (Phụ Kiện) ----------
-  { id: 42, name: 'Nón Bucket Vải',                 main: '', hover: '' },
-  { id: 45, name: 'Nón Rơm Panama',                 main: '', hover: '' },
-  { id: 48, name: 'Balo Dây Rút',                   main: '', hover: '' },
-
-  // ---------- nhan ----------
-  { id: 52, name: 'Nhẫn Đá Màu',                    main: '', hover: '' },
-  { id: 55, name: 'Nhẫn Đính Đá Nhiệt Đới',         main: '', hover: '' },
-  { id: 58, name: 'Nhẫn Resin Màu',                 main: '', hover: '' },
+  { id: 42, name: 'Square Sunglasses',                 main: 'phukien15.png', hover: 'phukien16.png' },
+  { id: 45, name: 'Big Square Sunglasses',                 main: 'phukien18.png', },
+  { id: 48, name: 'Brim Hat',                   main: 'phukien19.png', hover: 'phukien20.png' },
 ];
 // ===================================
 
