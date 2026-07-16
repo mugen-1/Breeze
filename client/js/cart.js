@@ -245,6 +245,7 @@ function _injectCartIcon() {
 function _injectAddToCartButtons() {
     document.querySelectorAll('.product-info').forEach(function (info) {
         if (info.querySelector('.btn-add-cart, .btn-soldout')) return;
+        if (info.closest('[data-no-cart]')) return; // vùng chỉ để xem, không chèn nút thêm giỏ
         var item = info.closest('.product-item');
         const btn = document.createElement('button');
         if (_isSoldOut(item)) {
