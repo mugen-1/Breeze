@@ -26,10 +26,19 @@
   pop.className = 'acct-pop';
   pop.setAttribute('role', 'menu');
   pop.hidden = true;
-  pop.innerHTML =
-    '<button type="button" class="acct-pop-btn" data-act="account" role="menuitem">Tài khoản</button>' +
-    '<button type="button" class="acct-pop-btn" data-act="logout" role="menuitem">Đăng xuất</button>';
-  document.body.appendChild(pop);
+  document.body.appendChild(pop);       // nội dung dựng động theo trạng thái đăng nhập (render)
+
+  // Lời chào "Xin chào, <tên>" chèn cạnh icon, chỉ hiện khi đã đăng nhập.
+  var greet = document.createElement('span');
+  greet.className = 'acct-greet';
+  greet.hidden = true;
+  if (trigger.parentNode) trigger.parentNode.insertBefore(greet, trigger);
+
+  // Trang index (hero): KHÔNG hiện lời chào cạnh icon, chỉ dropdown khi bấm.
+  var isIndexPage = (function () {
+    var p = (location.pathname.split('/').pop() || '').toLowerCase();
+    return p === '' || p === 'index.html';
+  })();
 
   trigger.setAttribute('aria-haspopup', 'menu');
   trigger.setAttribute('aria-expanded', 'false');
@@ -82,12 +91,45 @@
     if (!btn) return;
     var act = btn.getAttribute('data-act');
     close();
-    if (act === 'account') {
+    if (act === 'login') {
       window.location.href = 'login.html';
     } else if (act === 'logout') {
       doLogout();
     }
   });
+
+  // ---- dựng nội dung theo trạng thái, cập nhật khi đăng nhập/đăng xuất ----
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function nameOf(user) {
+    if (!user) return '';
+    var n = user.displayName;
+    if (!n && user.email) n = user.email.split('@')[0];   // không có tên -> lấy phần trước @
+    return n || 'bạn';
+  }
+  function render(user) {
+    if (user) {
+      var nm = nameOf(user);
+      greet.textContent = 'Xin chào, ' + nm;
+      greet.hidden = isIndexPage;   // index: ẩn lời chào, các trang khác vẫn hiện
+      pop.innerHTML =
+        '<div class="acct-pop-name">' + escapeHtml(nm) + '</div>' +
+        '<button type="button" class="acct-pop-btn" data-act="logout" role="menuitem">Đăng xuất</button>';
+    } else {
+      greet.hidden = true;
+      pop.innerHTML =
+        '<button type="button" class="acct-pop-btn" data-act="login" role="menuitem">Đăng nhập</button>';
+    }
+    if (!pop.hidden) place();   // đang mở thì canh lại vị trí theo chiều cao mới
+  }
+
+  render(window.AuthHelper && typeof window.AuthHelper.getUser === 'function'
+    ? window.AuthHelper.getUser() : null);
+  if (window.AuthHelper && typeof window.AuthHelper.onChange === 'function') {
+    window.AuthHelper.onChange(render);
+  }
 
   function isLoggedIn() {
     try {
@@ -135,6 +177,14 @@
         'box-shadow:0 10px 30px rgba(14,14,14,.15);padding:6px;' +
         'font-family:var(--font-ui,\'Jost\',sans-serif);}' +
       '.acct-pop[hidden]{display:none;}' +
+      '.acct-greet{font-family:var(--font-ui,\'Jost\',sans-serif);font-size:13px;' +
+        'color:var(--c-muted,#6b6b6b);margin-right:12px;white-space:nowrap;}' +
+      '.acct-greet[hidden]{display:none;}' +
+      '.acct-pop-name{font-family:var(--font-ui,\'Jost\',sans-serif);font-size:13px;' +
+        'color:var(--c-muted,#6b6b6b);padding:8px 14px 10px;margin-bottom:4px;' +
+        'border-bottom:1px solid var(--c-line,#e6e3dd);max-width:220px;overflow:hidden;' +
+        'text-overflow:ellipsis;white-space:nowrap;}' +
+      '@media (max-width:600px){.acct-greet{display:none;}}' +
       '.acct-pop-btn{appearance:none;-webkit-appearance:none;border:0;background:transparent;' +
         'font:inherit;font-size:14px;letter-spacing:.02em;color:var(--c-ink,#0e0e0e);' +
         'text-align:left;padding:10px 14px;cursor:pointer;border-radius:7px;' +
