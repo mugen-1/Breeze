@@ -1,7 +1,7 @@
 /* =====================================================================
    BreezeShopDB — Seed dữ liệu (cấu trúc GỘP: chỉ mục "Sản phẩm")
-   - 6 categories: Áo/Quần/Giày (sanpham-*), Túi Xách, Phụ Kiện, Nhẫn.
-   - 59 sản phẩm (id 1..59 theo thứ tự danh mục), giá VND, kèm ảnh hiện có.
+   - 5 categories: Áo/Quần/Giày & Dép (sanpham-*), Túi Xách, Phụ Kiện.
+   - 50 sản phẩm (id 1..50 theo thứ tự danh mục), giá VND, kèm ảnh hiện có.
    - KHÔNG seed users / orders / order_items.
    - Idempotent: xoá dữ liệu cũ trước khi seed lại.
    ===================================================================== */
@@ -20,10 +20,9 @@ GO
 INSERT INTO dbo.categories (slug, name_vi, name_en) VALUES
 (N'sanpham-ao', N'Áo', N'Shirts'),
 (N'sanpham-quan', N'Quần', N'Pants'),
-(N'sanpham-giay', N'Giày', N'Shoes'),
+(N'sanpham-giay', N'Giày & Dép', N'Shoes & Sandals'),
 (N'handbags', N'Túi Xách', N'Handbags'),
-(N'gold-jewellery', N'Phụ Kiện', N'Accessories'),
-(N'nhan', N'Nhẫn', N'Rings');
+(N'gold-jewellery', N'Phụ Kiện', N'Accessories');
 GO
 
 /* ---------------------------- PRODUCTS ------------------------------ */
@@ -32,7 +31,6 @@ DECLARE @c_quan INT = (SELECT id FROM dbo.categories WHERE slug='sanpham-quan');
 DECLARE @c_giay INT = (SELECT id FROM dbo.categories WHERE slug='sanpham-giay');
 DECLARE @c_tui INT = (SELECT id FROM dbo.categories WHERE slug='handbags');
 DECLARE @c_pk INT = (SELECT id FROM dbo.categories WHERE slug='gold-jewellery');
-DECLARE @c_nhan INT = (SELECT id FROM dbo.categories WHERE slug='nhan');
 
 /* ===== ÁO (10) ===== */
 INSERT INTO dbo.products (slug, name_vi, name_en, description_vi, description_en, price, sale_price, images, category_id, stock) VALUES
@@ -98,17 +96,5 @@ INSERT INTO dbo.products (slug, name_vi, name_en, description_vi, description_en
 (N'balo-day-rut', N'Balo Dây Rút', N'Drawstring Backpack', N'Balo dây rút nhẹ, gấp gọn mang theo dễ dàng.', N'Lightweight drawstring backpack, easy to fold and carry.', 159000, 129000, N'[]', @c_pk, 45),
 (N'balo-chong-nuoc', N'Balo Chống Nước', N'Waterproof Backpack', N'Balo chống nước bền bỉ, phù hợp mọi chuyến đi.', N'Durable waterproof backpack for any trip.', 389000, NULL, N'[]', @c_pk, 20),
 (N'balo-denim', N'Balo Vải Denim', N'Denim Backpack', N'Balo denim cá tính, phối hợp dễ dàng.', N'Stylish denim backpack, easy to pair.', 329000, NULL, N'[]', @c_pk, 22);
-
-/* ===== NHẪN (9) ===== */
-INSERT INTO dbo.products (slug, name_vi, name_en, description_vi, description_en, price, sale_price, images, category_id, stock) VALUES
-(N'nhan-vo-so', N'Nhẫn Vỏ Sò', N'Seashell Ring', N'Nhẫn hình vỏ sò dễ thương, gợi nhắc mùa hè.', N'Cute seashell-shaped ring, a summer memento.', 89000, NULL, N'[]', @c_nhan, 40),
-(N'nhan-da-mau', N'Nhẫn Đá Màu', N'Colored Stone Ring', N'Nhẫn đính đá màu tươi sáng, nổi bật.', N'Ring with bright colored stone accent.', 109000, 89000, N'[]', @c_nhan, 34),
-(N'nhan-day-kim-loai', N'Nhẫn Dây Kim Loại Mảnh', N'Thin Metal Band Ring', N'Nhẫn dây kim loại mảnh, đơn giản tinh tế.', N'Thin metal band ring, simple and refined.', 79000, NULL, N'[]', @c_nhan, 45),
-(N'nhan-ngoc-trai', N'Nhẫn Ngọc Trai Nhân Tạo', N'Faux Pearl Ring', N'Nhẫn đính ngọc trai nhân tạo, nữ tính.', N'Faux pearl ring, delicate and feminine.', 99000, NULL, N'[]', @c_nhan, 30),
-(N'nhan-da-nhiet-doi', N'Nhẫn Đính Đá Nhiệt Đới', N'Tropical Stone Ring', N'Nhẫn đính đá màu phong cách nhiệt đới rực rỡ.', N'Vibrant tropical-style stone ring.', 119000, 99000, N'[]', @c_nhan, 26),
-(N'nhan-bac-tron', N'Nhẫn Bạc Trơn', N'Plain Silver Ring', N'Nhẫn bạc trơn tối giản, dễ phối mọi lúc.', N'Minimal plain silver ring, easy to wear anytime.', 129000, NULL, N'[]', @c_nhan, 36),
-(N'nhan-xep-tang', N'Nhẫn Xếp Tầng', N'Stackable Ring Set', N'Bộ nhẫn xếp tầng nhiều kiểu, phối linh hoạt.', N'Stackable ring set, mix and match freely.', 149000, NULL, N'[]', @c_nhan, 28),
-(N'nhan-resin-mau', N'Nhẫn Resin Màu', N'Colorful Resin Ring', N'Nhẫn resin nhiều màu sắc tươi vui.', N'Playful colorful resin ring.', 69000, 59000, N'[]', @c_nhan, 42),
-(N'nhan-dieu-chinh-size', N'Nhẫn Điều Chỉnh Size', N'Adjustable Ring', N'Nhẫn thiết kế điều chỉnh size linh hoạt, vừa mọi ngón tay.', N'Adjustable-size ring design, fits any finger.', 89000, NULL, N'[]', @c_nhan, 38);
 
 GO

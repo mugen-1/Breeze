@@ -16,13 +16,13 @@ const { getPool, sql } = require('../db');
 const IMG_DIR = 'img/'; // đường dẫn thư mục ảnh (tính từ client/), thường không cần đổi
 
 const PRODUCTS = [
-  { id: 31, name: 'Túi Cói Đan Tay',              main: '', hover: '' },
-  { id: 33, name: 'Túi Đeo Chéo Mini',            main: '', hover: '' },
-  { id: 34, name: 'Túi Tote Họa Tiết Nhiệt Đới',  main: '', hover: '' },
-  { id: 36, name: 'Túi Xách Tay Lưới',            main: '', hover: '' },
-  { id: 37, name: 'Túi Vải Bố',                   main: '', hover: '' },
-  { id: 38, name: 'Túi Clutch Cói',               main: '', hover: '' },
-  { id: 40, name: 'Túi Chống Nước Đi Biển',       main: '', hover: '' },
+  { id: 31, name: 'TOTE BAG',              main: 'tui1.png', },
+  { id: 33, name: 'Túi Tote Jean',            main: 'tui4.png', },
+  { id: 34, name: 'Túi dây rút denim',  main: 'tui5.png', hover: 'tui6.png' },
+  { id: 36, name: 'Túi tote hình in',            main: 'tui7.png', hover: 'tui8.png' },
+  { id: 37, name: 'Mini Shoulder Bag',                   main: 'tui9.png', hover: 'tui10.png' },
+  { id: 38, name: 'Crochet Bag',               main: 'tui11.png', hover: 'tui12.png' },
+  { id: 40, name: 'Quilted Bag',       main: 'tui13.png', hover: 'tui14.png' },
 ];
 // ===================================
 

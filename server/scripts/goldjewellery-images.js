@@ -16,13 +16,13 @@ const { getPool, sql } = require('../db');
 const IMG_DIR = 'img/'; // đường dẫn thư mục ảnh (tính từ client/), thường không cần đổi
 
 const PRODUCTS = [
-  { id: 41, name: 'Nón Rộng Vành Cói',    main: '', hover: '' },
-  { id: 43, name: 'Nón Lưỡi Trai Basic',  main: '', hover: '' },
-  { id: 44, name: 'Nón Kết Vải Lanh',     main: '', hover: '' },
-  { id: 46, name: 'Balo Canvas Basic',    main: '', hover: '' },
-  { id: 47, name: 'Balo Mini Đi Biển',    main: '', hover: '' },
-  { id: 49, name: 'Balo Chống Nước',      main: '', hover: '' },
-  { id: 50, name: 'Balo Vải Denim',       main: '', hover: '' },
+  { id: 41, name: 'Mắt Kính',    main: 'phukien1.png', hover: 'phukien2.png' },
+  { id: 43, name: 'Vớ Crew',  main: 'phukien3.png', hover: 'phukien4.png' },
+  { id: 44, name: 'Thắt Lưng',     main: 'phukien5.png', hover: 'phukien6.png' },
+  { id: 46, name: 'Nón Lưỡi Trai',    main: 'phukien7.png', hover: 'phukien8.png' },
+  { id: 47, name: 'Nón Life Work',    main: 'phukien9.png', hover: 'phukien10.png' },
+  { id: 49, name: 'Ví Dài Canvas',      main: 'phukien11.png', hover: 'phukien11.png' },
+  { id: 50, name: 'Ví Ngắn COACK',       main: 'phukien13.png', hover: 'phukien14.png' },
 ];
 // ===================================
 
