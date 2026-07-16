@@ -20,20 +20,40 @@ body { background:var(--c-bg); color:var(--c-ink); font-family:var(--font-ui); m
     font-family:var(--font-ui); font-size:11px; letter-spacing:2px; text-transform:uppercase;
     color:var(--c-muted); margin-left:6px;
 }
-.adm-search { position:relative; flex:1; max-width:420px; display:flex; align-items:center; }
-.adm-search .fa { position:absolute; left:12px; color:var(--c-muted); font-size:13px; pointer-events:none; }
+/* Search bo tròn (pill), nằm trong cụm bên phải cạnh chuông + tài khoản */
+.adm-search { position:relative; flex:0 0 auto; width:240px; display:flex; align-items:center; }
+.adm-search .fa { position:absolute; left:14px; color:var(--c-muted); font-size:13px; pointer-events:none; }
 .adm-search input {
-    width:100%; box-sizing:border-box; padding:9px 12px 9px 32px;
+    width:100%; box-sizing:border-box; padding:8px 16px 8px 34px;
     border:1px solid var(--c-line); background:var(--c-cream);
-    font-family:inherit; font-size:13.5px; color:var(--c-ink); border-radius:2px;
+    font-family:inherit; font-size:13.5px; color:var(--c-ink); border-radius:999px;
 }
 .adm-search input:focus { outline:2px solid var(--c-ink); outline-offset:-1px; background:var(--c-bg); }
-.adm-topbar-right { display:flex; align-items:center; gap:16px; margin-left:auto; font-size:13px; color:var(--c-muted); }
+.adm-topbar-right { display:flex; align-items:center; gap:14px; margin-left:auto; font-size:13px; color:var(--c-muted); }
 .adm-bell { background:none; border:none; cursor:pointer; color:var(--c-ink); font-size:17px; padding:4px; line-height:1; }
 .adm-bell:hover { color:var(--c-muted); }
-.adm-topbar-right #who { font-weight:500; color:var(--c-ink); }
+
+/* Icon tài khoản + dropdown (email + Đăng xuất) */
+.adm-account { position:relative; }
+.adm-account-btn {
+    display:flex; align-items:center; justify-content:center; width:36px; height:36px;
+    background:var(--c-cream); border:1px solid var(--c-line); border-radius:999px;
+    cursor:pointer; color:var(--c-ink); font-size:16px; line-height:1;
+}
+.adm-account-btn:hover { background:var(--c-ink); color:var(--c-bg); border-color:var(--c-ink); }
+.adm-account-menu {
+    position:absolute; top:calc(100% + 10px); right:0; min-width:220px; z-index:700;
+    background:var(--c-bg); border:1px solid var(--c-line); box-shadow:0 8px 24px rgba(14,14,14,.12);
+    padding:8px; display:flex; flex-direction:column; gap:8px;
+}
+.adm-account-menu[hidden] { display:none; }
+.adm-account-email {
+    font-size:12.5px; color:var(--c-muted); padding:6px 10px 10px;
+    border-bottom:1px solid var(--c-line); word-break:break-all; text-align:left;
+}
 .adm-logout { background:none; border:1px solid var(--c-line); padding:6px 14px; cursor:pointer; font-family:inherit; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:var(--c-ink); }
 .adm-logout:hover { background:var(--c-ink); color:var(--c-bg); border-color:var(--c-ink); }
+.adm-account-menu .adm-logout { width:100%; text-align:center; }
 .adm-topbar button:focus-visible, .adm-topbar input:focus-visible, .adm-nav-item:focus-visible {
     outline:2px solid var(--c-ink); outline-offset:2px;
 }

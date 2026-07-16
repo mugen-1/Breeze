@@ -19,17 +19,25 @@
             <i class="fa fa-bars" aria-hidden="true"></i>
         </button>
         <a href="index.html" class="adm-logo">BREEZE <small>Admin</small></a>
-        <div class="adm-search">
-            <i class="fa fa-search" aria-hidden="true"></i>
-            <input type="search" id="top-search" data-i18n-ph="search" placeholder="Tìm mã đơn / khách hàng…"
-                   aria-label="Tìm đơn theo mã hoặc khách hàng">
-        </div>
         <div class="adm-topbar-right" id="bar-right" style="visibility:hidden;">
+            <div class="adm-search">
+                <i class="fa fa-search" aria-hidden="true"></i>
+                <input type="search" id="top-search" data-i18n-ph="search" placeholder="Tìm mã đơn / khách hàng…"
+                       aria-label="Tìm đơn theo mã hoặc khách hàng">
+            </div>
             <button type="button" class="adm-bell" aria-label="Thông báo">
                 <i class="fa fa-bell-o" aria-hidden="true"></i>
             </button>
-            <span id="who"></span>
-            <button type="button" class="adm-logout" id="btn-logout" data-i18n="logout">Đăng xuất</button>
+            <div class="adm-account" id="adm-account">
+                <button type="button" class="adm-account-btn" id="adm-account-btn"
+                        aria-haspopup="true" aria-expanded="false" aria-label="Tài khoản">
+                    <i class="fa fa-user" aria-hidden="true"></i>
+                </button>
+                <div class="adm-account-menu" id="adm-account-menu" role="menu" hidden>
+                    <div class="adm-account-email" id="who"></div>
+                    <button type="button" class="adm-logout" id="btn-logout" data-i18n="logout" role="menuitem">Đăng xuất</button>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -396,6 +404,22 @@
         }
         function toggleDrawer() {
             if (document.body.classList.contains('adm-drawer-open')) closeDrawer(); else openDrawer();
+        }
+
+        // --- Dropdown tài khoản (email + Đăng xuất) --------------------------
+        function openAccountMenu() {
+            var m = $('adm-account-menu'), b = $('adm-account-btn');
+            if (m) m.hidden = false;
+            if (b) b.setAttribute('aria-expanded', 'true');
+        }
+        function closeAccountMenu() {
+            var m = $('adm-account-menu'), b = $('adm-account-btn');
+            if (m) m.hidden = true;
+            if (b) b.setAttribute('aria-expanded', 'false');
+        }
+        function toggleAccountMenu() {
+            var m = $('adm-account-menu');
+            if (m && m.hidden) openAccountMenu(); else closeAccountMenu();
         }
 
         // --- i18n khung (VI/EN): nhãn sidebar/topbar/placeholder -------------
@@ -997,6 +1021,15 @@
             bindNav();
             var menuBtn = $('adm-menu-btn'); if (menuBtn) menuBtn.addEventListener('click', toggleDrawer);
             var backdrop = $('adm-backdrop'); if (backdrop) backdrop.addEventListener('click', closeDrawer);
+
+            // Dropdown tài khoản: toggle khi bấm icon, đóng khi click ra ngoài / Escape.
+            var accBtn = $('adm-account-btn');
+            if (accBtn) accBtn.addEventListener('click', function (e) { e.stopPropagation(); toggleAccountMenu(); });
+            document.addEventListener('click', function (e) {
+                var acc = $('adm-account');
+                if (acc && !acc.contains(e.target)) closeAccountMenu();
+            });
+            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAccountMenu(); });
             applyAdmLang(localStorage.getItem('ql_lang') || 'vi');
             document.addEventListener('langchange', function (e) {
                 applyAdmLang((e && e.detail && e.detail.lang) || localStorage.getItem('ql_lang') || 'vi');
