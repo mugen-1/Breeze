@@ -6,11 +6,11 @@
         vi: {
             nav: { home: 'Trang Chủ', cat: 'Danh Mục', feedback: 'Phản Hồi', staff: 'Quản Lý NV' },
             mega: { men: 'Sản phẩm', women: 'Nữ', gold: 'Phụ Kiện', handbags: 'Túi Xách', sale: 'Khuyến Mãi' },
-            megaItems: { shirt: 'Áo', pants: 'Quần', shoes: 'Giày', accessory: 'Phụ Kiện', ring: 'Nhẫn' },
+            megaItems: { shirt: 'Áo', pants: 'Quần', shoes: 'Giày & Dép', accessory: 'Phụ Kiện' },
             sidebar: { title: 'Danh Mục', men: 'Sản phẩm', women: 'Nữ', gold: 'Phụ Kiện', handbags: 'Túi Xách', sale: 'Khuyến Mãi' },
             filter: { price: 'Khoảng Giá', all: 'Tất cả', u50: 'Dưới 200.000đ', r5010: '200.000đ – 400.000đ', r10020: '400.000đ – 700.000đ', o200: 'Trên 700.000đ', sort: 'Sắp Xếp', newest: 'Mới nhất', asc: 'Giá tăng dần', desc: 'Giá giảm dần' },
-            page: { 'sanpham-ao.html': 'Áo', 'gold-jewellery.html': 'Phụ Kiện', 'handbags.html': 'Túi Xách', 'sanpham-quan.html': 'Quần', 'sanpham-giay.html': 'Giày', 'nhan.html': 'Nhẫn', 'sale.html': 'Khuyến Mãi' },
-            footer: { home: 'Trang chủ', ret: 'Chính sách đổi trả', ship: 'Chính sách giao hàng', priv: 'Chính sách bảo mật', branch: 'Chi nhánh cửa hàng', contact: 'Liên Hệ Với Chúng Tôi', cart: 'Giỏ Hàng Của Tôi', store: 'Định Vị Cửa Hàng', helpTitle: 'Chúng Tôi Có Thể Giúp Bạn?', companyTitle: 'Về Chúng Tôi', langTitle: 'Ngôn Ngữ', countryTitle: 'Quốc Gia/Khu Vực', countryName: 'Việt Nam' },
+            page: { 'sanpham-ao.html': 'Áo', 'gold-jewellery.html': 'Phụ Kiện', 'handbags.html': 'Túi Xách', 'sanpham-quan.html': 'Quần', 'sanpham-giay.html': 'Giày & Dép', 'sale.html': 'Khuyến Mãi' },
+            footer: { home: 'Trang chủ', ret: 'Chính sách đổi trả', ship: 'Chính sách giao hàng', priv: 'Chính sách bảo mật', cart: 'Giỏ Hàng Của Tôi', helpTitle: 'Chúng Tôi Có Thể Giúp Bạn?', companyTitle: 'Về Chúng Tôi', langTitle: 'Ngôn Ngữ', countryTitle: 'Quốc Gia/Khu Vực', countryName: 'Việt Nam' },
             fd: { title: 'Lọc & Sắp Xếp', clear: 'Xoá tất cả', price: 'Khoảng Giá', sort: 'Sắp Xếp', newest: 'Mới nhất', asc: 'Giá tăng dần', desc: 'Giá giảm dần', all: 'Tất cả', u50: 'Dưới 200.000đ', r5010: '200.000đ – 400.000đ', r10020: '400.000đ – 700.000đ', o200: 'Trên 700.000đ', btn: 'Lọc & Sắp Xếp', showItems: function (n) { return 'Hiện ' + n + ' sản phẩm →'; }, noProduct: 'Không tìm thấy sản phẩm, xin lỗi vì sự bất tiện này' },
             cart: { add: 'Thêm vào giỏ', added: '✓ Đã thêm' },
             cartPage: {
@@ -54,11 +54,11 @@
         en: {
             nav: { home: 'Home', cat: 'Categories', feedback: 'Feedback', staff: 'Staff Login' },
             mega: { men: 'Products', women: 'Women', gold: 'Accessories', handbags: 'Handbags', sale: 'Sale' },
-            megaItems: { shirt: 'Shirt', pants: 'Pants', shoes: 'Shoes', accessory: 'Accessories', ring: 'Ring' },
+            megaItems: { shirt: 'Shirt', pants: 'Pants', shoes: 'Shoes & Sandals', accessory: 'Accessories' },
             sidebar: { title: 'Categories', men: 'Products', women: 'Women', gold: 'Accessories', handbags: 'Handbags', sale: 'Sale' },
             filter: { price: 'Price Range', all: 'All', u50: 'Under 200,000đ', r5010: '200,000đ – 400,000đ', r10020: '400,000đ – 700,000đ', o200: 'Over 700,000đ', sort: 'Sort By', newest: 'Newest', asc: 'Price: Low to High', desc: 'Price: High to Low' },
-            page: { 'sanpham-ao.html': 'Shirt', 'gold-jewellery.html': 'Accessories', 'handbags.html': 'Handbags', 'sanpham-quan.html': 'Pants', 'sanpham-giay.html': 'Shoes', 'nhan.html': 'Ring', 'sale.html': 'Sale' },
-            footer: { home: 'Home', ret: 'Return Policy', ship: 'Shipping Policy', priv: 'Privacy Policy', branch: 'Store Branches', contact: 'Contact Us', cart: 'My Cart', store: 'Store Locator', helpTitle: 'May We Help You?', companyTitle: 'About Us', langTitle: 'Language', countryTitle: 'Country/Region', countryName: 'Vietnam' },
+            page: { 'sanpham-ao.html': 'Shirt', 'gold-jewellery.html': 'Accessories', 'handbags.html': 'Handbags', 'sanpham-quan.html': 'Pants', 'sanpham-giay.html': 'Shoes & Sandals', 'sale.html': 'Sale' },
+            footer: { home: 'Home', ret: 'Return Policy', ship: 'Shipping Policy', priv: 'Privacy Policy', cart: 'My Cart', helpTitle: 'May We Help You?', companyTitle: 'About Us', langTitle: 'Language', countryTitle: 'Country/Region', countryName: 'Vietnam' },
             fd: { title: 'Filter & Sort', clear: 'Clear All', price: 'Price Range', sort: 'Sort By', newest: 'Newest', asc: 'Price: Low to High', desc: 'Price: High to Low', all: 'All', u50: 'Under 200,000đ', r5010: '200,000đ – 400,000đ', r10020: '400,000đ – 700,000đ', o200: 'Over 700,000đ', btn: 'Filter & Sort', showItems: function (n) { return 'Show ' + n + ' items →'; }, noProduct: 'No products found, sorry for the inconvenience' },
             cart: { add: 'Add to cart', added: '✓ Added' },
             cartPage: {
@@ -265,7 +265,6 @@
             var href = a.getAttribute('href') || '';
             if (href === 'index.html') a.textContent = t.nav.home;
             else if (a.classList.contains('mega-trigger')) a.innerHTML = t.nav.cat + ' <span class="mega-arrow">&#9660;</span>';
-            else if (href === 'lienheshop.html') a.textContent = t.nav.feedback;
             else if (href === 'login.html') a.textContent = t.nav.staff;
         });
 
@@ -303,7 +302,6 @@
             else if (href === 'sanpham-quan.html') a.textContent = t.megaItems.pants;
             else if (href === 'sanpham-giay.html') a.textContent = t.megaItems.shoes;
             else if (href === 'gold-jewellery.html') a.textContent = t.megaItems.accessory;
-            else if (href === 'nhan.html') a.textContent = t.megaItems.ring;
             else if (href === 'handbags.html') a.textContent = t.mega.handbags;
             else if (href === 'sale.html') a.textContent = t.mega.sale;
         });
@@ -318,7 +316,6 @@
             else if (href === 'chinhsachdoitra.html') a.textContent = t.footer.ret;
             else if (href === 'chinhsachgiaohang.html') a.textContent = t.footer.ship;
             else if (href === 'chinhsachbaomat.html') a.textContent = t.footer.priv;
-            else if (href === 'chinhanhcuahang.html') a.textContent = t.footer.branch;
         });
         var fEl;
         fEl = document.getElementById('footer-help-title'); if (fEl) fEl.textContent = t.footer.helpTitle;
@@ -451,7 +448,6 @@
             else if (href === 'sanpham-quan.html') a.textContent = t.megaItems.pants;
             else if (href === 'sanpham-giay.html') a.textContent = t.megaItems.shoes;
             else if (href === 'gold-jewellery.html') a.textContent = t.megaItems.accessory;
-            else if (href === 'nhan.html') a.textContent = t.megaItems.ring;
             else if (href === 'handbags.html') a.textContent = t.mega.handbags;
             else if (href === 'sale.html') a.textContent = t.mega.sale;
         });
@@ -460,7 +456,6 @@
             var href = a.getAttribute('href') || '';
             if (href === 'login.html') a.textContent = t.drawer.signin;
             else if (href === 'orders.html') a.textContent = t.drawer.orders;
-            else if (href === 'lienheshop.html') a.textContent = t.nav.feedback;
         });
     }
 

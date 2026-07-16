@@ -284,7 +284,7 @@
                     <ul class="drawer-sub">
                         <li><a href="sanpham-ao.html">Áo</a></li>
                         <li><a href="sanpham-quan.html">Quần</a></li>
-                        <li><a href="sanpham-giay.html">Giày</a></li>
+                        <li><a href="sanpham-giay.html">Giày & Dép</a></li>
                     </ul>
                 </li>
                 <li class="drawer-acc-item">
@@ -293,7 +293,6 @@
                     </button>
                     <ul class="drawer-sub">
                         <li><a href="gold-jewellery.html">Phụ Kiện</a></li>
-                        <li><a href="nhan.html">Nhẫn</a></li>
                     </ul>
                 </li>
                 <li class="drawer-acc-item">
@@ -316,7 +315,6 @@
             <ul class="drawer-links">
                 <li><a href="login.html">Đăng nhập</a></li>
                 <li><a href="orders.html">Đơn hàng của tôi</a></li>
-                <li><a href="lienheshop.html">Phản hồi</a></li>
             </ul>
         </nav>
     </aside>
@@ -449,9 +447,7 @@
                 <div class="footer-col">
                     <p class="footer-col-title" id="footer-help-title">May We Help You?</p>
                     <ul>
-                        <li><a href="lienheshop.html" data-fk="contact">Liên Hệ Với Chúng Tôi</a></li>
                         <li><a href="cart.html" data-fk="cart">Giỏ Hàng Của Tôi</a></li>
-                        <li><a href="chinhanhcuahang.html" data-fk="store">Định Vị Cửa Hàng</a></li>
                     </ul>
                 </div>
                 <div class="footer-col">
@@ -507,6 +503,56 @@
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
+        // Size theo danh mục. Mặc định: áo/quần dùng S/M/L/XL.
+        // Giày (sanpham-giay) dùng size số 41–44 (trái -> phải).
+        var DEFAULT_SIZE = {
+            sizes: ['S', 'M', 'L', 'XL'],
+            guide: {
+                cols: ['Size', 'Ngực', 'Dài áo', 'Vai'],
+                rows: [['S', '92', '67', '43'], ['M', '98', '69', '45'], ['L', '104', '71', '47'], ['XL', '110', '73', '49']]
+            }
+        };
+        var SIZE_BY_CATEGORY = {
+            'sanpham-giay': {
+                sizes: ['41', '42', '43', '44'],
+                guide: {
+                    cols: ['Size', 'Dài chân (cm)'],
+                    rows: [['41', '26.0'], ['42', '26.7'], ['43', '27.3'], ['44', '28.0']]
+                }
+            }
+        };
+        //ẩn hẳn phần chọn size + link/bảng size.
+        var NO_SIZE_CATEGORIES = ['gold-jewellery', 'handbags'];
+
+        function renderSizes(categorySlug) {
+            var head = document.querySelector('.pd-size-head');
+            var box = document.getElementById('pd-sizes');
+            if (NO_SIZE_CATEGORIES.indexOf(categorySlug) !== -1) {
+                if (head) head.style.display = 'none';
+                if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+                return;
+            }
+            if (head) head.style.display = '';
+            if (box) box.style.display = '';
+
+            var cfg = SIZE_BY_CATEGORY[categorySlug] || DEFAULT_SIZE;
+            if (box) {
+                box.innerHTML = cfg.sizes.map(function (s, i) {
+                    return '<button type="button" class="pd-size' + (i === 0 ? ' selected' : '') +
+                        '" data-size="' + esc(s) + '">' + esc(s) + '</button>';
+                }).join('');
+            }
+            var g = cfg.guide;
+            var gHead = document.querySelector('.sg-table thead tr');
+            if (gHead) gHead.innerHTML = g.cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('');
+            var body = document.querySelector('.sg-table tbody');
+            if (body) {
+                body.innerHTML = g.rows.map(function (row) {
+                    return '<tr>' + row.map(function (cell) { return '<td>' + esc(cell) + '</td>'; }).join('') + '</tr>';
+                }).join('');
+            }
+        }
+
         function getId() {
             try {
                 var raw = new URLSearchParams(window.location.search).get('id');
@@ -543,6 +589,7 @@
             renderPrice(p);
             descEl.textContent = pDesc(p);
             document.title = pName(p) + ' - BREEZE';
+            renderSizes(p.category_slug);
 
             var imgs = (p.images && p.images.length) ? p.images : ['img/breeze.png'];
             mainImg.src = imgs[0];
