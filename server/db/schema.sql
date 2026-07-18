@@ -61,10 +61,15 @@ CREATE TABLE dbo.users (
     email         VARCHAR(255)      NULL,
     display_name  NVARCHAR(150)     NULL,
     role          VARCHAR(20)       NOT NULL CONSTRAINT DF_users_role DEFAULT 'customer', -- 'customer' | 'admin'
+    phone         VARCHAR(30)       NULL,
+    dob           DATE              NULL,        -- ngày sinh
+    gender        VARCHAR(10)       NULL,        -- 'male' | 'female' | NULL
+    country       VARCHAR(8)        NULL,        -- mã quốc gia: VN, US, JP, KR, SG...
     created_at    DATETIME2         NOT NULL CONSTRAINT DF_users_created_at DEFAULT SYSUTCDATETIME(),
     last_login    DATETIME2         NULL,
     CONSTRAINT PK_users            PRIMARY KEY (id),
-    CONSTRAINT UQ_users_firebase_uid UNIQUE (firebase_uid)
+    CONSTRAINT UQ_users_firebase_uid UNIQUE (firebase_uid),
+    CONSTRAINT CK_users_gender     CHECK (gender IS NULL OR gender IN ('male', 'female'))
 );
 GO
 

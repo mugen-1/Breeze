@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cài Đặt Tài Khoản - BREEZE</title>
+    <link rel="stylesheet" type="text/css" href="css/global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
+    <style>
+        /* ============================================================
+           profile.html — Cài đặt tài khoản (layout Settings 2 cột)
+           Chỉ dùng design token Breeze (global.css): off-black/off-white,
+           Cormorant Garamond + Jost. KHÔNG dùng #000/#fff thuần.
+           Phase 1: shell + điều hướng section. Chưa nối data.
+           ============================================================ */
+        body { display: flex; flex-direction: column; min-height: 100vh; background: var(--c-bg); color: var(--c-ink); }
+
+        #settings-wrapper {
+            flex: 1;
+            width: 100%;
+            max-width: 1080px;
+            margin: 48px auto 96px;
+            padding: 0 24px;
+            box-sizing: border-box;
+        }
+        .settings-title {
+            font-family: var(--font-display);
+            font-size: clamp(30px, 4vw, 40px);
+            font-weight: 500;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: var(--c-ink);
+            margin-bottom: 40px;
+        }
+
+        /* Gate: chưa đăng nhập / lỗi tải */
+        .settings-notice {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--c-muted);
+            font-family: var(--font-ui);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+        .settings-notice svg { width: 52px; height: 52px; display: block; margin: 0 auto 18px; color: var(--c-line); }
+        .settings-notice a { color: var(--c-ink); text-decoration: underline; text-underline-offset: 3px; }
+
+        /* Grid 2 cột: sidebar trái + panel phải */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 236px 1fr;
+            gap: 56px;
+            align-items: start;
+        }
+
+        /* ---- Sidebar ---- */
+        .settings-nav { display: flex; flex-direction: column; gap: 2px; }
+        .settings-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 14px;
+            font-family: var(--font-ui);
+            font-size: 14.5px;
+            letter-spacing: .01em;
+            color: var(--c-muted);
+            background: transparent;
+            border: 0;
+            border-left: 2px solid transparent;
+            border-radius: 0 6px 6px 0;
+            text-align: left;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color .2s var(--ease), background-color .2s var(--ease), border-color .2s var(--ease);
+        }
+        .settings-nav-item svg { width: 19px; height: 19px; flex: 0 0 auto; }
+        .settings-nav-item:hover { color: var(--c-ink); background: var(--c-cream); }
+        .settings-nav-item.is-active {
+            color: var(--c-ink);
+            font-weight: 500;
+            background: var(--c-cream);
+            border-left-color: var(--c-ink);
+        }
+        .settings-nav-item:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
+
+        /* Nhóm coming-soon: không click, có nhãn "Sắp ra mắt" */
+        .settings-nav-item.is-soon { cursor: not-allowed; }
+        .settings-nav-item.is-soon:hover { background: transparent; color: var(--c-muted); }
+        .settings-soon-tag {
+            margin-left: auto;
+            font-size: 10px;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--c-muted);
+            border: 1px solid var(--c-line);
+            border-radius: 999px;
+            padding: 2px 8px;
+            white-space: nowrap;
+        }
+
+        /* ---- Panel phải ---- */
+        .settings-panel { min-width: 0; }
+        .settings-section { display: none; }
+        .settings-section.is-active { display: block; }
+        .settings-section-title {
+            font-family: var(--font-display);
+            font-size: clamp(22px, 3vw, 28px);
+            font-weight: 500;
+            letter-spacing: .02em;
+            color: var(--c-ink);
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--c-line);
+        }
+        .settings-placeholder {
+            font-family: var(--font-ui);
+            font-size: 14px;
+            color: var(--c-muted);
+            line-height: 1.6;
+        }
+
+        /* ===== Panel "Chi tiết tài khoản" (Phase 2) ===== */
+        /* Cột nội dung hẹp, xếp dọc — bám bố cục ảnh tham khảo (chừa khoảng phải). */
+        .acct-block { margin-bottom: 40px; max-width: 520px; }
+        .acct-block-title {
+            font-family: var(--font-ui);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--c-muted);
+            margin-bottom: 14px;
+        }
+
+        .acct-fields { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .acct-fields--ro { gap: 0; }
+
+        .acct-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+        .acct-label {
+            font-family: var(--font-ui);
+            font-size: 12px;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: var(--c-muted);
+        }
+        .acct-value { font-family: var(--font-ui); font-size: 15px; color: var(--c-ink); word-break: break-word; }
+
+        /* Hàng read-only: label trái, value phải, có divider mảnh */
+        .acct-fields--ro .acct-field {
+            flex-direction: row;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 16px 24px;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--c-line);
+        }
+        .acct-fields--ro .acct-field:first-child { padding-top: 0; }
+        .acct-fields--ro .acct-value { text-align: right; }
+        .acct-dots { letter-spacing: 2px; color: var(--c-muted); }
+        .acct-edit {
+            font-family: var(--font-ui);
+            font-size: 13px;
+            color: var(--c-ink);
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            white-space: nowrap;
+            margin-left: 12px;
+        }
+        .acct-edit:hover { color: var(--c-muted); }
+
+        /* Field mới (khung UI, chưa nối backend) */
+        .acct-input {
+            font-family: var(--font-ui);
+            font-size: 15px;
+            color: var(--c-ink);
+            background: var(--c-bg);
+            border: 1px solid var(--c-line);
+            border-radius: 6px;
+            padding: 12px 14px;
+            width: 100%;
+            box-sizing: border-box;
+            transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
+        }
+        .acct-input::placeholder { color: var(--c-muted); opacity: .85; }
+        .acct-input:focus { outline: none; border-color: var(--c-ink); box-shadow: 0 0 0 1px var(--c-ink); }
+        .acct-select {
+            appearance: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+            padding-right: 40px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%230e0e0e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+        }
+
+        /* Nút Lưu (disabled ở Phase 2 — chờ nối backend) */
+        .acct-save-row { display: flex; justify-content: flex-end; margin-top: 24px; }
+        .acct-save {
+            font-family: var(--font-ui);
+            font-size: 13px;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            padding: 13px 34px;
+            border-radius: 999px;
+            border: 1px solid var(--c-ink);
+            background: var(--c-ink);
+            color: var(--c-bg);
+            cursor: pointer;
+            transition: opacity .2s var(--ease), background .2s var(--ease), color .2s var(--ease);
+        }
+        .acct-save:hover { background: var(--c-bg); color: var(--c-ink); }
+        .acct-save:disabled { opacity: .4; cursor: not-allowed; background: var(--c-ink); color: var(--c-bg); }
+
+        /* Lối tắt: Giỏ hàng / Đơn hàng + tiếp tục mua sắm */
+        .acct-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            max-width: 520px;
+            margin-top: 40px;
+            padding-top: 28px;
+            border-top: 1px solid var(--c-line);
+        }
+        .acct-action {
+            flex: 1 1 200px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px 18px;
+            border: 1px solid var(--c-line);
+            border-radius: 8px;
+            font-family: var(--font-ui);
+            font-size: 14px;
+            color: var(--c-ink);
+            text-decoration: none;
+            transition: background .2s var(--ease), border-color .2s var(--ease);
+        }
+        .acct-action:hover { background: var(--c-cream); border-color: var(--c-muted); }
+        .acct-action:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
+        .acct-action svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--c-muted); }
+        .acct-continue {
+            display: inline-block;
+            margin-top: 22px;
+            font-family: var(--font-ui);
+            font-size: 13px;
+            color: var(--c-muted);
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .acct-continue:hover { color: var(--c-ink); }
+
+        /* Toast thông báo lưu (dùng token; biến thể lỗi màu đỏ trầm) */
+        .settings-toast {
+            position: fixed;
+            left: 50%;
+            bottom: 32px;
+            transform: translate(-50%, 12px);
+            z-index: 1100;
+            max-width: 90vw;
+            background: var(--c-ink);
+            color: var(--c-bg);
+            font-family: var(--font-ui);
+            font-size: 14px;
+            letter-spacing: .02em;
+            padding: 11px 20px;
+            border-radius: 999px;
+            box-shadow: 0 10px 30px rgba(14, 14, 14, .22);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .3s var(--ease), transform .3s var(--ease);
+        }
+        .settings-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+        .settings-toast.is-err { background: #8a2b2b; }
+
+        /* ===== Panel "Địa chỉ giao hàng" (Phase 4) ===== */
+        /* [hidden] cần thắng display của list/skeleton/nút/overlay (author rule > UA). */
+        .addr-list[hidden], .addr-skel-grid[hidden],
+        .addr-add-btn[hidden], .addr-modal-overlay[hidden] { display: none; }
+
+        /* Ẩn nhìn nhưng vẫn đọc được bằng screen reader (live region trạng thái). */
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+        }
+
+        .addr-head {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 16px 24px; flex-wrap: wrap; margin-bottom: 24px;
+        }
+        .addr-head-desc { font-family: var(--font-ui); font-size: 14px; color: var(--c-muted); line-height: 1.5; max-width: 460px; margin: 0; }
+        .addr-add-btn {
+            display: inline-flex; align-items: center; gap: 9px; flex: 0 0 auto;
+            font-family: var(--font-ui); font-size: 13px; letter-spacing: .04em; text-transform: uppercase;
+            padding: 12px 22px; border-radius: 999px; border: 1px solid var(--c-ink);
+            background: var(--c-ink); color: var(--c-bg); cursor: pointer;
+            transition: background .2s var(--ease), color .2s var(--ease);
+        }
+        .addr-add-btn:hover { background: var(--c-bg); color: var(--c-ink); }
+        .addr-add-btn svg { width: 15px; height: 15px; }
+        .addr-add-btn:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
+
+        /* Danh sách card */
+        .addr-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .addr-card {
+            position: relative;
+            border: 1px solid var(--c-line); border-radius: 10px;
+            padding: 20px; display: flex; flex-direction: column;
+            background: var(--c-bg);
+            transition: border-color .2s var(--ease);
+        }
+        .addr-card.is-default { border-color: var(--c-ink); }
+        .addr-card-badge {
+            align-self: flex-start;
+            font-family: var(--font-ui); font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+            color: var(--c-bg); background: var(--c-ink);
+            padding: 3px 10px; border-radius: 999px; margin-bottom: 10px;
+        }
+        .addr-card-name { font-family: var(--font-ui); font-size: 15.5px; font-weight: 600; color: var(--c-ink); }
+        .addr-card-phone { font-family: var(--font-ui); font-size: 14px; color: var(--c-muted); margin-top: 2px; }
+        .addr-card-lines { font-family: var(--font-ui); font-size: 14px; color: var(--c-ink); line-height: 1.55; margin-top: 8px; }
+        .addr-card-actions {
+            display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+            margin-top: auto; padding-top: 16px;
+        }
+        .addr-card-lines + .addr-card-actions { border-top: 1px solid var(--c-line); margin-top: 16px; }
+        .addr-link {
+            font-family: var(--font-ui); font-size: 13px; color: var(--c-ink);
+            background: none; border: 0; padding: 2px 0; cursor: pointer;
+            text-decoration: underline; text-underline-offset: 3px;
+        }
+        .addr-link:hover { color: var(--c-muted); }
+        .addr-link.is-danger { color: #8a2b2b; }
+        .addr-link.is-danger:hover { color: #b23b3b; }
+        .addr-link:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 3px; border-radius: 2px; }
+
+        /* Empty state */
+        .addr-empty { text-align: center; padding: 56px 24px; border: 1px dashed var(--c-line); border-radius: 12px; }
+        .addr-empty svg { width: 46px; height: 46px; color: var(--c-line); margin: 0 auto 16px; display: block; }
+        .addr-empty-title { font-family: var(--font-ui); font-size: 15px; color: var(--c-ink); margin: 0 0 6px; }
+        .addr-empty-desc { font-family: var(--font-ui); font-size: 13.5px; color: var(--c-muted); margin: 0 auto 20px; max-width: 340px; line-height: 1.5; }
+
+        /* Skeleton loading */
+        .addr-skel-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .addr-skel { border: 1px solid var(--c-line); border-radius: 10px; padding: 20px; }
+        .addr-skel-line {
+            height: 12px; border-radius: 6px; margin-bottom: 12px;
+            background: linear-gradient(90deg, var(--c-cream) 25%, #eeece6 37%, var(--c-cream) 63%);
+            background-size: 400% 100%; animation: addr-shimmer 1.3s ease infinite;
+        }
+        .addr-skel-line:last-child { margin-bottom: 0; }
+        .addr-skel-line.w-40 { width: 40%; } .addr-skel-line.w-60 { width: 60%; } .addr-skel-line.w-90 { width: 90%; }
+        @keyframes addr-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+        @media (prefers-reduced-motion: reduce) { .addr-skel-line { animation: none; } }
+
+        /* Error state */
+        .addr-error { text-align: center; padding: 44px 20px; border: 1px solid var(--c-line); border-radius: 12px;
+            font-family: var(--font-ui); font-size: 14px; color: var(--c-muted); }
+        .addr-error p { margin: 0 0 14px; }
+
+        /* ===== Modal địa chỉ ===== */
+        .addr-modal-overlay {
+            position: fixed; inset: 0; z-index: 1050;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px; box-sizing: border-box;
+            background: rgba(14, 14, 14, .5);
+            opacity: 0; pointer-events: none; transition: opacity .22s var(--ease);
+        }
+        .addr-modal-overlay.is-open { opacity: 1; pointer-events: auto; }
+        .addr-modal {
+            width: 100%; max-width: 560px; max-height: calc(100vh - 40px); overflow-y: auto;
+            background: var(--c-bg); border-radius: 14px;
+            box-shadow: 0 24px 60px rgba(14, 14, 14, .28);
+            transform: translateY(12px); transition: transform .22s var(--ease);
+        }
+        .addr-modal-overlay.is-open .addr-modal { transform: translateY(0); }
+        @media (prefers-reduced-motion: reduce) {
+            .addr-modal-overlay, .addr-modal { transition: none; }
+        }
+        .addr-modal-head {
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            padding: 22px 26px; border-bottom: 1px solid var(--c-line);
+            position: sticky; top: 0; background: var(--c-bg); border-radius: 14px 14px 0 0; z-index: 1;
+        }
+        .addr-modal-title { font-family: var(--font-display); font-size: 24px; font-weight: 500; color: var(--c-ink); letter-spacing: .02em; margin: 0; }
+        .addr-modal-close {
+            background: none; border: 0; cursor: pointer; color: var(--c-muted);
+            width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 24px; line-height: 1; flex: 0 0 auto;
+            transition: background .2s var(--ease), color .2s var(--ease);
+        }
+        .addr-modal-close:hover { background: var(--c-cream); color: var(--c-ink); }
+        .addr-modal-close:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
+        .addr-modal-body { padding: 24px 26px; }
+        .addr-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+        .addr-form-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+        .addr-form-field.col-2 { grid-column: 1 / -1; }
+        .addr-req { color: #8a2b2b; }
+        .addr-opt { color: var(--c-muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+        .acct-input.addr-input-err { border-color: #8a2b2b; box-shadow: 0 0 0 1px #8a2b2b; }
+        .addr-field-msg { font-family: var(--font-ui); font-size: 12px; color: #8a2b2b; }
+        .addr-field-msg:empty { display: none; }
+        .addr-check-row { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+        .addr-check-row input { width: 17px; height: 17px; accent-color: var(--c-ink); cursor: pointer; flex: 0 0 auto; }
+        .addr-check-row label { font-family: var(--font-ui); font-size: 14px; color: var(--c-ink); cursor: pointer; }
+        .addr-check-hint { grid-column: 1 / -1; font-family: var(--font-ui); font-size: 12px; color: var(--c-muted); margin: -8px 0 0; }
+        .addr-modal-foot {
+            display: flex; justify-content: flex-end; gap: 12px;
+            padding: 20px 26px; border-top: 1px solid var(--c-line);
+            position: sticky; bottom: 0; background: var(--c-bg); border-radius: 0 0 14px 14px;
+        }
+        .addr-btn {
+            font-family: var(--font-ui); font-size: 13px; letter-spacing: .05em; text-transform: uppercase;
+            padding: 12px 26px; border-radius: 999px; cursor: pointer;
+            transition: background .2s var(--ease), color .2s var(--ease), opacity .2s var(--ease);
+        }
+        .addr-btn-ghost { background: var(--c-bg); border: 1px solid var(--c-line); color: var(--c-ink); }
+        .addr-btn-ghost:hover { background: var(--c-cream); border-color: var(--c-muted); }
+        .addr-btn-primary { background: var(--c-ink); border: 1px solid var(--c-ink); color: var(--c-bg); }
+        .addr-btn-primary:hover { background: var(--c-bg); color: var(--c-ink); }
+        .addr-btn-primary:disabled { opacity: .5; cursor: not-allowed; background: var(--c-ink); color: var(--c-bg); }
+        .addr-btn:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
+
+        /* ===== Responsive: sidebar -> tab cuộn ngang ===== */
+        @media (max-width: 820px) {
+            #settings-wrapper { margin: 32px auto 72px; }
+            .settings-title { margin-bottom: 28px; }
+            .settings-grid { grid-template-columns: 1fr; gap: 28px; }
+            .settings-nav {
+                flex-direction: row;
+                gap: 4px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                border-bottom: 1px solid var(--c-line);
+                padding-bottom: 2px;
+                scrollbar-width: thin;
+            }
+            .settings-nav-item {
+                flex: 0 0 auto;
+                width: auto;
+                white-space: nowrap;
+                padding: 10px 12px;
+                border-left: 0;
+                border-bottom: 2px solid transparent;
+                border-radius: 6px 6px 0 0;
+            }
+            .settings-nav-item.is-active { border-left: 0; border-bottom-color: var(--c-ink); }
+            .settings-soon-tag { display: none; }
+            .addr-list, .addr-skel-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 600px) {
+            .addr-form-grid { grid-template-columns: 1fr; }
+            .addr-head-desc { max-width: none; }
+            .addr-add-btn { width: 100%; justify-content: center; }
+            .addr-modal-foot { flex-direction: column-reverse; }
+            .addr-btn { width: 100%; text-align: center; }
+        }
+    </style>
+</head>
+<body class="sitehdr">
+    <div class="policy-header">
+        <button type="button" class="ph-menu" data-drawer-open aria-controls="drawer-menu" aria-expanded="false">
+            <i class="fa fa-bars" aria-hidden="true"></i> <span class="ph-menu-label">Danh Mục</span>
+        </button>
+        <a href="index.html" class="ph-logo">BREEZE</a>
+        <div class="ph-actions">
+            <a href="search.html" aria-label="Tìm kiếm"><i class="fa fa-search" aria-hidden="true"></i></a>
+            <a href="login.html" aria-label="Tài khoản"><i class="fa fa-user" aria-hidden="true"></i></a>
+        </div>
+    </div>
+
+    <!-- Slide-out Drawer Menu -->
+    <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+    <aside class="drawer" id="drawer-menu" role="dialog" aria-modal="true"
+           aria-label="Danh mục" aria-hidden="true" tabindex="-1">
+        <div class="drawer-head">
+            <span class="drawer-title">Danh Mục</span>
+            <button type="button" class="drawer-close" id="drawer-close" aria-label="Đóng menu">&times;</button>
+        </div>
+        <nav class="drawer-nav">
+            <ul class="drawer-acc">
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Sản phẩm <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="sanpham-ao.html">Áo</a></li>
+                        <li><a href="sanpham-quan.html">Quần</a></li>
+                        <li><a href="sanpham-giay.html">Giày &amp; Dép</a></li>
+                    </ul>
+                </li>
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Phụ Kiện <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="gold-jewellery.html">Phụ Kiện</a></li>
+                    </ul>
+                </li>
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Túi Xách <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="handbags.html">Túi Xách</a></li>
+                    </ul>
+                </li>
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Khuyến Mãi <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="sale.html">Khuyến Mãi</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <ul class="drawer-links">
+                <li><a href="login.html">Đăng nhập</a></li>
+                <li><a href="orders.html">Đơn hàng của tôi</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <div id="settings-wrapper">
+        <h1 class="settings-title">Cài Đặt Tài Khoản</h1>
+
+        <!-- Chưa đăng nhập -->
+        <div class="settings-notice" id="profile-login" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/>
+                <path d="M6.5 18.5c1-2.6 3-3.8 5.5-3.8s4.5 1.2 5.5 3.8"/>
+            </svg>
+            <span>Vui lòng đăng nhập để xem cài đặt tài khoản.</span>
+            <br><br>
+            <a href="login.html?redirect=profile.html">Đăng nhập</a>
+        </div>
+
+        <!-- Lỗi tải -->
+        <div class="settings-notice" id="profile-status" style="display:none;"></div>
+
+        <!-- Shell 2 cột: sidebar trái + panel phải -->
+        <div class="settings-grid" id="settings-body" style="display:none;">
+            <nav class="settings-nav" aria-label="Điều hướng cài đặt tài khoản">
+                <a class="settings-nav-item" href="#account" data-section="account">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"/>
+                    </svg>
+                    <span>Chi tiết tài khoản</span>
+                </a>
+                <a class="settings-nav-item" href="#addresses" data-section="addresses">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>
+                    </svg>
+                    <span>Địa chỉ giao hàng</span>
+                </a>
+
+                <!-- Nhóm "Coming soon": disable, không click -->
+                <span class="settings-nav-item is-soon" aria-disabled="true" tabindex="-1" title="Sắp ra mắt">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10.5h18"/>
+                    </svg>
+                    <span>Phương thức thanh toán</span>
+                    <span class="settings-soon-tag">Sắp ra mắt</span>
+                </span>
+                <span class="settings-nav-item is-soon" aria-disabled="true" tabindex="-1" title="Sắp ra mắt">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 8h8M17 8h3M4 16h3M12 16h8"/><circle cx="14.5" cy="8" r="2.2"/><circle cx="9.5" cy="16" r="2.2"/>
+                    </svg>
+                    <span>Tùy chọn mua sắm</span>
+                    <span class="settings-soon-tag">Sắp ra mắt</span>
+                </span>
+                <span class="settings-nav-item is-soon" aria-disabled="true" tabindex="-1" title="Sắp ra mắt">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 3l7 3v5c0 4.6-3 8.2-7 10-4-1.8-7-5.4-7-10V6l7-3z"/>
+                    </svg>
+                    <span>Quyền riêng tư</span>
+                    <span class="settings-soon-tag">Sắp ra mắt</span>
+                </span>
+            </nav>
+
+            <div class="settings-panel">
+                <section class="settings-section" id="section-account" aria-labelledby="title-account">
+                    <h2 class="settings-section-title" id="title-account">Chi tiết tài khoản</h2>
+
+                    <!-- Khối 1: thông tin sẵn có (read-only, nguồn /api/me) -->
+                    <div class="acct-block">
+                        <div class="acct-block-title">Thông tin tài khoản</div>
+                        <div class="acct-fields acct-fields--ro">
+                            <div class="acct-field">
+                                <span class="acct-label">Họ tên</span>
+                                <span class="acct-value" id="ad-name">—</span>
+                            </div>
+                            <div class="acct-field">
+                                <span class="acct-label">Email</span>
+                                <span class="acct-value" id="ad-email">—</span>
+                            </div>
+                            <div class="acct-field">
+                                <span class="acct-label">Mật khẩu</span>
+                                <span class="acct-value">
+                                    <span class="acct-dots" aria-hidden="true">••••••••••</span>
+                                    <a class="acct-edit" href="forgot-password.html">Đổi</a>
+                                </span>
+                            </div>
+                            <div class="acct-field">
+                                <span class="acct-label">Ngày tạo tài khoản</span>
+                                <span class="acct-value" id="ad-created">—</span>
+                            </div>
+                            <div class="acct-field">
+                                <span class="acct-label">Đăng nhập gần nhất</span>
+                                <span class="acct-value" id="ad-last">—</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Khối 2: field cá nhân MỚI — khung UI, để TRỐNG, CHƯA nối backend -->
+                    <div class="acct-block">
+                        <div class="acct-block-title">Thông tin cá nhân</div>
+                        <div class="acct-fields">
+                            <div class="acct-field">
+                                <label class="acct-label" for="ad-phone">Số điện thoại</label>
+                                <input class="acct-input" id="ad-phone" type="tel" inputmode="tel"
+                                       placeholder="Chưa cập nhật" autocomplete="tel">
+                            </div>
+                            <div class="acct-field">
+                                <label class="acct-label" for="ad-dob">Ngày sinh</label>
+                                <input class="acct-input" id="ad-dob" type="date"
+                                       aria-label="Ngày sinh" max="2025-12-31">
+                            </div>
+                            <div class="acct-field">
+                                <label class="acct-label" for="ad-gender">Giới tính</label>
+                                <select class="acct-input acct-select" id="ad-gender">
+                                    <option value="">Chưa chọn</option>
+                                    <option value="male">Nam</option>
+                                    <option value="female">Nữ</option>
+                                </select>
+                            </div>
+                            <div class="acct-field">
+                                <label class="acct-label" for="ad-country">Quốc gia / Khu vực</label>
+                                <select class="acct-input acct-select" id="ad-country">
+                                    <option value="">— Chọn quốc gia —</option>
+                                    <option value="VN">Việt Nam</option>
+                                    <option value="US">Hoa Kỳ</option>
+                                    <option value="JP">Nhật Bản</option>
+                                    <option value="KR">Hàn Quốc</option>
+                                    <option value="SG">Singapore</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="acct-save-row">
+                            <button type="button" class="acct-save" id="ad-save">Lưu thay đổi</button>
+                        </div>
+                    </div>
+
+                    <!-- Lối tắt sẵn có: giữ nguyên -->
+                    <div class="acct-actions">
+                        <a class="acct-action" href="cart.html">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M6 8h12l1 12H5L6 8z"/><path d="M9 8a3 3 0 0 1 6 0"/>
+                            </svg>
+                            <span>Giỏ hàng của tôi</span>
+                        </a>
+                        <a class="acct-action" href="orders.html">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/>
+                            </svg>
+                            <span>Đơn hàng của tôi</span>
+                        </a>
+                    </div>
+                    <a class="acct-continue" href="index.html">← Tiếp tục mua sắm</a>
+                </section>
+
+                <section class="settings-section" id="section-addresses" aria-labelledby="title-addresses">
+                    <h2 class="settings-section-title" id="title-addresses">Địa chỉ giao hàng</h2>
+
+                    <!-- Live region: báo trạng thái tải cho screen reader (skeleton bị aria-hidden). -->
+                    <p class="sr-only" id="addr-live" role="status" aria-live="polite"></p>
+
+                    <div class="addr-head">
+                        <p class="addr-head-desc">Quản lý các địa chỉ giao hàng đã lưu. Địa chỉ mặc định sẽ được điền sẵn khi thanh toán.</p>
+                        <button type="button" class="addr-add-btn" id="addr-add" hidden>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                            Thêm địa chỉ
+                        </button>
+                    </div>
+
+                    <!-- Loading skeleton -->
+                    <div class="addr-skel-grid" id="addr-loading" aria-hidden="true">
+                        <div class="addr-skel"><div class="addr-skel-line w-60"></div><div class="addr-skel-line w-40"></div><div class="addr-skel-line w-90"></div><div class="addr-skel-line w-60"></div></div>
+                        <div class="addr-skel"><div class="addr-skel-line w-60"></div><div class="addr-skel-line w-40"></div><div class="addr-skel-line w-90"></div><div class="addr-skel-line w-60"></div></div>
+                    </div>
+
+                    <!-- Lỗi tải -->
+                    <div class="addr-error" id="addr-error" hidden role="alert">
+                        <p>Không tải được danh sách địa chỉ. Vui lòng thử lại.</p>
+                        <button type="button" class="addr-btn addr-btn-ghost" id="addr-retry">Thử lại</button>
+                    </div>
+
+                    <!-- Empty state -->
+                    <div class="addr-empty" id="addr-empty" hidden>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>
+                        </svg>
+                        <p class="addr-empty-title">Bạn chưa lưu địa chỉ giao hàng nào</p>
+                        <p class="addr-empty-desc">Thêm địa chỉ để việc thanh toán ở lần mua kế tiếp nhanh hơn.</p>
+                        <button type="button" class="addr-add-btn" id="addr-add-empty">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                            Thêm địa chỉ
+                        </button>
+                    </div>
+
+                    <!-- Danh sách địa chỉ -->
+                    <div class="addr-list" id="addr-list" role="list" aria-label="Địa chỉ đã lưu" hidden></div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal thêm/sửa địa chỉ (Phase 4) -->
+    <div class="addr-modal-overlay" id="addr-modal-overlay" hidden>
+        <div class="addr-modal" role="dialog" aria-modal="true" aria-labelledby="addr-modal-title" id="addr-modal">
+            <div class="addr-modal-head">
+                <h2 class="addr-modal-title" id="addr-modal-title">Thêm địa chỉ</h2>
+                <button type="button" class="addr-modal-close" id="addr-modal-close" aria-label="Đóng">&times;</button>
+            </div>
+            <form id="addr-form" novalidate>
+                <div class="addr-modal-body">
+                    <div class="addr-form-grid">
+                        <div class="addr-form-field col-2">
+                            <label class="acct-label" for="af-recipient">Tên người nhận <span class="addr-req" aria-hidden="true">*</span></label>
+                            <input class="acct-input" id="af-recipient" type="text" autocomplete="name" maxlength="150" aria-describedby="af-recipient-msg" required>
+                            <span class="addr-field-msg" id="af-recipient-msg"></span>
+                        </div>
+                        <div class="addr-form-field col-2">
+                            <label class="acct-label" for="af-phone">Số điện thoại <span class="addr-req" aria-hidden="true">*</span></label>
+                            <input class="acct-input" id="af-phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="30" aria-describedby="af-phone-msg" required>
+                            <span class="addr-field-msg" id="af-phone-msg"></span>
+                        </div>
+                        <div class="addr-form-field col-2">
+                            <label class="acct-label" for="af-line1">Địa chỉ (số nhà, tên đường) <span class="addr-req" aria-hidden="true">*</span></label>
+                            <input class="acct-input" id="af-line1" type="text" autocomplete="address-line1" maxlength="200" aria-describedby="af-line1-msg" required>
+                            <span class="addr-field-msg" id="af-line1-msg"></span>
+                        </div>
+                        <div class="addr-form-field col-2">
+                            <label class="acct-label" for="af-line2">Căn hộ, toà nhà <span class="addr-opt">(tuỳ chọn)</span></label>
+                            <input class="acct-input" id="af-line2" type="text" autocomplete="address-line2" maxlength="200">
+                        </div>
+                        <div class="addr-form-field">
+                            <label class="acct-label" for="af-ward">Phường / Xã</label>
+                            <input class="acct-input" id="af-ward" type="text" maxlength="120">
+                        </div>
+                        <div class="addr-form-field">
+                            <label class="acct-label" for="af-district">Quận / Huyện</label>
+                            <input class="acct-input" id="af-district" type="text" maxlength="120">
+                        </div>
+                        <div class="addr-form-field">
+                            <label class="acct-label" for="af-city">Tỉnh / Thành phố <span class="addr-req" aria-hidden="true">*</span></label>
+                            <input class="acct-input" id="af-city" type="text" autocomplete="address-level1" maxlength="120" aria-describedby="af-city-msg" required>
+                            <span class="addr-field-msg" id="af-city-msg"></span>
+                        </div>
+                        <div class="addr-form-field">
+                            <label class="acct-label" for="af-postal">Mã bưu chính</label>
+                            <input class="acct-input" id="af-postal" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="20" aria-describedby="af-postal-msg">
+                            <span class="addr-field-msg" id="af-postal-msg"></span>
+                        </div>
+                        <div class="addr-form-field col-2">
+                            <label class="acct-label" for="af-country">Quốc gia / Khu vực</label>
+                            <select class="acct-input acct-select" id="af-country">
+                                <option value="VN">Việt Nam</option>
+                                <option value="US">Hoa Kỳ</option>
+                                <option value="JP">Nhật Bản</option>
+                                <option value="KR">Hàn Quốc</option>
+                                <option value="SG">Singapore</option>
+                            </select>
+                        </div>
+                        <div class="addr-check-row">
+                            <input type="checkbox" id="af-default">
+                            <label for="af-default">Đặt làm địa chỉ mặc định</label>
+                        </div>
+                        <p class="addr-check-hint" id="af-default-hint" hidden>Đây đang là địa chỉ mặc định của bạn.</p>
+                    </div>
+                </div>
+                <div class="addr-modal-foot">
+                    <button type="button" class="addr-btn addr-btn-ghost" id="addr-cancel">Hủy</button>
+                    <button type="submit" class="addr-btn addr-btn-primary" id="addr-submit">Lưu địa chỉ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer id="footer" class="footer-cols">
+        <div class="footer-content reveal">
+            <h6 class="footer-logo">BREEZE</h6>
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <p class="footer-col-title" id="footer-help-title">May We Help You?</p>
+                    <ul>
+                        <li><a href="cart.html" data-fk="cart">Giỏ Hàng Của Tôi</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <p class="footer-col-title" id="footer-company-title">About Us</p>
+                    <ul>
+                        <li><a href="chinhsachdoitra.html" data-fk="ret">Chính sách đổi trả</a></li>
+                        <li><a href="chinhsachgiaohang.html" data-fk="ship">Chính sách giao hàng</a></li>
+                        <li><a href="chinhsachbaomat.html" data-fk="priv">Chính sách bảo mật</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <p class="footer-col-title" id="footer-lang-title">Language</p>
+                    <div class="footer-lang" id="footer-lang">
+                        <button class="footer-lang-btn" id="footer-lang-btn" type="button">
+                            <span id="footer-lang-current">English</span>
+                            <span class="footer-lang-arrow">&#9662;</span>
+                        </button>
+                        <div class="footer-lang-menu" id="footer-lang-menu">
+                            <button class="footer-lang-opt" data-lang="vi" type="button"><span class="footer-lang-check">&#10003;</span> Tiếng Việt</button>
+                            <button class="footer-lang-opt" data-lang="en" type="button"><span class="footer-lang-check">&#10003;</span> English</button>
+                        </div>
+                    </div>
+                    <p class="footer-col-title footer-country-title" id="footer-country-title">Country/Region</p>
+                    <p class="footer-country" id="footer-country-name">Việt Nam</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/i18n.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/api-config.js"></script>
+    <script src="js/auth-helper.js"></script>
+    <script src="js/account-menu.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/cart-drawer.js"></script>
+    <script>
+        /* Phase 2 — shell + điều hướng section + nạp thông tin tài khoản (read-only).
+           Nguồn read-only: GET /api/me (display_name, email, created_at, last_login).
+           Field cá nhân mới (SĐT, ngày sinh, giới tính, quốc gia) là khung UI trống,
+           CHƯA nối backend — xem các TODO(Truc) trong markup. */
+        (function () {
+            'use strict';
+
+            var SECTIONS = ['account', 'addresses'];   // section có thể mở
+            var _meLoaded = false;                     // tránh gọi /api/me lặp
+
+            function show(id, mode) {
+                var el = document.getElementById(id);
+                if (el) el.style.display = mode || 'none';
+            }
+
+            function setText(id, val) {
+                var el = document.getElementById(id);
+                if (el) el.textContent = (val == null || val === '') ? '—' : val;
+            }
+
+            function setVal(id, val) {
+                var el = document.getElementById(id);
+                if (el) el.value = (val == null) ? '' : val;
+            }
+
+            // Toast: mặc định thành công; ok=false -> biến thể lỗi (đỏ trầm).
+            function toast(msg, ok) {
+                var t = document.createElement('div');
+                t.className = 'settings-toast' + (ok === false ? ' is-err' : '');
+                t.setAttribute('role', ok === false ? 'alert' : 'status');
+                t.textContent = msg;
+                document.body.appendChild(t);
+                requestAnimationFrame(function () { t.classList.add('is-on'); });
+                setTimeout(function () {
+                    t.classList.remove('is-on');
+                    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 320);
+                }, 1900);
+            }
+
+            // display_name; nếu trống -> phần trước @ của email (khớp account-menu.js).
+            function nameOf(u) {
+                if (!u) return '';
+                var n = u.display_name || u.displayName;
+                if (!n && u.email) n = u.email.split('@')[0];
+                return n || 'bạn';
+            }
+
+            function fmtDate(s) {
+                if (!s) return '—';
+                var d = new Date(s);
+                if (isNaN(d.getTime())) return '—';
+                return d.toLocaleDateString('vi-VN', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            }
+
+            // Hiện tên/email tức thì từ Firebase trong lúc chờ /api/me.
+            function fillFromFirebase(user) {
+                if (!user) return;
+                setText('ad-name', nameOf(user));
+                setText('ad-email', user.email);
+            }
+
+            // Đổ toàn bộ hồ sơ (read-only + field cá nhân) từ dữ liệu server.
+            function fillProfile(u) {
+                setText('ad-name', nameOf(u));
+                setText('ad-email', u.email);
+                setText('ad-created', fmtDate(u.created_at));
+                setText('ad-last', fmtDate(u.last_login));
+                setVal('ad-phone', u.phone);
+                setVal('ad-dob', u.dob ? String(u.dob).slice(0, 10) : '');   // ISO -> YYYY-MM-DD
+                setVal('ad-gender', u.gender || '');
+                setVal('ad-country', u.country || '');
+            }
+
+            // Nạp hồ sơ từ server.
+            function loadMe() {
+                if (_meLoaded) return;
+                if (!(window.AuthHelper && window.AuthHelper.isLoggedIn())) return;
+                _meLoaded = true;
+                window.AuthHelper.apiFetch('/api/me')
+                    .then(function (r) { if (!r.ok) throw new Error('GET /api/me ' + r.status); return r.json(); })
+                    .then(fillProfile)
+                    .catch(function (e) {
+                        _meLoaded = false;   // cho phép thử lại lần đổi trạng thái sau
+                        console.error('[profile] tải /api/me lỗi:', e);
+                    });
+            }
+
+            // ---- Lưu field cá nhân (PUT /api/me) ----
+            var PHONE_RE = /^[0-9+\-\s()]{6,20}$/;
+
+            function formValues() {
+                return {
+                    phone: (document.getElementById('ad-phone').value || '').trim(),
+                    dob: document.getElementById('ad-dob').value || '',
+                    gender: document.getElementById('ad-gender').value || '',
+                    country: document.getElementById('ad-country').value || ''
+                };
+            }
+
+            // Validate phía client (đồng bộ với server); trả thông báo lỗi hoặc null.
+            function validate(v) {
+                if (v.phone && !PHONE_RE.test(v.phone)) return 'Số điện thoại không hợp lệ';
+                if (v.dob) {
+                    var t = new Date(v.dob + 'T00:00:00Z').getTime();
+                    if (isNaN(t)) return 'Ngày sinh không hợp lệ';
+                    if (t > Date.now()) return 'Ngày sinh không thể ở tương lai';
+                }
+                return null;
+            }
+
+            function saveProfile() {
+                var btn = document.getElementById('ad-save');
+                if (!btn || btn.disabled) return;
+                var v = formValues();
+                var err = validate(v);
+                if (err) { toast(err, false); return; }
+
+                var label = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = 'Đang lưu…';
+                window.AuthHelper.apiFetch('/api/me', { method: 'PUT', body: JSON.stringify(v) })
+                    .then(function (r) {
+                        return r.json().catch(function () { return {}; }).then(function (data) {
+                            return { ok: r.ok, status: r.status, data: data };
+                        });
+                    })
+                    .then(function (out) {
+                        if (out.ok) { fillProfile(out.data); toast('Đã lưu thay đổi'); return; }
+                        if (out.status === 401) return;   // phiên hết hạn -> 'authexpired' lo phần báo + đăng nhập lại
+                        toast((out.data && out.data.message) || 'Không lưu được thay đổi', false);
+                    })
+                    .catch(function (e) {
+                        console.error('[profile] lưu lỗi:', e);
+                        toast('Không lưu được thay đổi', false);
+                    })
+                    .then(function () { btn.disabled = false; btn.textContent = label; });
+            }
+
+            /* ============================================================
+               Địa chỉ giao hàng (Phase 4) — CRUD qua /api/account/addresses.
+               Mỗi mutation server trả { addresses: [...] } (list đầy đủ) nên
+               chỉ cần render lại từ response, không cần fetch thêm.
+               ============================================================ */
+            var _addrLoaded = false;   // đã nạp danh sách chưa (lazy theo tab)
+            var _addresses = [];       // cache list hiện tại
+            var _editing = null;       // địa chỉ đang sửa (null = thêm mới)
+            var _modalTrigger = null;  // element để trả focus khi đóng modal
+
+            var ADDR_PHONE_RE = /^[0-9+\-\s()]{6,20}$/;
+            var ADDR_POSTAL_RE = /^[A-Za-z0-9\s-]{2,20}$/;
+            var COUNTRY_NAME = { VN: 'Việt Nam', US: 'Hoa Kỳ', JP: 'Nhật Bản', KR: 'Hàn Quốc', SG: 'Singapore' };
+            var MSG_FIELDS = ['af-recipient', 'af-phone', 'af-line1', 'af-city', 'af-postal'];
+
+            function byId(id) { return document.getElementById(id); }
+            function elHide(el) { if (el) el.hidden = true; }
+            function elShow(el) { if (el) el.hidden = false; }
+            function fVal(id) { var el = byId(id); return el ? (el.value || '').trim() : ''; }
+            function fSet(id, v) { var el = byId(id); if (el) el.value = (v == null) ? '' : v; }
+            function findAddr(id) {
+                for (var i = 0; i < _addresses.length; i++) if (_addresses[i].id === id) return _addresses[i];
+                return null;
+            }
+            function setLive(msg) { var el = byId('addr-live'); if (el) el.textContent = msg || ''; }
+
+            // ---- Nạp danh sách ----
+            function loadAddresses(force) {
+                if (!(window.AuthHelper && window.AuthHelper.isLoggedIn())) return;
+                if (_addrLoaded && !force) return;
+                _addrLoaded = true;
+                showAddrLoading();
+                window.AuthHelper.apiFetch('/api/account/addresses')
+                    .then(function (r) { if (!r.ok) throw new Error('GET addresses ' + r.status); return r.json(); })
+                    .then(function (d) { renderAddresses(d.addresses || []); })
+                    .catch(function (e) {
+                        _addrLoaded = false;   // cho phép thử lại
+                        console.error('[profile] tải địa chỉ lỗi:', e);
+                        showAddrError();
+                    });
+            }
+
+            function showAddrLoading() {
+                elHide(byId('addr-add')); elHide(byId('addr-list')); elHide(byId('addr-empty')); elHide(byId('addr-error'));
+                elShow(byId('addr-loading'));
+                setLive('Đang tải danh sách địa chỉ…');
+            }
+            function showAddrError() {
+                elHide(byId('addr-add')); elHide(byId('addr-loading')); elHide(byId('addr-list')); elHide(byId('addr-empty'));
+                elShow(byId('addr-error'));
+                setLive('');   // #addr-error role=alert tự đọc; tránh đọc trùng
+            }
+
+            // ---- Render danh sách -> card (dựng bằng DOM để tránh XSS từ dữ liệu user) ----
+            function renderAddresses(list) {
+                _addresses = list || [];
+                elHide(byId('addr-loading')); elHide(byId('addr-error'));
+                elShow(byId('addr-add'));
+                setLive('');   // tải xong: gỡ thông báo "đang tải" (mutation đã có toast riêng)
+
+                var listEl = byId('addr-list');
+                listEl.innerHTML = '';
+                if (_addresses.length === 0) {
+                    elHide(listEl); elShow(byId('addr-empty'));
+                    return;
+                }
+                elHide(byId('addr-empty'));
+                for (var i = 0; i < _addresses.length; i++) listEl.appendChild(buildCard(_addresses[i]));
+                elShow(listEl);
+            }
+
+            function line(cls, text) { var d = document.createElement('div'); d.className = cls; d.textContent = text; return d; }
+            function actionBtn(action, id, text, danger) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'addr-link' + (danger ? ' is-danger' : '');
+                b.textContent = text;
+                b.setAttribute('data-action', action);
+                b.setAttribute('data-id', id);
+                return b;
+            }
+
+            function buildCard(a) {
+                var card = document.createElement('div');
+                card.className = 'addr-card' + (a.is_default ? ' is-default' : '');
+                card.setAttribute('role', 'listitem');
+
+                if (a.is_default) {
+                    var badge = document.createElement('span');
+                    badge.className = 'addr-card-badge';
+                    badge.textContent = 'Mặc định';
+                    card.appendChild(badge);
+                }
+                card.appendChild(line('addr-card-name', a.recipient_name));
+                card.appendChild(line('addr-card-phone', a.phone));
+
+                var lines = document.createElement('div');
+                lines.className = 'addr-card-lines';
+                lines.appendChild(line('', a.line1));
+                var rest = [a.line2, a.ward, a.district, a.city]
+                    .filter(function (x) { return x && String(x).trim(); }).join(', ');
+                if (rest) lines.appendChild(line('', rest));
+                if (a.country && a.country !== 'VN') lines.appendChild(line('', COUNTRY_NAME[a.country] || a.country));
+                card.appendChild(lines);
+
+                var actions = document.createElement('div');
+                actions.className = 'addr-card-actions';
+                if (!a.is_default) actions.appendChild(actionBtn('default', a.id, 'Đặt làm mặc định', false));
+                actions.appendChild(actionBtn('edit', a.id, 'Sửa', false));
+                actions.appendChild(actionBtn('delete', a.id, 'Xóa', true));
+                card.appendChild(actions);
+                return card;
+            }
+
+            // ---- Modal ----
+            var FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+            function openModal(address) {
+                _editing = address || null;
+                _modalTrigger = document.activeElement;
+                byId('addr-modal-title').textContent = _editing ? 'Sửa địa chỉ' : 'Thêm địa chỉ';
+                byId('addr-submit').textContent = 'Lưu địa chỉ';
+                byId('addr-submit').disabled = false;
+                clearFormErrors();
+                fillForm(_editing);
+
+                var overlay = byId('addr-modal-overlay');
+                overlay.hidden = false;
+                document.body.style.overflow = 'hidden';
+                requestAnimationFrame(function () { overlay.classList.add('is-open'); });
+                setTimeout(function () { var f = byId('af-recipient'); if (f) f.focus(); }, 40);
+            }
+
+            function closeModal() {
+                var overlay = byId('addr-modal-overlay');
+                overlay.classList.remove('is-open');
+                document.body.style.overflow = '';
+                setTimeout(function () { overlay.hidden = true; }, 220);
+                if (_modalTrigger && _modalTrigger.focus) { try { _modalTrigger.focus(); } catch (e) {} }
+                _modalTrigger = null;
+            }
+
+            // Điền form. Sửa địa chỉ ĐANG mặc định -> khoá checkbox (không thể bỏ mặc định ở đây;
+            // muốn đổi mặc định thì set địa chỉ khác). Server bỏ qua is_default khi PUT nên nếu
+            // người dùng tick mặc định lúc SỬA (chưa phải mặc định), ta gọi thêm PATCH sau khi PUT.
+            function fillForm(a) {
+                fSet('af-recipient', a ? a.recipient_name : '');
+                fSet('af-phone', a ? a.phone : '');
+                fSet('af-line1', a ? a.line1 : '');
+                fSet('af-line2', a ? a.line2 : '');
+                fSet('af-ward', a ? a.ward : '');
+                fSet('af-district', a ? a.district : '');
+                fSet('af-city', a ? a.city : '');
+                fSet('af-postal', a ? a.postal_code : '');
+                byId('af-country').value = (a && a.country) ? a.country : 'VN';
+
+                var chk = byId('af-default');
+                var hint = byId('af-default-hint');
+                var isDefault = !!(a && a.is_default);
+                chk.checked = isDefault;
+                chk.disabled = isDefault;                 // đang mặc định -> không cho bỏ tick
+                if (hint) hint.hidden = !isDefault;
+            }
+
+            function clearFormErrors() {
+                var ids = ['af-recipient', 'af-phone', 'af-line1', 'af-line2', 'af-ward', 'af-district', 'af-city', 'af-postal'];
+                for (var i = 0; i < ids.length; i++) {
+                    var el = byId(ids[i]);
+                    if (el) { el.classList.remove('addr-input-err'); el.removeAttribute('aria-invalid'); }
+                }
+                for (var j = 0; j < MSG_FIELDS.length; j++) { var m = byId(MSG_FIELDS[j] + '-msg'); if (m) m.textContent = ''; }
+            }
+            function markError(id, msg) {
+                var el = byId(id);
+                if (el) { el.classList.add('addr-input-err'); el.setAttribute('aria-invalid', 'true'); }
+                var m = byId(id + '-msg'); if (m) m.textContent = msg;
+            }
+
+            // Validate client (đồng bộ với server). Trả true nếu hợp lệ; focus field lỗi đầu tiên.
+            function validateForm() {
+                clearFormErrors();
+                var firstBad = null;
+                function fail(id, msg) { markError(id, msg); if (!firstBad) firstBad = byId(id); }
+
+                var recipient = fVal('af-recipient');
+                if (!recipient) fail('af-recipient', 'Vui lòng nhập tên người nhận');
+                var phone = fVal('af-phone');
+                if (!phone) fail('af-phone', 'Vui lòng nhập số điện thoại');
+                else if (!ADDR_PHONE_RE.test(phone)) fail('af-phone', 'Số điện thoại không hợp lệ');
+                var line1 = fVal('af-line1');
+                if (!line1) fail('af-line1', 'Vui lòng nhập địa chỉ');
+                var city = fVal('af-city');
+                if (!city) fail('af-city', 'Vui lòng nhập tỉnh/thành phố');
+                var postal = fVal('af-postal');
+                if (postal && !ADDR_POSTAL_RE.test(postal)) fail('af-postal', 'Mã bưu chính không hợp lệ');
+
+                if (firstBad) { firstBad.focus(); return false; }
+                return true;
+            }
+
+            function collectPayload() {
+                return {
+                    recipient_name: fVal('af-recipient'),
+                    phone: fVal('af-phone'),
+                    line1: fVal('af-line1'),
+                    line2: fVal('af-line2'),
+                    ward: fVal('af-ward'),
+                    district: fVal('af-district'),
+                    city: fVal('af-city'),
+                    postal_code: fVal('af-postal'),
+                    country: byId('af-country').value || 'VN'
+                };
+            }
+
+            // Đọc { addresses } từ Response; render nếu có.
+            function readResult(r) {
+                return r.json().catch(function () { return {}; })
+                    .then(function (data) { return { ok: r.ok, status: r.status, data: data }; });
+            }
+
+            function submitAddress(e) {
+                if (e) e.preventDefault();
+                if (!validateForm()) return;
+
+                var isEdit = !!_editing;
+                var payload = collectPayload();
+                var wantDefault = byId('af-default').checked;
+                if (!isEdit) payload.is_default = wantDefault;   // POST tôn trọng is_default
+
+                var submit = byId('addr-submit');
+                var label = submit.textContent;
+                submit.disabled = true; submit.textContent = 'Đang lưu…';
+
+                var url = isEdit ? '/api/account/addresses/' + encodeURIComponent(_editing.id) : '/api/account/addresses';
+                var opts = { method: isEdit ? 'PUT' : 'POST', body: JSON.stringify(payload) };
+
+                window.AuthHelper.apiFetch(url, opts).then(readResult)
+                    .then(function (out) {
+                        if (!out.ok) {
+                            if (out.status === 401) return null;   // 'authexpired' lo phần đăng nhập lại
+                            toast((out.data && out.data.message) || 'Không lưu được địa chỉ', false);
+                            return null;
+                        }
+                        // Sửa + muốn đặt mặc định (trước đó chưa phải) -> PATCH tiếp rồi render kết quả cuối.
+                        if (isEdit && wantDefault && !(_editing && _editing.is_default)) {
+                            return window.AuthHelper.apiFetch(
+                                '/api/account/addresses/' + encodeURIComponent(_editing.id) + '/default',
+                                { method: 'PATCH' }
+                            ).then(readResult).then(function (res2) {
+                                var addrs = (res2.ok && res2.data.addresses) ? res2.data.addresses : out.data.addresses;
+                                if (addrs) renderAddresses(addrs);
+                                finishModalOk(isEdit);
+                            });
+                        }
+                        if (out.data.addresses) renderAddresses(out.data.addresses);
+                        finishModalOk(isEdit);
+                        return null;
+                    })
+                    .catch(function (err) { console.error('[profile] lưu địa chỉ lỗi:', err); toast('Không lưu được địa chỉ', false); })
+                    .then(function () { submit.disabled = false; submit.textContent = label; });
+            }
+            function finishModalOk(isEdit) { closeModal(); toast(isEdit ? 'Đã cập nhật địa chỉ' : 'Đã thêm địa chỉ'); }
+
+            function setDefaultAddr(id) {
+                window.AuthHelper.apiFetch('/api/account/addresses/' + encodeURIComponent(id) + '/default', { method: 'PATCH' })
+                    .then(readResult)
+                    .then(function (out) {
+                        if (out.ok) { if (out.data.addresses) renderAddresses(out.data.addresses); toast('Đã đặt làm mặc định'); return; }
+                        if (out.status === 401) return;
+                        toast((out.data && out.data.message) || 'Không đặt được mặc định', false);
+                    })
+                    .catch(function (e) { console.error('[profile] đặt mặc định lỗi:', e); toast('Không đặt được mặc định', false); });
+            }
+
+            function deleteAddr(id) {
+                var a = findAddr(id);
+                var who = (a && a.recipient_name) ? a.recipient_name : 'này';
+                if (!window.confirm('Xóa địa chỉ của "' + who + '"? Hành động này không thể hoàn tác.')) return;
+                window.AuthHelper.apiFetch('/api/account/addresses/' + encodeURIComponent(id), { method: 'DELETE' })
+                    .then(readResult)
+                    .then(function (out) {
+                        if (out.ok) { if (out.data.addresses) renderAddresses(out.data.addresses); toast('Đã xóa địa chỉ'); return; }
+                        if (out.status === 401) return;
+                        toast((out.data && out.data.message) || 'Không xóa được địa chỉ', false);
+                    })
+                    .catch(function (e) { console.error('[profile] xóa địa chỉ lỗi:', e); toast('Không xóa được địa chỉ', false); });
+            }
+
+            // Focus trap + ESC cho modal.
+            function onModalKeydown(e) {
+                if (e.key === 'Escape' || e.keyCode === 27) { e.preventDefault(); closeModal(); return; }
+                if (e.key !== 'Tab' && e.keyCode !== 9) return;
+                var modal = byId('addr-modal');
+                var nodes = modal.querySelectorAll(FOCUSABLE);
+                var list = [];
+                for (var i = 0; i < nodes.length; i++) {
+                    if (nodes[i].offsetWidth > 0 || nodes[i].offsetHeight > 0 || nodes[i] === document.activeElement) list.push(nodes[i]);
+                }
+                if (!list.length) return;
+                var first = list[0], last = list[list.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+
+            // Uỷ quyền click trên danh sách card.
+            function onListClick(e) {
+                var btn = e.target.closest ? e.target.closest('button[data-action]') : null;
+                if (!btn) return;
+                var id = parseInt(btn.getAttribute('data-id'), 10);
+                var action = btn.getAttribute('data-action');
+                if (action === 'edit') openModal(findAddr(id));
+                else if (action === 'delete') deleteAddr(id);
+                else if (action === 'default') setDefaultAddr(id);
+            }
+
+            // Gắn sự kiện cho khối địa chỉ (gọi 1 lần lúc init).
+            function initAddresses() {
+                var addBtn = byId('addr-add'); if (addBtn) addBtn.addEventListener('click', function () { openModal(null); });
+                var addEmpty = byId('addr-add-empty'); if (addEmpty) addEmpty.addEventListener('click', function () { openModal(null); });
+                var retry = byId('addr-retry'); if (retry) retry.addEventListener('click', function () { loadAddresses(true); });
+                var closeBtn = byId('addr-modal-close'); if (closeBtn) closeBtn.addEventListener('click', closeModal);
+                var cancel = byId('addr-cancel'); if (cancel) cancel.addEventListener('click', closeModal);
+                var form = byId('addr-form'); if (form) form.addEventListener('submit', submitAddress);
+                var listEl = byId('addr-list'); if (listEl) listEl.addEventListener('click', onListClick);
+                var overlay = byId('addr-modal-overlay');
+                if (overlay) {
+                    overlay.addEventListener('keydown', onModalKeydown);
+                    overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) closeModal(); });
+                }
+            }
+
+            // hash -> section hợp lệ (mặc định "account").
+            function currentSection() {
+                var h = (location.hash || '').replace('#', '');
+                return SECTIONS.indexOf(h) >= 0 ? h : 'account';
+            }
+
+            // Đồng bộ active state (sidebar) + show/hide panel.
+            function applySection(sec) {
+                var items = document.querySelectorAll('.settings-nav-item[data-section]');
+                for (var i = 0; i < items.length; i++) {
+                    var on = items[i].getAttribute('data-section') === sec;
+                    items[i].classList.toggle('is-active', on);
+                    if (on) items[i].setAttribute('aria-current', 'true');
+                    else items[i].removeAttribute('aria-current');
+                }
+                var secs = document.querySelectorAll('.settings-section');
+                for (var j = 0; j < secs.length; j++) {
+                    secs[j].classList.toggle('is-active', secs[j].id === 'section-' + sec);
+                }
+                if (sec === 'addresses') loadAddresses();   // lazy: chỉ nạp khi mở tab
+            }
+
+            // Auth gate: khách -> notice; đã đăng nhập -> shell + nạp thông tin.
+            function render(user) {
+                var loggedIn = user
+                    || (window.AuthHelper && typeof window.AuthHelper.isLoggedIn === 'function'
+                        && window.AuthHelper.isLoggedIn());
+                if (!loggedIn) {
+                    _meLoaded = false;    // đăng xuất -> cho phép nạp lại khi đăng nhập lần sau
+                    _addrLoaded = false;  // reset danh sách địa chỉ
+                    show('profile-login', 'block');
+                    show('profile-status', 'none');
+                    show('settings-body', 'none');
+                    return;
+                }
+                show('profile-login', 'none');
+                show('settings-body', 'grid');
+                applySection(currentSection());
+                fillFromFirebase(user);   // tên/email tức thì
+                loadMe();                 // chi tiết read-only từ server
+            }
+
+            window.addEventListener('hashchange', function () { applySection(currentSection()); });
+
+            // Khởi tạo form: giới hạn ngày sinh <= hôm nay + gắn nút Lưu.
+            var dobEl = document.getElementById('ad-dob');
+            if (dobEl) dobEl.max = new Date().toISOString().slice(0, 10);
+            var saveBtn = document.getElementById('ad-save');
+            if (saveBtn) saveBtn.addEventListener('click', saveProfile);
+            initAddresses();   // gắn sự kiện khối "Địa chỉ giao hàng"
+
+            // Phiên hết hạn (đã tự refresh mà vẫn 401): báo lỗi + đưa về đăng nhập lại.
+            document.addEventListener('authexpired', function () {
+                toast('Phiên đăng nhập đã hết hạn — vui lòng đăng nhập lại.', false);
+                setTimeout(function () {
+                    window.location.href = 'login.html?redirect=profile.html&notice=session-expired';
+                }, 1600);
+            });
+
+            if (window.AuthHelper && typeof window.AuthHelper.onChange === 'function') {
+                window.AuthHelper.onChange(render);   // gọi ngay nếu đã sẵn + mỗi lần đổi trạng thái
+            } else {
+                document.addEventListener('DOMContentLoaded', function () { render(); });
+            }
+        })();
+    </script>
+    <script src="js/drawer-menu.js"></script>
+    <script src="js/reveal.js"></script>
+</body>
+</html>
