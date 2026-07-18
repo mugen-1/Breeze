@@ -35,7 +35,8 @@ async function upsertUser(decoded) {
         INSERT (firebase_uid, email, display_name, last_login)
         VALUES (@uid, @email, @displayName, SYSUTCDATETIME());
 
-      SELECT id, firebase_uid, email, display_name, role, created_at, last_login
+      SELECT id, firebase_uid, email, display_name, role, created_at, last_login,
+             phone, dob, gender, country
       FROM dbo.users
       WHERE firebase_uid = @uid;
     `);
@@ -49,7 +50,8 @@ async function upsertUser(decoded) {
       .input('uid', sql.VarChar(128), decoded.uid)
       .query(`
         UPDATE dbo.users SET role = 'admin' WHERE firebase_uid = @uid;
-        SELECT id, firebase_uid, email, display_name, role, created_at, last_login
+        SELECT id, firebase_uid, email, display_name, role, created_at, last_login,
+               phone, dob, gender, country
         FROM dbo.users WHERE firebase_uid = @uid;
       `);
     user = upd.recordset[0];

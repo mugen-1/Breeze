@@ -15,6 +15,7 @@ const productsRouter = require('./routes/products');
 const meRouter = require('./routes/me');
 const cartRouter = require('./routes/cart');
 const ordersRouter = require('./routes/orders');
+const addressesRouter = require('./routes/addresses');
 const adminRouter = require('./routes/admin');
 
 const app = express();
@@ -76,6 +77,7 @@ app.use('/api/products', productsRouter);
 app.use('/api/me', meRouter);
 app.use('/api/cart', cartRouter);
 app.use('/api/orders', ordersRouter);
+app.use('/api/account/addresses', addressesRouter);
 app.use('/api/admin', adminRouter);
 
 // --- Static frontend ---------------------------------------------------------
