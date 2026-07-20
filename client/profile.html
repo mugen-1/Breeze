@@ -515,6 +515,35 @@
             .addr-modal-foot { flex-direction: column-reverse; }
             .addr-btn { width: 100%; text-align: center; }
         }
+
+        /* ===== Phase 5: mục "Giao diện" (theme picker) ===== */
+        .settings-desc { font-family: var(--font-ui); font-size: 14px; color: var(--c-muted); line-height: 1.6; margin-bottom: 4px; }
+        .theme-lbl { font-family: var(--font-ui); font-size: 12px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--c-muted); margin: 24px 0 10px; }
+        .theme-cards { display: flex; gap: 16px; max-width: 420px; }
+        .theme-card { flex: 1; }
+        .theme-card .frame { border: 1px solid var(--c-line); border-radius: 10px; overflow: hidden; transition: border-color .2s, box-shadow .2s; }
+        .theme-card.is-current .frame { border-color: var(--c-ink); box-shadow: 0 0 0 1px var(--c-ink); }
+        .theme-card-foot { text-align: center; margin-top: 8px; font-family: var(--font-ui); font-size: 13px; color: var(--c-ink); }
+        /* Khung mini — MÀU LITERAL cố định, LUÔN hiện đúng mẫu Sáng/Tối bất kể theme của trang */
+        .mini { height: 116px; display: flex; flex-direction: column; }
+        .mini-top { font-family: 'Cormorant Garamond', serif; font-size: 13px; letter-spacing: 3px; padding: 9px 12px; border-bottom: 1px solid; }
+        .mini-body { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 7px; }
+        .mini-line { height: 7px; border-radius: 3px; width: 100%; }
+        .mini-line.short { width: 58%; }
+        .mini-btn { margin-top: auto; align-self: flex-start; font-family: var(--font-ui); font-size: 10px; letter-spacing: 1px; padding: 5px 12px; border-radius: 3px; }
+        .frame-light { background: #ffffff; }
+        .frame-light .mini-top { color: #0e0e0e; background: #ffffff; border-color: #e6e3dd; }
+        .frame-light .mini-line { background: #e6e3dd; }
+        .frame-light .mini-btn { background: #1a1a1a; color: #ffffff; }
+        .frame-dark { background: #141312; }
+        .frame-dark .mini-top { color: #f2efe8; background: #141312; border-color: #2a2825; }
+        .frame-dark .mini-line { background: #2a2825; }
+        .frame-dark .mini-btn { background: #f2efe8; color: #141312; }
+        .theme-seg { display: flex; border: 1px solid var(--c-line); border-radius: 10px; overflow: hidden; max-width: 320px; }
+        .theme-seg-btn { flex: 1; padding: 11px 0; background: var(--c-bg); color: var(--c-muted); border: 0; border-right: 1px solid var(--c-line); font-family: var(--font-ui); font-size: 13.5px; letter-spacing: .5px; cursor: pointer; transition: background .15s, color .15s; }
+        .theme-seg-btn:last-child { border-right: 0; }
+        .theme-seg-btn:hover { color: var(--c-ink); }
+        .theme-seg-btn.on { background: var(--c-accent); color: var(--c-on-accent); }
     </style>
     <script src="js/theme.js" defer></script>
 </head>
@@ -622,14 +651,14 @@
                     <span>Phương thức thanh toán</span>
                 </a>
 
-                <!-- Nhóm "Coming soon": disable, không click -->
-                <span class="settings-nav-item is-soon" aria-disabled="true" tabindex="-1" title="Sắp ra mắt">
+                <a class="settings-nav-item" href="#theme" data-section="theme">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M4 8h8M17 8h3M4 16h3M12 16h8"/><circle cx="14.5" cy="8" r="2.2"/><circle cx="9.5" cy="16" r="2.2"/>
                     </svg>
-                    <span>Tùy chọn mua sắm</span>
-                    <span class="settings-soon-tag">Sắp ra mắt</span>
-                </span>
+                    <span>Giao diện</span>
+                </a>
+
+                <!-- Nhóm "Coming soon": disable, không click -->
                 <span class="settings-nav-item is-soon" aria-disabled="true" tabindex="-1" title="Sắp ra mắt">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M12 3l7 3v5c0 4.6-3 8.2-7 10-4-1.8-7-5.4-7-10V6l7-3z"/>
@@ -815,6 +844,50 @@
                     <!-- Danh sách thẻ -->
                     <div class="addr-list" id="pm-list" role="list" aria-label="Thẻ đã lưu" hidden></div>
                 </section>
+
+                <section class="settings-section" id="section-theme" aria-labelledby="title-theme">
+                    <h2 class="settings-section-title" id="title-theme">Giao diện</h2>
+                    <p class="sr-only" id="theme-live" role="status" aria-live="polite"></p>
+                    <p class="settings-desc">Chọn giao diện cho Breeze. Lựa chọn được áp dụng trên tất cả các trang.</p>
+
+                    <!-- Xem trước: CHỈ phản ánh trạng thái hiện tại, không bấm để chọn -->
+                    <p class="theme-lbl">Xem trước</p>
+                    <div class="theme-cards">
+                        <div class="theme-card" data-theme-preview="light">
+                            <div class="frame frame-light">
+                                <div class="mini">
+                                    <div class="mini-top">BREEZE</div>
+                                    <div class="mini-body">
+                                        <div class="mini-line"></div>
+                                        <div class="mini-line short"></div>
+                                        <div class="mini-btn">Mua</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="theme-card-foot"><span>Sáng</span></div>
+                        </div>
+                        <div class="theme-card" data-theme-preview="dark">
+                            <div class="frame frame-dark">
+                                <div class="mini">
+                                    <div class="mini-top">BREEZE</div>
+                                    <div class="mini-body">
+                                        <div class="mini-line"></div>
+                                        <div class="mini-line short"></div>
+                                        <div class="mini-btn">Mua</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="theme-card-foot"><span>Tối</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Thanh chọn thật: chỉ 2 nút Sáng/Tối -->
+                    <p class="theme-lbl">Chế độ</p>
+                    <div class="theme-seg" role="group" aria-label="Chọn giao diện">
+                        <button type="button" class="theme-seg-btn" data-theme-choice="light">Sáng</button>
+                        <button type="button" class="theme-seg-btn" data-theme-choice="dark">Tối</button>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
@@ -988,7 +1061,7 @@
         (function () {
             'use strict';
 
-            var SECTIONS = ['account', 'addresses', 'payments'];   // section có thể mở
+            var SECTIONS = ['account', 'addresses', 'payments', 'theme'];   // section có thể mở
             var _meLoaded = false;                     // tránh gọi /api/me lặp
 
             function show(id, mode) {
@@ -1465,6 +1538,21 @@
                 if (window.PaymentMethods && window.PaymentMethods.load) window.PaymentMethods.load();
             }
 
+            // Phase 5: đồng bộ UI mục "Giao diện" với theme hiện tại (khung is-current + nút .on).
+            function syncThemeUI() {
+                var cur = (window.BreezeTheme && window.BreezeTheme.get) ? window.BreezeTheme.get() : 'light';
+                var cards = document.querySelectorAll('.theme-card[data-theme-preview]');
+                for (var i = 0; i < cards.length; i++) {
+                    cards[i].classList.toggle('is-current', cards[i].getAttribute('data-theme-preview') === cur);
+                }
+                var btns = document.querySelectorAll('.theme-seg-btn[data-theme-choice]');
+                for (var k = 0; k < btns.length; k++) {
+                    btns[k].classList.toggle('on', btns[k].getAttribute('data-theme-choice') === cur);
+                }
+                var live = document.getElementById('theme-live');
+                if (live) live.textContent = 'Giao diện hiện tại: ' + (cur === 'dark' ? 'Tối' : 'Sáng');
+            }
+
             function applySection(sec) {
                 var items = document.querySelectorAll('.settings-nav-item[data-section]');
                 for (var i = 0; i < items.length; i++) {
@@ -1479,6 +1567,7 @@
                 }
                 if (sec === 'addresses') loadAddresses();   // lazy: chỉ nạp khi mở tab
                 if (sec === 'payments') loadPaymentMethods();
+                if (sec === 'theme') syncThemeUI();
             }
 
             // Auth gate: khách -> notice; đã đăng nhập -> shell + nạp thông tin.
@@ -1502,6 +1591,20 @@
             }
 
             window.addEventListener('hashchange', function () { applySection(currentSection()); });
+
+            // Phase 5: click nút Sáng/Tối -> đặt theme (CSS toàn trang đổi ngay, không reload).
+            var themeSeg = document.querySelector('.theme-seg');
+            if (themeSeg) {
+                themeSeg.addEventListener('click', function (e) {
+                    var b = e.target.closest ? e.target.closest('.theme-seg-btn[data-theme-choice]') : null;
+                    if (b && window.BreezeTheme && window.BreezeTheme.set) {
+                        window.BreezeTheme.set(b.getAttribute('data-theme-choice'));
+                    }
+                });
+            }
+            // Đồng bộ UI khi theme đổi từ bất kỳ đâu (vd Phase 6 icon header sau này).
+            // theme.js phát event trên document (không bubble) -> phải nghe ở document.
+            document.addEventListener('breeze:themechange', syncThemeUI);
 
             // Khởi tạo form: giới hạn ngày sinh <= hôm nay + gắn nút Lưu.
             var dobEl = document.getElementById('ad-dob');
