@@ -2,8 +2,8 @@
 
 /* ===== TRANG CHÍNH SÁCH - nền trắng kiểu Breeze ===== */
 body.policy-page {
-    background: #fff;
-    color: #111;
+    background: var(--c-bg);
+    color: var(--c-ink);
     padding-top: 0;
     font-family: 'Open Sans', sans-serif;
 }
@@ -15,12 +15,12 @@ body.policy-page {
     align-items: center;
     justify-content: space-between;
     padding: 24px 44px;
-    background: #fff;
-    border-bottom: 1px solid #ececec;
+    background: var(--c-footer-bg);   /* GHIM tối cố định — brand chrome (wordmark BREEZE + nav), không đảo theo theme */
+    border-bottom: 1px solid #2a2825; /* hairline tối CỐ ĐỊNH (khớp --c-line dark), KHÔNG dùng var(--c-line) vì nó đảo theme */
 }
 
 .policy-header a {
-    color: #111;
+    color: var(--c-footer-ink);
     text-decoration: none;
 }
 
@@ -46,7 +46,7 @@ body.policy-page {
     letter-spacing: 10px;
     padding-left: 10px;
     text-transform: uppercase;
-    color: #111;
+    color: var(--c-footer-ink);
     white-space: nowrap;
 }
 
@@ -59,7 +59,7 @@ body.policy-page {
 
 .ph-actions .fa {
     font-size: 17px;
-    color: #111;
+    color: var(--c-footer-ink);
     transition: opacity .2s;
 }
 
@@ -74,7 +74,7 @@ body.policy-page {
     background: none;
     border: 0;
     cursor: pointer;
-    color: #111;
+    color: var(--c-footer-ink);
     font-family: inherit;
     font-size: 12px;
     letter-spacing: 1.5px;
@@ -100,14 +100,14 @@ body.policy-page {
     font-size: clamp(30px, 4vw, 44px);
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: #111;
+    color: var(--c-ink);
     margin-bottom: 22px;
 }
 
 .policy-divider {
     width: 90px;
     height: 1px;
-    background: #bbb;
+    background: var(--c-line);
     margin: 0 auto 52px;
 }
 
@@ -124,7 +124,7 @@ body.policy-page {
     font-weight: 700;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: #111;
+    color: var(--c-ink);
     margin-bottom: 18px;
     text-align: center;
 }
@@ -132,7 +132,7 @@ body.policy-page {
 .policy-body p {
     font-size: 14px;
     line-height: 1.9;
-    color: #444;
+    color: var(--c-muted);
     margin-bottom: 14px;
 }
 
@@ -145,55 +145,55 @@ body.policy-page {
 .policy-body li {
     font-size: 14px;
     line-height: 1.9;
-    color: #444;
+    color: var(--c-muted);
     margin-bottom: 8px;
 }
 
 .policy-body strong {
-    color: #111;
+    color: var(--c-ink);
     font-weight: 600;
 }
 
 /* ---- Drawer light (trang nền trắng) ---- */
 body.policy-page .drawer {
-    background: #fff;
-    color: #111;
+    background: var(--c-bg);
+    color: var(--c-ink);
     box-shadow: -8px 0 40px rgba(0, 0, 0, .18);
 }
 
 body.policy-page .drawer-head {
-    background: #fff;
-    border-bottom: 1px solid #e5e5e5;
+    background: var(--c-bg);
+    border-bottom: 1px solid var(--c-line);
 }
 
 body.policy-page .drawer-title,
 body.policy-page .drawer-close,
 body.policy-page .drawer-acc-btn {
-    color: #111;
+    color: var(--c-ink);
 }
 
 body.policy-page .drawer-acc-item {
-    border-bottom: 1px solid #ececec;
+    border-bottom: 1px solid var(--c-line);
 }
 
 body.policy-page .drawer-sub li a {
-    color: #666;
+    color: var(--c-muted);
 }
 
 body.policy-page .drawer-sub li a:hover {
-    color: #111;
+    color: var(--c-ink);
 }
 
 body.policy-page .drawer-links {
-    border-top: 1px solid #e5e5e5;
+    border-top: 1px solid var(--c-line);
 }
 
 body.policy-page .drawer-links li a {
-    color: #888;
+    color: var(--c-muted);
 }
 
 body.policy-page .drawer-links li a:hover {
-    color: #111;
+    color: var(--c-ink);
 }
 
 /* ---- Responsive ---- */

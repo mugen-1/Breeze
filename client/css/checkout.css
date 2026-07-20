@@ -12,19 +12,20 @@ header {
 }
 
 :root {
-    /* off-black / off-white, không dùng đen/trắng tuyệt đối */
-    --co-ink: #0e0e0e;          /* zinc-950-ish */
-    --co-ink-soft: #2a2a2a;
-    --co-muted: #6b6b6b;
-    --co-muted-2: #8c8c8c;
-    --co-paper: #ffffff;        /* nền trang trắng */
-    --co-card: #fafaf8;         /* nền input/card, hơi xám nhạt */
-    --co-cream: #f5f3f0;        /* background nhạt */
-    --co-line: #e5e3df;         /* viền mảnh */
-    --co-line-strong: #d0ccc4;
-    --co-focus: #1a55c8;        /* xanh focus */
-    --co-err: #b3261e;          /* đỏ lỗi */
-    --co-ok: #1f7a4d;
+    /* Alias sang token dùng chung (css/tokens.css) để checkout theme-aware,
+       tránh trùng lặp nguồn màu. --co-focus giữ xanh (ngoài bảng quy đổi). */
+    --co-ink: var(--c-ink);
+    --co-ink-soft: var(--c-ink);
+    --co-muted: var(--c-muted);
+    --co-muted-2: var(--c-muted);
+    --co-paper: var(--c-bg);
+    --co-card: var(--c-surface);
+    --co-cream: var(--c-surface);
+    --co-line: var(--c-line);
+    --co-line-strong: var(--c-line);
+    --co-focus: #1a55c8;        /* xanh focus — ngoài bảng, giữ nguyên */
+    --co-err: var(--c-danger);
+    --co-ok: var(--c-success);
 }
 
 html, body.co-page {
@@ -53,7 +54,7 @@ body.co-page {
     align-items: center;
     justify-content: space-between;
     height: 80px;
-    background: var(--co-paper);
+    background: var(--c-footer-bg);   /* GHIM tối cố định — brand chrome (wordmark BREEZE), không đảo theo theme */
     border-bottom: 1px solid var(--co-line);
     padding: 0 40px;
 }
@@ -70,7 +71,7 @@ body.co-page {
     font-weight: 500;
     font-size: 32px;
     letter-spacing: 8px;
-    color: var(--co-ink);
+    color: var(--c-footer-ink);   /* trên nền header ghim tối */
     text-decoration: none;
     text-transform: uppercase;
 }
@@ -82,9 +83,8 @@ body.co-page {
     gap: 26px;
 }
 
-/* Ghi đè .cart-icon-btn của global.css (nó set position:absolute;top:50% gây lệch) */
-.co-header .co-header-icon,
-.co-header .cart-icon-btn {
+/* position:relative cũng là mốc neo cho .cart-badge trên icon tài khoản */
+.co-header .co-header-icon {
     position: relative;
     top: auto;
     right: auto;
@@ -94,13 +94,12 @@ body.co-page {
     justify-content: center;
     width: 36px;
     height: 36px;
-    color: var(--co-ink);
+    color: var(--c-footer-ink);   /* trên nền header ghim tối */
     font-size: 20px;
     text-decoration: none;
     transition: opacity .2s ease;
 }
-.co-header .cart-icon-btn .fa,
-.co-header .co-header-icon .fa { color: var(--co-ink); }
+.co-header .co-header-icon .fa { color: var(--c-footer-ink); }
 .co-header-icon:hover { opacity: .6; }
 
 .cart-badge {
@@ -401,6 +400,12 @@ body.co-page {
     cursor: pointer;
 }
 .co-select:disabled { cursor: not-allowed; opacity: .7; }
+/* Dark: mũi tên off-black chìm trên nền select tối → đổi stroke sang off-white (--c-ink dark).
+   :not(:disabled) — select disabled bị .co-input:disabled reset background-repeat về `repeat`;
+   nếu override này chạm luôn disabled thì mũi tên bị lát kín (trông như vân sọc). */
+html[data-theme="dark"] .co-select:not(:disabled) {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23f2efe8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
 
 /* Helper + error inline */
 .co-help {
@@ -442,7 +447,7 @@ body.co-page {
 /* Trạng thái lỗi cho field */
 .co-input[aria-invalid="true"] {
     border-color: var(--co-err);
-    background: #fdf5f4;
+    background: var(--c-danger-bg);
 }
 .co-input[aria-invalid="true"]:focus-visible {
     box-shadow: 0 0 0 3px rgba(179, 38, 30, .25);
@@ -551,7 +556,7 @@ body.co-page {
     cursor: pointer;
     transition: background .18s ease, transform .05s ease;
 }
-.co-submit:hover { background: var(--co-ink-soft); }
+.co-submit:hover { opacity: .9; }
 .co-submit:active { transform: translateY(1px); }
 .co-submit:focus-visible {
     outline: none;
@@ -580,13 +585,13 @@ body.co-page {
 }
 .co-form-msg.is-ok {
     color: var(--co-ok);
-    background: #e9f4ee;
-    border: 1px solid #b8ddc6;
+    background: var(--c-success-bg);
+    border: 1px solid var(--c-success-text);
 }
 .co-form-msg.is-err {
     color: var(--co-err);
-    background: #fdf5f4;
-    border: 1px solid #edccc9;
+    background: var(--c-danger-bg);
+    border: 1px solid var(--c-danger-text);
 }
 
 /* ---- utils ---- */
