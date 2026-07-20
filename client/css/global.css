@@ -1,10 +1,6 @@
 :root {
-    --c-bg: #ffffff;
-    --c-ink: #0e0e0e;        /* đen chủ đạo, không dùng #000 tuyệt đối cho mềm mắt */
-    --c-muted: #6b6b6b;
-    --c-line: #e6e3dd;       /* viền mảnh */
-    --c-cream: #f6f4ef;      /* nền kem section */
-    --c-accent: #1a1a1a;
+    /* Token màu dùng chung nằm ở css/tokens.css (nạp trước file này). Ở đây chỉ giữ
+       các token KHÔNG theme-aware (không có trong tokens.css). */
     --font-display: 'Cormorant Garamond', Georgia, serif;
     --font-ui: 'Jost', 'Trebuchet MS', sans-serif;
     --ease: cubic-bezier(0.16, 1, 0.3, 1);   /* expo-out, mượt sang */
@@ -28,7 +24,7 @@ a {
 }
 
 header {
-    background-color: var(--c-ink);
+    background-color: var(--c-footer-bg);
     display: flex;
     justify-content: space-between;
     padding: 12px 50px;
@@ -71,7 +67,7 @@ header .logo img {
     position: absolute;
     width: 200px;
     border: 1px solid var(--c-line);
-    background-color: var(--c-ink);
+    background-color: var(--c-footer-bg);
     padding: 10px 0 10px 20px;
     visibility: hidden;
     top: 50px;
@@ -89,7 +85,7 @@ header .logo img {
 
 header .menu li a {
     font-size: 14px;
-    color: var(--c-bg);
+    color: var(--c-footer-ink);
     padding: 0 10px;
     font-weight: bold;
     display: block;
@@ -127,7 +123,7 @@ body {
     font-family: var(--font-ui);
     font-size: 14px;
     line-height: 1.15;
-    color: #111;
+    color: var(--c-ink);
 }
 
 #wrapper {
@@ -142,12 +138,12 @@ body {
 
 h4 {
     font-size: 18px;
-    color: #111;
+    color: var(--c-ink);
     padding: 10px 20px;
     text-transform: uppercase;
-    border: 1px solid #bebebe;
+    border: 1px solid var(--c-line);
     display: inline-block;
-    color: #555;
+    color: var(--c-muted);
     font-weight: 600;
 }
 
@@ -196,7 +192,7 @@ ul.products li .product-info a .product-name {
 }
 
 ul.products li .product-info .product-price {
-    color: #111;
+    color: var(--c-ink);
     padding: 2px 0px;
     font-weight: 600;
 }
@@ -213,12 +209,12 @@ ul.products li .product-info .product-price {
 
 h5 {
     font-size: 18px;
-    color: #111;
+    color: var(--c-ink);
     padding: 10px 20px;
     text-transform: uppercase;
-    border: 1px solid #bebebe;
+    border: 1px solid var(--c-line);
     display: inline-block;
-    color: #555;
+    color: var(--c-muted);
     font-weight: 600;
 }
 
@@ -254,18 +250,18 @@ ul.hinhanh li .info a {
 }
 
 ul.hinhanh li .info {
-    color: #000000;
+    color: var(--c-ink);
     font-family: 'Open Sans', sans-serif;
     padding: 3px 0px;
 }
 
 footer {
-    background: var(--c-ink);
+    background: var(--c-footer-bg);
     height: auto;
     width: 100vw;
     font-family: var(--font-ui);
     padding-top: 110px;
-    color: var(--c-bg);
+    color: var(--c-footer-ink);
 }
 
 .footer-content {
@@ -305,7 +301,7 @@ footer {
 
 .socials a {
     text-decoration: none;
-    color: #fff;
+    color: var(--c-footer-ink);
 }
 
 .socials a i {
@@ -318,7 +314,7 @@ footer {
 }
 
 .footer-bottom {
-    background: var(--c-ink);
+    background: var(--c-footer-bg);
     width: 100vw;
     padding: 20px 0;
     text-align: center;
@@ -382,7 +378,7 @@ footer {
 }
 
 .footer-col ul li a {
-    color: #fff;
+    color: var(--c-footer-ink);
     text-decoration: none;
     font-size: 14px;
     border-bottom: 1px solid transparent;
@@ -390,7 +386,7 @@ footer {
 }
 
 .footer-col ul li a:hover {
-    border-bottom-color: #fff;
+    border-bottom-color: var(--c-footer-ink);
 }
 
 /* Dropdown ngôn ngữ kiểu Breeze */
@@ -402,7 +398,7 @@ footer {
 .footer-lang-btn {
     background: none;
     border: none;
-    color: #fff;
+    color: var(--c-footer-ink);
     font-family: inherit;
     font-size: 14px;
     cursor: pointer;
@@ -413,7 +409,7 @@ footer {
 }
 
 .footer-lang-btn #footer-lang-current {
-    border-bottom: 1px solid #fff;
+    border-bottom: 1px solid var(--c-footer-ink);
     padding-bottom: 2px;
 }
 
@@ -433,7 +429,7 @@ footer {
     top: calc(100% + 14px);
     left: 0;
     min-width: 230px;
-    background: #e9e9e9;
+    background: var(--c-surface);
     padding: 6px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
     z-index: 50;
@@ -453,7 +449,7 @@ footer {
     padding: 14px 16px;
     font-family: inherit;
     font-size: 14px;
-    color: #111;
+    color: var(--c-ink);
     cursor: pointer;
     text-align: left;
     transition: background .15s;
@@ -464,7 +460,7 @@ footer {
 }
 
 .footer-lang-opt.active {
-    background: #fff;
+    background: var(--c-bg);
 }
 
 .footer-lang-check {
@@ -504,11 +500,11 @@ footer {
 }
 
 .sbutton {
-    color: #e84118;
+    color: var(--c-danger);
         width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: #DADADA;
+    background: var(--c-surface);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -525,7 +521,7 @@ footer {
 
 .box:hover,
 .box.has-text {
-    background-color: #DADADA;
+    background-color: var(--c-surface);
 }
 
 
@@ -543,7 +539,7 @@ align-self: center;
     outline: none;
     float: left;
     padding: 0;
-    color: #555;
+    color: var(--c-muted);
     font-size: 15px;
     transition: 0.4s;
     line-height: 40px;
@@ -575,7 +571,7 @@ align-self: center;
   }
  /* thêm màu nền khi người dùng hover vào class không active */
   .pagination a:hover:not(.active) {
-    background-color: #ddd;
+    background-color: var(--c-surface);
 }
 h4 {
     display: block;
@@ -587,11 +583,11 @@ h4 {
   }
 
   ul.products li .product-info a.product-cat {
-    color: #000000 !important; /* Dùng !important để ghi đè */
+    color: var(--c-ink) !important; /* Dùng !important để ghi đè */
 }
 
 ul.products-bottom li .product-info a.product-cat {
-    color: #000000;
+    color: var(--c-ink);
 }
 
 /* Center the slideshow container */
@@ -626,11 +622,11 @@ ul.products-bottom li .product-info a.product-cat {
     width: 200px;
     flex-shrink: 0;
     padding-right: 28px;
-    border-right: 1px solid #e5e5e5;
+    border-right: 1px solid var(--c-line);
 }
 
 .sidebar-section {
-    border-bottom: 1px solid #e5e5e5;
+    border-bottom: 1px solid var(--c-line);
     padding: 16px 0;
 }
 
@@ -641,7 +637,7 @@ ul.products-bottom li .product-info a.product-cat {
 .sidebar-category-title {
     font-size: 12px;
     font-weight: 700;
-    color: #111;
+    color: var(--c-ink);
     margin-bottom: 10px;
     text-transform: uppercase;
     letter-spacing: 0.8px;
@@ -663,7 +659,7 @@ ul.products-bottom li .product-info a.product-cat {
 
 .sidebar-links > li > a {
     font-size: 14px;
-    color: #444;
+    color: var(--c-muted);
     text-decoration: none;
     display: block;
     padding: 2px 0;
@@ -672,13 +668,13 @@ ul.products-bottom li .product-info a.product-cat {
     text-transform: none !important;
 }
 
-.sidebar-links > li > a:hover { color: #111; font-weight: 600 !important; }
-.sidebar-links > li > a.active { color: #111; font-weight: 700 !important; }
+.sidebar-links > li > a:hover { color: var(--c-ink); font-weight: 600 !important; }
+.sidebar-links > li > a.active { color: var(--c-ink); font-weight: 700 !important; }
 
 .sidebar-filter-heading {
     font-size: 12px;
     font-weight: 700;
-    color: #111;
+    color: var(--c-ink);
     text-transform: uppercase;
     letter-spacing: 0.8px;
     display: flex;
@@ -716,7 +712,7 @@ ul.products-bottom li .product-info a.product-cat {
     align-items: center;
     gap: 10px;
     font-size: 14px;
-    color: #444;
+    color: var(--c-muted);
     cursor: pointer;
     font-weight: normal;
 }
@@ -726,7 +722,7 @@ ul.products-bottom li .product-info a.product-cat {
     width: 16px;
     height: 16px;
     cursor: pointer;
-    accent-color: #111;
+    accent-color: var(--c-ink);
     flex-shrink: 0;
 }
 
@@ -748,7 +744,7 @@ ul.products-bottom li .product-info a.product-cat {
     font-size: 16px !important;
     font-weight: 700 !important;
     letter-spacing: 1.5px;
-    color: #fff !important;
+    color: var(--c-on-accent) !important;
     display: inline-block !important;
 }
 
@@ -778,8 +774,8 @@ ul.products-bottom li .product-info a.product-cat {
     top: 70px;
     left: 0;
     width: 100%;
-    background: #111;
-    border-top: 1px solid #2a2a2a;
+    background: var(--c-accent);
+    border-top: 1px solid var(--c-ink);
     z-index: 1001;
     box-shadow: 0 12px 32px rgba(0,0,0,0.5);
 }
@@ -801,14 +797,14 @@ ul.products-bottom li .product-info a.product-cat {
 }
 
 .mega-heading {
-    color: #fff;
+    color: var(--c-on-accent);
     font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 16px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--c-ink);
 }
 
 .mega-col ul {
@@ -825,7 +821,7 @@ ul.products-bottom li .product-info a.product-cat {
 }
 
 .mega-col ul li a {
-    color: #999 !important;
+    color: var(--c-muted) !important;
     font-size: 14px;
     font-weight: normal !important;
     text-transform: none !important;
@@ -835,13 +831,13 @@ ul.products-bottom li .product-info a.product-cat {
 }
 
 .mega-col ul li a:hover {
-    color: #fff !important;
+    color: var(--c-on-accent) !important;
 }
 
-/* ===== DARK THEME ===== */
+/* ===== HOME/BASE (nền tối cố định — KHÔNG theo theme; giữ home như cũ) ===== */
 body {
-    background-color: var(--c-ink);
-    color: var(--c-bg);
+    background-color: #0e0e0e;
+    color: #ffffff;
 }
 
 h4, h5 {
@@ -918,31 +914,7 @@ ul.hinhanh li .info {
     color: #fff !important;
 }
 
-/* ---- Cart Icon in Header ---- */
-.cart-icon-btn {
-    position: absolute;
-    right: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    color: #fff;
-    font-size: 20px;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.cart-icon-btn .fa-shopping-cart {
-    color: #fff !important;
-}
-
-.cart-icon-btn:hover .fa-shopping-cart {
-    color: #ccc !important;
-}
-
+/* Badge số lượng giỏ — nay gắn trên icon tài khoản (xem js/account-menu.js) */
 .cart-badge {
     position: absolute;
     top: -8px;
@@ -1029,83 +1001,83 @@ ul.hinhanh li .info {
 
 /* ===== CATEGORY LISTING PAGES - WHITE BACKGROUND ===== */
 body.category-page {
-    background-color: #fff;
-    color: #111;
+    background-color: var(--c-bg);
+    color: var(--c-ink);
 }
 
 body.category-page .mega-menu {
-    background: #fff;
-    border-top: 1px solid #e5e5e5;
+    background: var(--c-bg);
+    border-top: 1px solid var(--c-line);
 }
 
 body.category-page .mega-heading {
-    color: #111;
-    border-bottom: 1px solid #e5e5e5;
+    color: var(--c-ink);
+    border-bottom: 1px solid var(--c-line);
 }
 
 body.category-page .mega-col ul li a {
-    color: #666 !important;
+    color: var(--c-muted) !important;
 }
 
 body.category-page .mega-col ul li a:hover {
-    color: #111 !important;
+    color: var(--c-ink) !important;
 }
 
 body.category-page #wrapper,
 body.category-page #khung {
-    background-color: #fff;
+    background-color: var(--c-bg);
 }
 
 body.category-page h4,
 body.category-page h5 {
-    color: #111 !important;
-    border-color: #ddd !important;
+    color: var(--c-ink) !important;
+    border-color: var(--c-line) !important;
 }
 
 body.category-page .main-content .headline h4 {
-    color: #111 !important;
+    color: var(--c-ink) !important;
 }
 
 body.category-page .sidebar {
-    border-right: 1px solid #e5e5e5 !important;
+    border-right: 1px solid var(--c-line) !important;
 }
 
 body.category-page .sidebar-section {
-    border-bottom: 1px solid #e5e5e5 !important;
+    border-bottom: 1px solid var(--c-line) !important;
 }
 
 body.category-page .sidebar-category-title {
-    color: #111 !important;
+    color: var(--c-ink) !important;
 }
 
 body.category-page .sidebar-links > li > a {
-    color: #444 !important;
+    color: var(--c-muted) !important;
 }
 
 body.category-page .sidebar-links > li > a:hover,
 body.category-page .sidebar-links > li > a.active {
-    color: #111 !important;
+    color: var(--c-ink) !important;
 }
 
 body.category-page .sidebar-filter-heading {
-    color: #111 !important;
+    color: var(--c-ink) !important;
 }
 
 body.category-page .sidebar-filter-list label {
-    color: #444 !important;
+    color: var(--c-muted) !important;
 }
 
 body.category-page .sidebar-filter-list input[type="checkbox"],
 body.category-page .sidebar-filter-list input[type="radio"] {
-    accent-color: #111;
+    accent-color: var(--c-ink);
 }
 
 body.category-page .main-content ul.products > li {
-    background: #fff;
+    background: var(--c-bg);
 }
 
 body.category-page .main-content ul.products .product-thumb {
-    background: #f5f5f5;
+    background: var(--c-surface);
 }
 
 body.category-page ul.products li .product-info a.product-cat,
@@ -1114,18 +1086,18 @@ body.category-page ul.products li .product-info a.product-name {
 }
 
 body.category-page ul.products li .product-info .product-price {
-    color: #111 !important;
+    color: var(--c-ink) !important;
 }
 
 body.category-page .btn-add-cart {
-    background: #111 !important;
-    color: #fff !important;
-    border: 1px solid #111 !important;
+    background: var(--c-accent) !important;
+    color: var(--c-on-accent) !important;
+    border: 1px solid var(--c-ink) !important;
 }
 
 body.category-page .btn-add-cart:hover {
-    background: #fff !important;
-    color: #111 !important;
+    background: var(--c-bg) !important;
+    color: var(--c-ink) !important;
 }
 
 /* ===== SLIDE-OUT DRAWER MENU ===== */
@@ -1134,7 +1106,7 @@ body.category-page .btn-add-cart:hover {
     background: none;
     border: 0;
     cursor: pointer;
-    color: #fff;
+    color: var(--c-on-accent);
     font-family: inherit;
     font-size: 14px;
     font-weight: bold;
@@ -1185,8 +1157,8 @@ body.home .drawer-trigger {
     height: 100dvh;
     width: 420px;
     max-width: 85vw;
-    background: #000;
-    color: #fff;
+    background: var(--c-accent);
+    color: var(--c-on-accent);
     transform: translateX(100%);
     transition: transform .35s ease;
     z-index: 1600;
@@ -1205,10 +1177,10 @@ body.home .drawer-trigger {
     align-items: center;
     justify-content: space-between;
     padding: 24px 28px 18px;
-    border-bottom: 1px solid #222;
+    border-bottom: 1px solid var(--c-ink);
     position: sticky;
     top: 0;
-    background: #000;
+    background: var(--c-accent);
     z-index: 1;
 }
 
@@ -1222,7 +1194,7 @@ body.home .drawer-trigger {
 .drawer-close {
     background: none;
     border: 0;
-    color: #fff;
+    color: var(--c-on-accent);
     font-size: 30px;
     line-height: 1;
     cursor: pointer;
@@ -1246,7 +1218,7 @@ body.home .drawer-trigger {
 }
 
 .drawer-acc-item {
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid var(--c-ink);
 }
 
 .drawer-acc-btn {
@@ -1254,7 +1226,7 @@ body.home .drawer-trigger {
     background: none;
     border: 0;
     cursor: pointer;
-    color: #fff;
+    color: var(--c-on-accent);
     font-family: inherit;
     display: flex;
     align-items: center;
@@ -1296,7 +1268,7 @@ body.home .drawer-trigger {
 
 .drawer-sub li a {
     display: block;
-    color: #b0b0b0;
+    color: var(--c-muted);
     padding: 12px 28px 12px 40px;
     font-size: 14px;
     letter-spacing: .5px;
@@ -1304,7 +1276,7 @@ body.home .drawer-trigger {
 }
 
 .drawer-sub li a:hover {
-    color: #fff;
+    color: var(--c-on-accent);
     text-decoration: underline;
     text-underline-offset: 4px;
 }
@@ -1318,7 +1290,7 @@ body.home .drawer-trigger {
     list-style: none;
     margin: 28px 0 0;
     padding: 24px 28px 0;
-    border-top: 1px solid #222;
+    border-top: 1px solid var(--c-ink);
 }
 
 .drawer-links li {
@@ -1326,7 +1298,7 @@ body.home .drawer-trigger {
 }
 
 .drawer-links li a {
-    color: #888;
+    color: var(--c-muted);
     font-size: 13px;
     letter-spacing: .5px;
     text-decoration: underline;
@@ -1335,7 +1307,7 @@ body.home .drawer-trigger {
 }
 
 .drawer-links li a:hover {
-    color: #fff;
+    color: var(--c-on-accent);
 }
 
 /* Khoá scroll body khi drawer mở */
@@ -1352,51 +1324,51 @@ body.drawer-open {
 
 /* ===== DRAWER - LIGHT THEME cho trang category (nền trắng) ===== */
 body.category-page .drawer {
-    background: #fff;
-    color: #111;
+    background: var(--c-bg);
+    color: var(--c-ink);
     box-shadow: -8px 0 40px rgba(0, 0, 0, .18);
 }
 
 body.category-page .drawer-head {
-    background: #fff;
-    border-bottom: 1px solid #e5e5e5;
+    background: var(--c-bg);
+    border-bottom: 1px solid var(--c-line);
 }
 
 body.category-page .drawer-title,
 body.category-page .drawer-close,
 body.category-page .drawer-acc-btn {
-    color: #111;
+    color: var(--c-ink);
 }
 
 body.category-page .drawer-acc-item {
-    border-bottom: 1px solid #ececec;
+    border-bottom: 1px solid var(--c-line);
 }
 
 body.category-page .drawer-sub li a {
-    color: #666;
+    color: var(--c-muted);
 }
 
 body.category-page .drawer-sub li a:hover {
-    color: #111;
+    color: var(--c-ink);
 }
 
 body.category-page .drawer-links {
-    border-top: 1px solid #e5e5e5;
+    border-top: 1px solid var(--c-line);
 }
 
 body.category-page .drawer-links li a {
-    color: #888;
+    color: var(--c-muted);
 }
 
 body.category-page .drawer-links li a:hover {
-    color: #111;
+    color: var(--c-ink);
 }
 
 /* ===== SITE HEADER (mọi trang trừ index) ===== */
 body.sitehdr {
     padding-top: 0;
-    background: #fff;
-    color: #111;
+    background: var(--c-bg);
+    color: var(--c-ink);
 }
 
 .policy-header {
@@ -1405,11 +1377,11 @@ body.sitehdr {
     align-items: center;
     justify-content: space-between;
     padding: 24px 44px;
-    background: #fff;
-    border-bottom: 1px solid #ececec;
+    background: var(--c-bg);
+    border-bottom: 1px solid var(--c-line);
 }
 
-.policy-header a { color: #111; text-decoration: none; }
+.policy-header a { color: var(--c-ink); text-decoration: none; }
 
 .ph-menu {
     display: inline-flex;
@@ -1418,7 +1390,7 @@ body.sitehdr {
     background: none;
     border: 0;
     cursor: pointer;
-    color: #111;
+    color: var(--c-ink);
     font-family: inherit;
     font-size: 12px;
     letter-spacing: 1.5px;
@@ -1438,26 +1410,26 @@ body.sitehdr {
     letter-spacing: 10px;
     padding-left: 10px;
     text-transform: uppercase;
-    color: #111;
+    color: var(--c-ink);
     white-space: nowrap;
 }
 
 .ph-actions { display: inline-flex; align-items: center; gap: 22px; margin-left: auto; }
-.ph-actions .fa { font-size: 17px; color: #111; transition: opacity .2s; }
+.ph-actions .fa { font-size: 17px; color: var(--c-ink); transition: opacity .2s; }
 .ph-actions a:hover .fa { opacity: .55; }
 
 /* Drawer light cho trang nền trắng */
-body.sitehdr .drawer { background: #fff; color: #111; box-shadow: -8px 0 40px rgba(0,0,0,.18); }
-body.sitehdr .drawer-head { background: #fff; border-bottom: 1px solid #e5e5e5; }
+body.sitehdr .drawer { background: var(--c-bg); color: var(--c-ink); box-shadow: -8px 0 40px rgba(0,0,0,.18); }
+body.sitehdr .drawer-head { background: var(--c-bg); border-bottom: 1px solid var(--c-line); }
 body.sitehdr .drawer-title,
 body.sitehdr .drawer-close,
-body.sitehdr .drawer-acc-btn { color: #111; }
-body.sitehdr .drawer-acc-item { border-bottom: 1px solid #ececec; }
-body.sitehdr .drawer-sub li a { color: #666; }
-body.sitehdr .drawer-sub li a:hover { color: #111; }
-body.sitehdr .drawer-links { border-top: 1px solid #e5e5e5; }
-body.sitehdr .drawer-links li a { color: #888; }
-body.sitehdr .drawer-links li a:hover { color: #111; }
+body.sitehdr .drawer-acc-btn { color: var(--c-ink); }
+body.sitehdr .drawer-acc-item { border-bottom: 1px solid var(--c-line); }
+body.sitehdr .drawer-sub li a { color: var(--c-muted); }
+body.sitehdr .drawer-sub li a:hover { color: var(--c-ink); }
+body.sitehdr .drawer-links { border-top: 1px solid var(--c-line); }
+body.sitehdr .drawer-links li a { color: var(--c-muted); }
+body.sitehdr .drawer-links li a:hover { color: var(--c-ink); }
 
 @media (max-width: 700px) {
     .policy-header { padding: 16px 18px; }
@@ -1574,7 +1546,7 @@ body.home .product-item .product-info .product-name {
 }
 body.home .main-content ul.products li .product-info .product-price,
 body.home .product-item .product-info .product-price {
-    color: #b8b8b8 !important;
+    color: var(--c-muted) !important;
 }
 
 /* 4. Quick-add: nút cart.js tự chèn — ẩn, trượt lên từ đáy ảnh khi hover card */
@@ -1586,8 +1558,8 @@ body.home .product-item .product-info .product-price {
     width: auto !important;
     margin: 0 !important;
     padding: 12px 0 !important;
-    background: var(--c-ink) !important;
-    color: var(--c-bg) !important;
+    background: var(--c-accent) !important;
+    color: var(--c-on-accent) !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -1612,8 +1584,8 @@ body.home .product-item .product-info .product-price {
     background: var(--c-accent) !important;
 }
 .product-item .product-info .btn-add-cart.added {
-    background: #2e7d32 !important;
-    color: #fff !important;
+    background: var(--c-success) !important;
+    color: var(--c-on-accent) !important;
 }
 
 @media (max-width: 900px) {
@@ -1855,8 +1827,8 @@ section:not(.hero) {
     transition: opacity .25s var(--ease), background .25s var(--ease), color .25s var(--ease);
 }
 .cart-btn-primary {
-    background: var(--c-ink);
-    color: var(--c-bg);
+    background: var(--c-accent);
+    color: var(--c-on-accent);
     margin-bottom: 10px;
 }
 .cart-btn-primary:hover { opacity: .85; }
@@ -1864,10 +1836,10 @@ section:not(.hero) {
     background: transparent;
     color: var(--c-ink);
 }
-.cart-btn-ghost:hover { background: var(--c-ink); color: var(--c-bg); }
+.cart-btn-ghost:hover { background: var(--c-accent); color: var(--c-on-accent); }
 
-/* Badge trên link giỏ hàng tĩnh (.ph-actions) */
-.ph-actions a[aria-label="Giỏ hàng"] { position: relative; }
+/* Mốc neo cho .cart-badge trên icon tài khoản ở header các trang .policy-header */
+.ph-actions a[aria-label="Tài khoản"] { position: relative; }
 
 /* Khoá scroll nền khi mở mini-cart */
 body.cart-drawer-open { overflow: hidden; }
