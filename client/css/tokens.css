@@ -1,0 +1,69 @@
+/* =====================================================================
+   tokens.css — Design token semantic cho Dark/Light mode (toàn site).
+   Nạp TRƯỚC global.css / sale.css ở mọi trang.
+   Theme quyết định bởi [data-theme] trên <html> (mặc định: light).
+
+   LƯU Ý specificity: global.css & sale.css hiện vẫn còn `:root { --c-* }`
+   riêng (giá trị light). Vì `:root` = (0,1,0) và file hub nạp SAU tokens.css,
+   nên nếu dùng `[data-theme="dark"]` trần (0,1,0) sẽ THUA hub :root.
+   => dùng `html[data-theme="dark"]` (0,1,1) để LUÔN thắng, bất kể thứ tự nạp.
+   (Phase 3/4 sẽ gỡ khối :root token trong global.css/sale.css.)
+   Phase 1: chỉ đặt token, CHƯA migrate màu hardcode.
+   ===================================================================== */
+:root,
+html[data-theme="light"] {
+  --c-bg: #ffffff;
+  --c-surface: #f6f4ef;        /* nền section/card nổi */
+  --c-ink: #0e0e0e;            /* chữ chính (off-black) */
+  --c-muted: #6b6b6b;          /* chữ phụ */
+  --c-line: #e6e3dd;           /* viền */
+  --c-accent: #1a1a1a;         /* nền nút chính / nhấn mạnh */
+  --c-on-accent: #ffffff;      /* chữ trên nền accent */
+  --c-danger: #a12833;
+  --c-success: #2e7d32;
+  --c-cream: var(--c-surface); /* alias tương thích code cũ dùng --c-cream */
+
+  /* Status badge (admin) — nền + chữ, có biến thể dark riêng */
+  --c-danger-bg:    #f8d7da;
+  --c-danger-text:  #a12833;
+  --c-success-bg:   #d4edda;
+  --c-success-text: #1c6b2c;
+  --c-warning-bg:   #f9e6c2;   /* badge cảnh báo (vd tồn kho thấp) — amber */
+  --c-warning-text: #7a4f00;
+}
+
+/* Footer brand band ("BREEZE" cuối trang) — HẰNG SỐ, luôn tối ở cả 2 theme (không đảo màu). */
+:root {
+  --c-footer-bg:  #0e0e0e;
+  --c-footer-ink: #f4f2ed;
+}
+
+/* Nút social login (brand mark bên thứ 3, vd Apple) — HẰNG SỐ, luôn là chip SÁNG ở cả 2 theme. */
+:root {
+  --c-social-bg:  #ffffff;
+  --c-social-ink: #1a1a1a;
+}
+
+html[data-theme="dark"] {
+  --c-bg: #141312;             /* off-black ẤM, giữ chất kem luxury */
+  --c-surface: #1d1b18;
+  --c-ink: #f2efe8;            /* off-white ấm */
+  --c-muted: #9a948a;
+  --c-line: #2a2825;
+  --c-accent: #f2efe8;         /* nút chính đảo màu ở dark */
+  --c-on-accent: #141312;
+  --c-danger: #e0656f;         /* sáng hơn cho đủ contrast trên nền tối */
+  --c-success: #6fbf73;
+  --c-cream: var(--c-surface);
+
+  /* Status badge — nền đậm bão hoà thấp, chữ sáng đủ contrast */
+  --c-danger-bg:    #3a1c20;
+  --c-danger-text:  #f4a3ab;
+  --c-success-bg:   #17301c;
+  --c-success-text: #8fd99a;
+  --c-warning-bg:   #332612;   /* amber đậm bão hoà thấp cho nền tối */
+  --c-warning-text: #e6c079;
+}
+
+html[data-theme="light"] { color-scheme: light; }
+html[data-theme="dark"]  { color-scheme: dark; }   /* scrollbar/form controls native đổi theo */
