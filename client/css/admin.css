@@ -6,19 +6,19 @@ body { background:var(--c-bg); color:var(--c-ink); font-family:var(--font-ui); m
 .adm-topbar {
     position:fixed; top:0; left:0; right:0; height:60px; z-index:600;
     display:flex; align-items:center; gap:20px; padding:0 24px;
-    background:var(--c-footer-bg); border-bottom:1px solid #2a2825;
+    background:var(--c-bg); border-bottom:1px solid var(--c-line);
 }
 .adm-menu-btn {
     display:none; background:none; border:none; cursor:pointer;
-    font-size:20px; color:var(--c-footer-ink); padding:6px; line-height:1;
+    font-size:20px; color:var(--c-ink); padding:6px; line-height:1;
 }
 .adm-topbar .adm-logo {
     font-family:var(--font-display); font-weight:600; font-size:24px; letter-spacing:3px;
-    color:var(--c-footer-ink); text-decoration:none; white-space:nowrap;
+    color:var(--c-ink); text-decoration:none; white-space:nowrap;
 }
 .adm-topbar .adm-logo small {
     font-family:var(--font-ui); font-size:11px; letter-spacing:2px; text-transform:uppercase;
-    color:var(--c-footer-ink); opacity:.68; margin-left:6px;
+    color:var(--c-muted); margin-left:6px;
 }
 /* Search bo tròn (pill), nằm trong cụm bên phải cạnh chuông + tài khoản */
 .adm-search { position:relative; flex:0 0 auto; width:240px; display:flex; align-items:center; }
@@ -29,9 +29,9 @@ body { background:var(--c-bg); color:var(--c-ink); font-family:var(--font-ui); m
     font-family:inherit; font-size:13.5px; color:var(--c-ink); border-radius:999px;
 }
 .adm-search input:focus { outline:2px solid var(--c-ink); outline-offset:-1px; background:var(--c-bg); }
-.adm-topbar-right { display:flex; align-items:center; gap:14px; margin-left:auto; font-size:13px; color:var(--c-footer-ink); }
-.adm-bell { background:none; border:none; cursor:pointer; color:var(--c-footer-ink); font-size:17px; padding:4px; line-height:1; }
-.adm-bell:hover { opacity:.6; }
+.adm-topbar-right { display:flex; align-items:center; gap:14px; margin-left:auto; font-size:13px; color:var(--c-muted); }
+.adm-bell { background:none; border:none; cursor:pointer; color:var(--c-ink); font-size:17px; padding:4px; line-height:1; }
+.adm-bell:hover { color:var(--c-muted); }
 
 /* Icon tài khoản + dropdown (email + Đăng xuất) */
 .adm-account { position:relative; }
