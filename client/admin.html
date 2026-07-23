@@ -92,55 +92,122 @@
 
     <!-- Panel chính (các view, chuyển bằng sidebar) -->
     <div id="panel">
-        <!-- Dashboard: 4 stat card + đơn hàng mới nhất (số thật từ /api/admin/stats) -->
+        <!-- Dashboard: page header (zone B) + KPI cards (zone C hàng 1) -->
         <section id="view-dashboard">
-            <div class="adm-section-head">
-                <h3 data-i18n="dashboard">Dashboard</h3>
-            </div>
-            <div class="stat-grid">
-                <div class="stat-card stat-card--hero">
-                    <span class="stat-label" data-i18n="mRevenue">Tổng doanh thu</span>
-                    <span class="stat-value skel" id="stat-revenue">—</span>
+            <div class="dash-header">
+                <div class="dash-header-left">
+                    <h1 class="dash-title">Dashboard</h1>
+                    <p class="dash-subtitle" id="dash-range">—</p>
                 </div>
-                <div class="stat-card">
-                    <span class="stat-label" data-i18n="mOrders">Tổng đơn hàng</span>
-                    <span class="stat-value skel" id="stat-orders">—</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-label" data-i18n="mUsers">Số người dùng</span>
-                    <span class="stat-value skel" id="stat-users">—</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-label" data-i18n="mGrowth">Tăng trưởng</span>
-                    <span class="stat-value skel" id="stat-growth">—</span>
+                <div class="dash-header-right">
+                    <select id="dash-preset" class="dash-preset" aria-label="Khoảng thời gian">
+                        <option value="7">7 ngày qua</option>
+                        <option value="30" selected>30 ngày qua</option>
+                        <option value="month">Tháng này</option>
+                        <option value="year">Năm nay</option>
+                    </select>
+                    <button type="button" class="dash-export" id="dash-export">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+                        Xuất CSV
+                    </button>
                 </div>
             </div>
 
-            <div class="chart-card">
-                <div class="adm-section-head chart-head">
-                    <h3 data-i18n="revenueChart">Doanh thu theo ngày (tháng này)</h3>
-                </div>
-                <div class="chart-body">
-                    <div class="chart-state" id="chart-loading">Đang tải…</div>
-                    <div class="chart-state" id="chart-empty" data-i18n="noRevData" style="display:none;">Chưa có dữ liệu doanh thu</div>
-                    <canvas id="revenue-chart" role="img"
-                            aria-label="Biểu đồ doanh thu theo ngày trong tháng hiện tại"></canvas>
-                </div>
+            <div class="kpi-grid">
+                <article class="kpi-card" id="kpi-revenue" aria-label="Doanh thu">
+                    <div class="kpi-head">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
+                        <span class="kpi-label">Doanh thu</span>
+                    </div>
+                    <div class="kpi-value skel" id="kpi-revenue-val">—</div>
+                    <div class="kpi-trend" id="kpi-revenue-trend"></div>
+                </article>
+                <article class="kpi-card" id="kpi-orders" aria-label="Đơn hàng">
+                    <div class="kpi-head">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                        <span class="kpi-label">Đơn hàng</span>
+                    </div>
+                    <div class="kpi-value skel" id="kpi-orders-val">—</div>
+                    <div class="kpi-trend" id="kpi-orders-trend"></div>
+                </article>
+                <article class="kpi-card" id="kpi-customers" aria-label="Khách hàng">
+                    <div class="kpi-head">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        <span class="kpi-label">Khách hàng</span>
+                    </div>
+                    <div class="kpi-value skel" id="kpi-customers-val">—</div>
+                    <div class="kpi-trend" id="kpi-customers-trend"></div>
+                </article>
+                <article class="kpi-card" id="kpi-aov" aria-label="Giá trị đơn trung bình">
+                    <div class="kpi-head">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-5"/></svg>
+                        <span class="kpi-label">Giá trị đơn TB</span>
+                    </div>
+                    <div class="kpi-value skel" id="kpi-aov-val">—</div>
+                    <div class="kpi-trend" id="kpi-aov-trend"></div>
+                </article>
             </div>
 
-            <div class="adm-section-head dash-recent-head">
-                <h3 data-i18n="recentOrders">Đơn hàng mới nhất</h3>
-            </div>
-            <div class="adm-table-wrap">
-                <table class="adm-table">
-                    <thead><tr>
-                        <th class="num">Mã đơn</th><th>Khách hàng</th><th>Ngày đặt</th>
-                        <th class="num">Tổng tiền</th><th>Trạng thái</th>
-                    </tr></thead>
-                    <tbody id="dash-orders-body">
-                        <tr><td colspan="5" class="adm-loading">Đang tải…</td></tr>
-                    </tbody>
-                </table>
+            <!-- Zone C hàng 2+3: grid 12 cột bất đối xứng -->
+            <div class="dash-grid">
+                <!-- Hàng 2: doanh thu theo ngày (8) + trạng thái đơn (4) -->
+                <div class="dash-card dash-card--chart">
+                    <div class="dash-card-head">
+                        <h2>Doanh thu theo ngày</h2>
+                        <a href="#" class="dash-card-action" data-goto="orders">Xem báo cáo →</a>
+                    </div>
+                    <div class="dash-card-body">
+                        <div class="chart-body">
+                            <div class="chart-state" id="chart-loading">Đang tải…</div>
+                            <div class="chart-state" id="chart-empty" style="display:none;">Chưa có dữ liệu doanh thu</div>
+                            <canvas id="revenue-chart" role="img" aria-label="Biểu đồ doanh thu theo ngày"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dash-card dash-card--status">
+                    <div class="dash-card-head"><h2>Trạng thái đơn hàng</h2></div>
+                    <div class="dash-card-body">
+                        <div class="donut-wrap">
+                            <div class="donut-state" id="status-loading">Đang tải…</div>
+                            <div class="donut-state" id="status-empty" style="display:none;">Chưa có đơn nào trong kỳ</div>
+                            <canvas id="status-chart" role="img" aria-label="Biểu đồ tròn phân bố trạng thái đơn hàng"></canvas>
+                            <div class="donut-center" id="status-total" aria-hidden="true" style="display:none;"></div>
+                        </div>
+                        <ul class="donut-legend" id="status-legend"></ul>
+                    </div>
+                </div>
+
+                <!-- Hàng 3: bán chạy nhất (5) + đơn hàng gần đây (7) -->
+                <div class="dash-card dash-card--top">
+                    <div class="dash-card-head"><h2>Sản phẩm bán chạy</h2></div>
+                    <div class="dash-card-body">
+                        <ul class="top-list" id="top-products"><li class="top-state">Đang tải…</li></ul>
+                    </div>
+                </div>
+
+                <div class="dash-card dash-card--recent">
+                    <div class="dash-card-head">
+                        <h2>Đơn hàng gần đây</h2>
+                        <a href="#" class="dash-card-action" data-goto="orders">Xem tất cả →</a>
+                    </div>
+                    <div class="dash-card-body">
+                        <div class="adm-table-wrap">
+                            <table class="adm-table dash-recent-table">
+                                <thead><tr>
+                                    <th scope="col" class="num">Mã đơn</th>
+                                    <th scope="col">Khách hàng</th>
+                                    <th scope="col">Ngày</th>
+                                    <th scope="col">Trạng thái</th>
+                                    <th scope="col" class="num">Tổng tiền</th>
+                                </tr></thead>
+                                <tbody id="dash-orders-body">
+                                    <tr><td colspan="5" class="adm-loading">Đang tải…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -306,769 +373,6 @@
     <script src="js/auth-helper.js"></script>
     <!-- Chart.js: chỉ dùng cho biểu đồ doanh thu Dashboard (dependency mới duy nhất phase này) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
-    <script>
-    (function () {
-        'use strict';
-        var $ = function (id) { return document.getElementById(id); };
-        var ORDER_STATUSES = ['pending', 'paid', 'shipped', 'completed', 'cancelled'];
-        var STATUS_LABEL = { pending: 'Chờ xử lý', paid: 'Đã thanh toán', shipped: 'Đang giao', completed: 'Hoàn tất', cancelled: 'Đã hủy' };
-
-        var categories = [];   // [{id, slug, name_vi}]
-        var catById = {};
-
-        function esc(s) {
-            return String(s == null ? '' : s)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        }
-        function money(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
-        function fmtDate(iso) { try { return new Date(iso).toLocaleString('vi-VN'); } catch (e) { return iso; } }
-
-        function api(path, opts) {
-            if (!(window.AuthHelper && window.AuthHelper.apiFetch)) return Promise.reject(new Error('AuthHelper chưa sẵn sàng'));
-            return window.AuthHelper.apiFetch(path, opts);
-        }
-
-        var _toastTimer = null;
-        function toast(msg, isErr) {
-            var t = $('toast');
-            t.textContent = msg;
-            t.className = 'show' + (isErr ? ' err' : '');
-            if (_toastTimer) clearTimeout(_toastTimer);
-            _toastTimer = setTimeout(function () { t.className = ''; }, 2800);
-        }
-
-        // --- Access states ---------------------------------------------------
-        function showState(which) {
-            ['state-loading', 'state-login', 'state-forbidden'].forEach(function (id) {
-                $(id).style.display = 'none';
-            });
-            $('panel').style.display = 'none';
-            $('bar-right').style.visibility = 'hidden';
-            document.body.classList.toggle('adm-authed', which === 'panel');
-            if (which !== 'panel') closeDrawer();
-            if (which === 'panel') {
-                $('panel').style.display = 'block';
-                $('bar-right').style.visibility = 'visible';
-            } else {
-                $(which).style.display = 'block';
-            }
-        }
-
-        function onAuth(user) {
-            if (!user) { showState('state-login'); return; }
-            showState('state-loading');
-            api('/api/me')
-                .then(function (r) { if (!r.ok) throw new Error('me ' + r.status); return r.json(); })
-                .then(function (me) {
-                    if (me.role !== 'admin') { showState('state-forbidden'); return; }
-                    $('who').textContent = me.email || me.display_name || me.firebase_uid;
-                    showState('panel');
-                    return loadCategories().then(loadProducts).then(function () { return loadOrders(1); })
-                        .then(loadDashboard).then(function () { return loadUsers(1); });
-                })
-                .catch(function (e) { console.error('[admin] auth/me lỗi:', e); showState('state-forbidden'); });
-        }
-
-        // --- Sidebar navigation ----------------------------------------------
-        // Map mục sidebar -> id view. Products/Orders trỏ đúng 2 panel cũ.
-        var NAV_VIEWS = {
-            dashboard: 'view-dashboard',
-            products: 'tab-products',
-            orders: 'tab-orders',
-            users: 'view-users',
-            settings: 'view-settings'
-        };
-        function bindNav() {
-            var items = document.querySelectorAll('.adm-nav-item');
-            items.forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    items.forEach(function (b) { b.classList.remove('active'); b.removeAttribute('aria-current'); });
-                    btn.classList.add('active');
-                    btn.setAttribute('aria-current', 'page');
-                    var t = btn.getAttribute('data-nav');
-                    Object.keys(NAV_VIEWS).forEach(function (k) {
-                        var el = $(NAV_VIEWS[k]);
-                        if (el) el.style.display = (k === t) ? 'block' : 'none';
-                    });
-                    closeDrawer();
-                });
-            });
-        }
-
-        // --- Drawer (sidebar overlay ở tablet/mobile) ------------------------
-        function openDrawer() {
-            document.body.classList.add('adm-drawer-open');
-            var mb = $('adm-menu-btn'); if (mb) mb.setAttribute('aria-expanded', 'true');
-        }
-        function closeDrawer() {
-            document.body.classList.remove('adm-drawer-open');
-            var mb = $('adm-menu-btn'); if (mb) mb.setAttribute('aria-expanded', 'false');
-        }
-        function toggleDrawer() {
-            if (document.body.classList.contains('adm-drawer-open')) closeDrawer(); else openDrawer();
-        }
-
-        // --- Dropdown tài khoản (email + Đăng xuất) --------------------------
-        function openAccountMenu() {
-            var m = $('adm-account-menu'), b = $('adm-account-btn');
-            if (m) m.hidden = false;
-            if (b) b.setAttribute('aria-expanded', 'true');
-        }
-        function closeAccountMenu() {
-            var m = $('adm-account-menu'), b = $('adm-account-btn');
-            if (m) m.hidden = true;
-            if (b) b.setAttribute('aria-expanded', 'false');
-        }
-        function toggleAccountMenu() {
-            var m = $('adm-account-menu');
-            if (m && m.hidden) openAccountMenu(); else closeAccountMenu();
-        }
-
-        // --- i18n khung (VI/EN): nhãn sidebar/topbar/placeholder -------------
-        var ADM_I18N = {
-            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Đơn hàng', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm mã đơn / khách hàng…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất', revenueChart: 'Doanh thu theo ngày (tháng này)', noRevData: 'Chưa có dữ liệu doanh thu' },
-            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Orders', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search Order...', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders', revenueChart: 'Daily revenue (this month)', noRevData: 'No revenue data yet' }
-        };
-        function applyAdmLang(lang) {
-            var t = ADM_I18N[lang] || ADM_I18N.vi;
-            document.querySelectorAll('[data-i18n]').forEach(function (el) {
-                var k = el.getAttribute('data-i18n');
-                if (t[k] != null) el.textContent = t[k];
-            });
-            document.querySelectorAll('[data-i18n-ph]').forEach(function (el) {
-                var k = el.getAttribute('data-i18n-ph');
-                if (t[k] != null) el.setAttribute('placeholder', t[k]);
-            });
-        }
-
-        // --- Categories ------------------------------------------------------
-        function loadCategories() {
-            return fetch((window.API_BASE || '') + '/api/categories')
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    categories = Array.isArray(data) ? data : [];
-                    catById = {};
-                    categories.forEach(function (c) { catById[c.id] = c; });
-                    var sel = $('f-category');
-                    sel.innerHTML = categories.map(function (c) {
-                        return '<option value="' + c.id + '">' + esc(c.name_vi) + ' (' + esc(c.slug) + ')</option>';
-                    }).join('');
-                });
-        }
-
-        // --- Products --------------------------------------------------------
-        var LOW_STOCK_THRESHOLD = 30;          // <= ngưỡng "sắp hết" (duy nhất, không lặp lại số)
-        var _prodAll = [];                     // toàn bộ SP đã tải (products không phân trang)
-        var _prodStockFilter = 'all';          // 'all' | 'low' | 'out'
-
-        // Phân loại tồn kho theo stock -> badge.
-        function stockInfo(stock) {
-            var n = Number(stock); if (!Number.isFinite(n)) n = 0;
-            if (n === 0) return { cls: 'stock-out', label: 'Hết hàng' };
-            if (n <= LOW_STOCK_THRESHOLD) return { cls: 'stock-low', label: 'Sắp hết' };
-            return { cls: 'stock-ok', label: 'Còn hàng' };
-        }
-        function stockBadge(stock) {
-            var s = stockInfo(stock);
-            return '<span class="pill ' + s.cls + '">' + s.label + '</span>';
-        }
-        function prodMatchesStock(p) {
-            var n = Number(p.stock); if (!Number.isFinite(n)) n = 0;
-            if (_prodStockFilter === 'low') return n > 0 && n <= LOW_STOCK_THRESHOLD;
-            if (_prodStockFilter === 'out') return n === 0;
-            return true;
-        }
-
-        function loadProducts() {
-            return api('/api/admin/products')
-                .then(function (r) { if (!r.ok) throw new Error('products ' + r.status); return r.json(); })
-                .then(function (data) { renderProducts(data.products || []); })
-                .catch(function (e) {
-                    console.error('[admin] load products lỗi:', e);
-                    $('prod-body').innerHTML = '<tr><td colspan="10" class="adm-empty">Không tải được sản phẩm.</td></tr>';
-                });
-        }
-
-        function prodRowHTML(p) {
-            var cat = catById[p.category_id];
-            var catName = cat ? cat.name_vi : (p.category_slug || p.category_id);
-            var img = (p.images && p.images.length) ? p.images[0] : '';
-            var thumb = img ? '<img class="adm-thumb" src="' + esc(img) + '" alt="" onerror="this.style.visibility=\'hidden\'">' : '<span class="adm-thumb"></span>';
-            return '<tr>' +
-                '<td class="num">' + p.id + '</td>' +
-                '<td>' + thumb + '</td>' +
-                '<td>' + esc(p.name_vi) + '<div class="adm-slug">' + esc(p.slug) + '</div></td>' +
-                '<td>' + esc(catName) + '</td>' +
-                '<td class="num">' + money(p.price) + '</td>' +
-                '<td class="num">' + (p.sale_price != null ? money(p.sale_price) : '—') + '</td>' +
-                '<td class="num">' + p.stock + '</td>' +
-                '<td>' + stockBadge(p.stock) + '</td>' +
-                '<td>' + (p.is_active ? '<span class="pill on">Đang bán</span>' : '<span class="pill off">Đã ẩn</span>') + '</td>' +
-                '<td><div class="adm-actions">' +
-                    '<button type="button" class="adm-btn ghost small" data-edit="' + p.id + '">Sửa</button>' +
-                    '<button type="button" class="adm-btn danger small" data-del="' + p.id + '">Xóa</button>' +
-                '</div></td>' +
-            '</tr>';
-        }
-
-        function attachProdRowHandlers() {
-            $('prod-body').querySelectorAll('[data-edit]').forEach(function (b) {
-                b.addEventListener('click', function () { openModal(_prodCache[b.getAttribute('data-edit')]); });
-            });
-            $('prod-body').querySelectorAll('[data-del]').forEach(function (b) {
-                b.addEventListener('click', function () { deleteProduct(_prodCache[b.getAttribute('data-del')]); });
-            });
-        }
-
-        function renderProducts(list) {
-            _prodAll = list || [];
-            // Cache theo id để mở form sửa (toàn bộ SP, không phụ thuộc filter).
-            _prodCache = {};
-            _prodAll.forEach(function (p) { _prodCache[p.id] = p; });
-            applyProductFilter();
-        }
-
-        function applyProductFilter() {
-            var list = _prodAll.filter(prodMatchesStock);
-            $('prod-count').textContent = '(' + list.length + ')';   // đếm theo tập đang hiển thị
-            if (!list.length) {
-                var msg = _prodStockFilter === 'low' ? 'Không có sản phẩm nào sắp hết'
-                        : _prodStockFilter === 'out' ? 'Không có sản phẩm nào hết hàng'
-                        : 'Chưa có sản phẩm nào';
-                $('prod-body').innerHTML = '<tr><td colspan="10" class="adm-empty">' + msg + '</td></tr>';
-                return;
-            }
-            $('prod-body').innerHTML = list.map(prodRowHTML).join('');
-            attachProdRowHandlers();
-        }
-
-        function bindProductFilters() {
-            var btns = document.querySelectorAll('.prod-filter-btn');
-            btns.forEach(function (b) {
-                b.addEventListener('click', function () {
-                    btns.forEach(function (x) { x.classList.remove('active'); x.removeAttribute('aria-current'); });
-                    b.classList.add('active'); b.setAttribute('aria-current', 'true');
-                    _prodStockFilter = b.getAttribute('data-stock-filter') || 'all';
-                    applyProductFilter();
-                });
-            });
-        }
-        var _prodCache = {};
-
-        // --- Product modal ---------------------------------------------------
-        function openModal(p) {
-            $('modal-err').style.display = 'none';
-            if (p) {
-                $('modal-title').textContent = 'Sửa sản phẩm #' + p.id;
-                $('f-id').value = p.id;
-                $('f-slug').value = p.slug || '';
-                $('f-name-vi').value = p.name_vi || '';
-                $('f-name-en').value = p.name_en || '';
-                $('f-price').value = p.price;
-                $('f-sale').value = (p.sale_price != null ? p.sale_price : '');
-                $('f-stock').value = p.stock;
-                $('f-images').value = (p.images || []).join('\n');
-                $('f-desc-vi').value = p.description_vi || '';
-                $('f-desc-en').value = p.description_en || '';
-                $('f-active').checked = !!p.is_active;
-                if (p.category_id != null) $('f-category').value = String(p.category_id);
-            } else {
-                $('modal-title').textContent = 'Thêm sản phẩm';
-                $('prod-form').reset();
-                $('f-id').value = '';
-                $('f-stock').value = '0';
-                $('f-active').checked = true;
-            }
-            $('prod-modal').classList.add('open');
-        }
-        function closeModal() { $('prod-modal').classList.remove('open'); }
-
-        function parseImages(str) {
-            return String(str || '').split(/[\n,]/).map(function (s) { return s.trim(); }).filter(Boolean);
-        }
-
-        function submitProduct(ev) {
-            ev.preventDefault();
-            var id = $('f-id').value;
-            var saleRaw = $('f-sale').value.trim();
-            var body = {
-                slug: $('f-slug').value.trim(),
-                name_vi: $('f-name-vi').value.trim(),
-                name_en: $('f-name-en').value.trim() || null,
-                category_id: Number($('f-category').value),
-                price: Number($('f-price').value),
-                sale_price: saleRaw === '' ? null : Number(saleRaw),
-                stock: Number($('f-stock').value || 0),
-                images: parseImages($('f-images').value),
-                description_vi: $('f-desc-vi').value.trim() || null,
-                description_en: $('f-desc-en').value.trim() || null,
-                is_active: $('f-active').checked
-            };
-            var isEdit = !!id;
-            var path = isEdit ? ('/api/admin/products/' + id) : '/api/admin/products';
-            var method = isEdit ? 'PUT' : 'POST';
-
-            $('btn-save').disabled = true;
-            api(path, { method: method, body: JSON.stringify(body) })
-                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
-                .then(function (res) {
-                    if (!res.ok) {
-                        var err = $('modal-err');
-                        err.textContent = (res.j && res.j.message) ? res.j.message : ('Lỗi ' + res.status);
-                        err.style.display = 'block';
-                        return;
-                    }
-                    closeModal();
-                    toast(isEdit ? 'Đã cập nhật sản phẩm' : 'Đã thêm sản phẩm');
-                    loadProducts();
-                })
-                .catch(function (e) {
-                    console.error(e);
-                    var err = $('modal-err'); err.textContent = 'Lỗi kết nối máy chủ'; err.style.display = 'block';
-                })
-                .then(function () { $('btn-save').disabled = false; });
-        }
-
-        function deleteProduct(p) {
-            if (!p) return;
-            if (!window.confirm('Xóa sản phẩm "' + p.name_vi + '"?\n(Nếu đã có đơn hàng, sản phẩm sẽ được ẩn thay vì xóa hẳn.)')) return;
-            api('/api/admin/products/' + p.id, { method: 'DELETE' })
-                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-                .then(function (res) {
-                    if (!res.ok) { toast((res.j && res.j.message) || 'Xóa thất bại', true); return; }
-                    toast(res.j.mode === 'soft' ? 'Sản phẩm đã có đơn — đã ẩn (soft delete)' : 'Đã xóa sản phẩm');
-                    loadProducts();
-                })
-                .catch(function (e) { console.error(e); toast('Lỗi kết nối máy chủ', true); });
-        }
-
-        // --- Orders ----------------------------------------------------------
-        var _orderPage = 1;
-        var _orderFilters = { status: '', q: '' };  // gửi xuống server; lọc TOÀN BỘ đơn, không chỉ 1 trang
-        var _orderSearchTimer = null;
-
-        // Đọc trạng thái filter/search từ UI vào _orderFilters.
-        function readOrderFilters() {
-            var stSel = $('order-status-filter');
-            var qEl = $('order-search');
-            _orderFilters.status = stSel ? stSel.value : '';
-            _orderFilters.q = qEl ? qEl.value.trim() : '';
-        }
-
-        function orderQuery() {
-            var params = ['page=' + _orderPage, 'limit=10'];
-            if (_orderFilters.status) params.push('status=' + encodeURIComponent(_orderFilters.status));
-            if (_orderFilters.q) params.push('q=' + encodeURIComponent(_orderFilters.q));
-            return '/api/admin/orders?' + params.join('&');
-        }
-
-        function loadOrders(page) {
-            _orderPage = page || 1;
-            $('order-body').innerHTML = skeletonRows(6, 8);
-            $('order-pager').innerHTML = '';
-            return api(orderQuery())
-                .then(function (r) { if (!r.ok) throw new Error('orders ' + r.status); return r.json(); })
-                .then(renderOrders)
-                .catch(function (e) {
-                    console.error('[admin] load orders lỗi:', e);
-                    $('order-body').innerHTML = '<tr><td colspan="6" class="adm-empty">Không tải được đơn hàng.</td></tr>';
-                });
-        }
-
-        // Đổi filter -> nạp lại từ server (về trang 1). Search có debounce để đỡ gọi API mỗi phím.
-        function onOrderFilterChange() { readOrderFilters(); loadOrders(1); }
-        function onOrderSearchInput() {
-            if (_orderSearchTimer) clearTimeout(_orderSearchTimer);
-            _orderSearchTimer = setTimeout(function () { readOrderFilters(); loadOrders(1); }, 300);
-        }
-
-        // Dựng HTML cho 1 đơn (hàng chính + hàng chi tiết ẩn). Giữ nguyên markup cũ.
-        function orderRowHTML(o) {
-            var opts = ORDER_STATUSES.map(function (s) {
-                return '<option value="' + s + '"' + (s === o.status ? ' selected' : '') + '>' + STATUS_LABEL[s] + '</option>';
-            }).join('');
-            var itemRows = (o.items || []).map(function (it) {
-                return '<tr><td class="inner">' + esc(it.product_name) + '</td>' +
-                    '<td class="inner">' + money(it.unit_price) + '</td>' +
-                    '<td class="inner">' + it.quantity + '</td>' +
-                    '<td class="inner">' + money(it.line_total) + '</td></tr>';
-            }).join('');
-            var cust = o.user_email || o.user_name || ('user #' + o.user_id);
-            return '<tr>' +
-                    '<td class="num">' + o.id + '</td>' +
-                    '<td>' + esc(cust) + '</td>' +
-                    '<td>' + fmtDate(o.created_at) + '</td>' +
-                    '<td class="num">' + money(o.total_amount) + '</td>' +
-                    '<td><select class="status-sel" data-order="' + o.id + '">' + opts + '</select></td>' +
-                    '<td style="white-space:nowrap;">' +
-                        '<button type="button" class="adm-btn ghost small" data-toggle="' + o.id + '">Chi tiết</button> ' +
-                        '<button type="button" class="adm-btn danger small" data-del-order="' + o.id + '">Xoá</button>' +
-                    '</td>' +
-                '</tr>' +
-                '<tr class="oi-detail" id="oi-' + o.id + '" style="display:none;"><td colspan="6">' +
-                    '<table><thead><tr><th>Sản phẩm</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th></tr></thead>' +
-                    '<tbody>' + (itemRows || '<tr><td class="inner" colspan="4">(không có dòng hàng)</td></tr>') + '</tbody></table>' +
-                '</td></tr>';
-        }
-
-        function attachOrderRowHandlers() {
-            $('order-body').querySelectorAll('.status-sel').forEach(function (sel) {
-                sel.addEventListener('change', function () { changeStatus(sel.getAttribute('data-order'), sel.value, sel); });
-            });
-            $('order-body').querySelectorAll('[data-toggle]').forEach(function (b) {
-                b.addEventListener('click', function () {
-                    var row = $('oi-' + b.getAttribute('data-toggle'));
-                    if (row) row.style.display = (row.style.display === 'none') ? 'table-row' : 'none';
-                });
-            });
-            $('order-body').querySelectorAll('[data-del-order]').forEach(function (b) {
-                b.addEventListener('click', function () { deleteOrder(b.getAttribute('data-del-order'), b); });
-            });
-        }
-
-        function renderOrders(data) {
-            var orders = (data && data.orders) || [];
-            $('order-count').textContent = '(' + ((data && data.total) || 0) + ')';
-            var tb = $('order-body');
-            if (!orders.length) {
-                // Phân biệt: đang lọc mà rỗng vs thật sự chưa có đơn nào.
-                var filtering = _orderFilters.status || _orderFilters.q;
-                tb.innerHTML = '<tr><td colspan="6" class="adm-empty">' +
-                    (filtering ? 'Không tìm thấy đơn phù hợp.' : 'Chưa có đơn hàng nào.') + '</td></tr>';
-                $('order-pager').innerHTML = '';
-                return;
-            }
-            tb.innerHTML = orders.map(orderRowHTML).join('');
-            attachOrderRowHandlers();
-            renderOrderPager(data);
-        }
-
-        function renderOrderPager(data) {
-            var totalPages = (data && data.total_pages) || 1;
-            $('order-pager').innerHTML =
-                '<button type="button" id="pg-prev"' + (_orderPage <= 1 ? ' disabled' : '') + '>← Trước</button>' +
-                '<span>Trang ' + _orderPage + ' / ' + totalPages + '</span>' +
-                '<button type="button" id="pg-next"' + (_orderPage >= totalPages ? ' disabled' : '') + '>Sau →</button>';
-            var prev = $('pg-prev'), next = $('pg-next');
-            if (prev) prev.addEventListener('click', function () { loadOrders(_orderPage - 1); });
-            if (next) next.addEventListener('click', function () { loadOrders(_orderPage + 1); });
-        }
-
-        function deleteOrder(orderId, btn) {
-            if (!window.confirm('Xoá hẳn đơn hàng?')) return;
-            btn.disabled = true;
-            api('/api/admin/orders/' + orderId, { method: 'DELETE' })
-                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-                .then(function (res) {
-                    if (!res.ok) { toast((res.j && res.j.message) || 'Xoá thất bại', true); btn.disabled = false; return; }
-                    toast('Đã xoá đơn #' + orderId);
-                    loadOrders(_orderPage); // tải lại trang hiện tại
-                })
-                .catch(function (e) { console.error(e); toast('Lỗi kết nối máy chủ', true); btn.disabled = false; });
-        }
-
-        function changeStatus(orderId, status, sel) {
-            var prev = sel.getAttribute('data-current') || '';
-            sel.disabled = true;
-            api('/api/admin/orders/' + orderId + '/status', { method: 'PUT', body: JSON.stringify({ status: status }) })
-                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-                .then(function (res) {
-                    if (!res.ok) { toast((res.j && res.j.message) || 'Cập nhật thất bại', true); if (prev) sel.value = prev; return; }
-                    sel.setAttribute('data-current', status);
-                    toast('Đã cập nhật trạng thái đơn #' + orderId);
-                })
-                .catch(function (e) { console.error(e); toast('Lỗi kết nối máy chủ', true); if (prev) sel.value = prev; })
-                .then(function () { sel.disabled = false; });
-        }
-
-        // --- Dashboard -------------------------------------------------------
-        function loadDashboard() {
-            loadStats();
-            loadRecentOrders();
-        }
-
-        var STAT_IDS = ['stat-revenue', 'stat-orders', 'stat-users', 'stat-growth'];
-        function statsSkeleton(on) {
-            STAT_IDS.forEach(function (id) {
-                var el = $(id);
-                if (!el) return;
-                el.classList.toggle('skel', on);
-                el.classList.remove('is-up', 'is-down');
-                if (on) el.textContent = '';
-            });
-        }
-
-        function loadStats() {
-            statsSkeleton(true);
-            chartLoading();
-            return api('/api/admin/stats')
-                .then(function (r) { if (!r.ok) throw new Error('stats ' + r.status); return r.json(); })
-                .then(renderStats)
-                .catch(function (e) {
-                    console.error('[admin] load stats lỗi:', e);
-                    statsSkeleton(false);
-                    STAT_IDS.forEach(function (id) { if ($(id)) $(id).textContent = '—'; });
-                    renderRevenueChart([]); // lỗi -> hiện empty state biểu đồ
-                });
-        }
-
-        function renderStats(s) {
-            statsSkeleton(false);
-            $('stat-revenue').textContent = money(s.revenue_total || 0);
-            $('stat-orders').textContent = Number(s.orders_count || 0).toLocaleString('vi-VN');
-            $('stat-users').textContent = Number(s.users_count || 0).toLocaleString('vi-VN');
-
-            var g = s.growth_pct;
-            var gEl = $('stat-growth');
-            gEl.classList.remove('is-up', 'is-down');
-            if (g == null) {
-                gEl.textContent = '—';            // chưa đủ dữ liệu tháng trước
-            } else {
-                var sign = g > 0 ? '+' : '';
-                gEl.textContent = sign + Number(g).toLocaleString('vi-VN') + '%';
-                if (g > 0) gEl.classList.add('is-up');
-                else if (g < 0) gEl.classList.add('is-down');
-            }
-
-            renderRevenueChart(s.revenue_by_day || []);
-        }
-
-        // --- Revenue chart (Chart.js) ---------------------------------------
-        // Dữ liệu theo NGÀY của tháng hiện tại ĐÃ gom sẵn ở server (revenue_by_day) — client KHÔNG gom lại.
-        var _revChart = null;
-        function cssVar(name) {
-            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-        }
-        function dayLabel(ymd) {
-            // 'yyyy-MM-dd' -> 'DD'
-            return String(ymd || '').slice(8);
-        }
-        function chartLoading() {
-            var l = $('chart-loading'), e = $('chart-empty'), c = $('revenue-chart');
-            if (l) l.style.display = '';
-            if (e) e.style.display = 'none';
-            if (c) c.style.display = 'none';
-        }
-        function renderRevenueChart(months) {
-            var loading = $('chart-loading'), empty = $('chart-empty'), canvas = $('revenue-chart');
-            if (!canvas) return;
-            if (loading) loading.style.display = 'none';
-
-            var data = months || [];
-            var allZero = !data.length || data.every(function (m) { return !m.revenue; });
-            if (allZero || typeof Chart === 'undefined') {
-                if (empty) empty.style.display = '';
-                canvas.style.display = 'none';
-                if (_revChart) { _revChart.destroy(); _revChart = null; }
-                return;
-            }
-
-            if (empty) empty.style.display = 'none';
-            canvas.style.display = '';
-            var labels = data.map(function (m) { return dayLabel(m.day); });
-            var values = data.map(function (m) { return m.revenue; });
-
-            if (_revChart) {
-                _revChart.data.labels = labels;
-                _revChart.data.datasets[0].data = values;
-                _revChart.update();
-                return;
-            }
-
-            var ink = cssVar('--c-ink') || '#0e0e0e';
-            var accent = cssVar('--c-accent') || '#1a1a1a';
-            var line = cssVar('--c-line') || '#e6e3dd';
-            var muted = cssVar('--c-muted') || '#6b6b6b';
-            var uiFont = cssVar('--font-ui') || 'Jost, sans-serif';
-
-            _revChart = new Chart(canvas.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Doanh thu',
-                        data: values,
-                        backgroundColor: accent,
-                        hoverBackgroundColor: ink,
-                        borderWidth: 0,
-                        borderRadius: 2,
-                        maxBarThickness: 34
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: ink,
-                            titleFont: { family: uiFont },
-                            bodyFont: { family: uiFont },
-                            callbacks: { label: function (ctx) { return money(ctx.parsed.y); } }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: muted, font: { family: uiFont, size: 11 } }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: line },
-                            ticks: {
-                                color: muted, font: { family: uiFont, size: 11 },
-                                callback: function (v) { return Number(v).toLocaleString('vi-VN'); }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function statusPill(s) {
-            return '<span class="pill status">' + esc(STATUS_LABEL[s] || s) + '</span>';
-        }
-
-        function skeletonRows(cols, n) {
-            var cell = '<td><span class="skel skel-cell"></span></td>';
-            var row = '<tr>' + new Array(cols + 1).join(cell) + '</tr>';
-            return new Array(n + 1).join(row);
-        }
-        function recentSkeletonRows(n) { return skeletonRows(5, n); }
-
-        // TÁI DÙNG endpoint đơn hàng chung, chỉ lấy 5 đơn mới nhất (trang 1).
-        function loadRecentOrders() {
-            var tb = $('dash-orders-body');
-            if (tb) tb.innerHTML = recentSkeletonRows(5);
-            return api('/api/admin/orders?page=1&limit=5')
-                .then(function (r) { if (!r.ok) throw new Error('recent orders ' + r.status); return r.json(); })
-                .then(renderRecentOrders)
-                .catch(function (e) {
-                    console.error('[admin] load recent orders lỗi:', e);
-                    if (tb) tb.innerHTML = '<tr><td colspan="5" class="adm-empty">Không tải được đơn hàng.</td></tr>';
-                });
-        }
-
-        function renderRecentOrders(data) {
-            var tb = $('dash-orders-body');
-            if (!tb) return;
-            var orders = (data && data.orders) || [];
-            if (!orders.length) {
-                tb.innerHTML = '<tr><td colspan="5" class="adm-empty">Chưa có đơn hàng nào.</td></tr>';
-                return;
-            }
-            tb.innerHTML = orders.map(function (o) {
-                var cust = o.user_email || o.user_name || ('user #' + o.user_id);
-                return '<tr>' +
-                    '<td class="num">' + o.id + '</td>' +
-                    '<td>' + esc(cust) + '</td>' +
-                    '<td>' + fmtDate(o.created_at) + '</td>' +
-                    '<td class="num">' + money(o.total_amount) + '</td>' +
-                    '<td>' + statusPill(o.status) + '</td>' +
-                '</tr>';
-            }).join('');
-        }
-
-        // --- Users (chỉ xem, phân trang giống orders) ------------------------
-        var _userPage = 1;
-        function loadUsers(page) {
-            _userPage = page || 1;
-            $('user-body').innerHTML = skeletonRows(5, 8);
-            $('user-pager').innerHTML = '';
-            return api('/api/admin/users?page=' + _userPage + '&limit=20')
-                .then(function (r) { if (!r.ok) throw new Error('users ' + r.status); return r.json(); })
-                .then(renderUsers)
-                .catch(function (e) {
-                    console.error('[admin] load users lỗi:', e);
-                    $('user-body').innerHTML = '<tr><td colspan="5" class="adm-empty">Không tải được người dùng.</td></tr>';
-                });
-        }
-
-        function rolePill(role) {
-            var isAdmin = String(role || '').toLowerCase() === 'admin';
-            var label = isAdmin ? 'Admin' : 'Khách hàng';
-            return '<span class="pill role-' + (isAdmin ? 'admin' : 'customer') + '">' + esc(label) + '</span>';
-        }
-
-        function renderUsers(data) {
-            var users = (data && data.users) || [];
-            $('user-count').textContent = '(' + ((data && data.total) || 0) + ')';
-            if (!users.length) {
-                $('user-body').innerHTML = '<tr><td colspan="5" class="adm-empty">Chưa có người dùng nào.</td></tr>';
-                $('user-pager').innerHTML = '';
-                return;
-            }
-            $('user-body').innerHTML = users.map(function (u) {
-                return '<tr>' +
-                    '<td>' + esc(u.email || '—') + '</td>' +
-                    '<td>' + esc(u.display_name || '—') + '</td>' +
-                    '<td>' + rolePill(u.role) + '</td>' +
-                    '<td>' + (u.created_at ? fmtDate(u.created_at) : '—') + '</td>' +
-                    '<td>' + (u.last_login ? fmtDate(u.last_login) : '—') + '</td>' +
-                '</tr>';
-            }).join('');
-
-            var totalPages = (data && data.total_pages) || 1;
-            $('user-pager').innerHTML =
-                '<button type="button" id="user-pg-prev"' + (_userPage <= 1 ? ' disabled' : '') + '>← Trước</button>' +
-                '<span>Trang ' + _userPage + ' / ' + totalPages + '</span>' +
-                '<button type="button" id="user-pg-next"' + (_userPage >= totalPages ? ' disabled' : '') + '>Sau →</button>';
-            var prev = $('user-pg-prev'), next = $('user-pg-next');
-            if (prev) prev.addEventListener('click', function () { loadUsers(_userPage - 1); });
-            if (next) next.addEventListener('click', function () { loadUsers(_userPage + 1); });
-        }
-
-        // --- Wire up ---------------------------------------------------------
-        document.addEventListener('DOMContentLoaded', function () {
-            bindNav();
-            var menuBtn = $('adm-menu-btn'); if (menuBtn) menuBtn.addEventListener('click', toggleDrawer);
-            var backdrop = $('adm-backdrop'); if (backdrop) backdrop.addEventListener('click', closeDrawer);
-
-            // Dropdown tài khoản: toggle khi bấm icon, đóng khi click ra ngoài / Escape.
-            var accBtn = $('adm-account-btn');
-            if (accBtn) accBtn.addEventListener('click', function (e) { e.stopPropagation(); toggleAccountMenu(); });
-            document.addEventListener('click', function (e) {
-                var acc = $('adm-account');
-                if (acc && !acc.contains(e.target)) closeAccountMenu();
-            });
-            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAccountMenu(); });
-            applyAdmLang(localStorage.getItem('ql_lang') || 'vi');
-            document.addEventListener('langchange', function (e) {
-                applyAdmLang((e && e.detail && e.detail.lang) || localStorage.getItem('ql_lang') || 'vi');
-            });
-            $('btn-add-prod').addEventListener('click', function () { openModal(null); });
-            bindProductFilters();
-            var ordStatus = $('order-status-filter'); if (ordStatus) ordStatus.addEventListener('change', onOrderFilterChange);
-            var ordSearch = $('order-search'); if (ordSearch) ordSearch.addEventListener('input', onOrderSearchInput);
-
-            // Search topbar (toàn layout): Enter -> nhảy sang Đơn hàng và tìm (mã đơn = khớp chính xác).
-            var topSearch = $('top-search');
-            if (topSearch) topSearch.addEventListener('keydown', function (e) {
-                if (e.key !== 'Enter') return;
-                e.preventDefault();
-                var v = topSearch.value.trim();
-                if (!v) return;
-                var ordersNav = document.querySelector('.adm-nav-item[data-nav="orders"]');
-                if (ordersNav) ordersNav.click();            // chuyển view + đóng drawer
-                var stSel = $('order-status-filter'); if (stSel) stSel.value = '';  // bỏ lọc status để đơn tìm thấy luôn hiện
-                var os = $('order-search'); if (os) os.value = v;
-                readOrderFilters();
-                loadOrders(1);
-                if (os) os.focus();
-            });
-            $('btn-cancel').addEventListener('click', closeModal);
-            $('prod-form').addEventListener('submit', submitProduct);
-            $('prod-modal').addEventListener('click', function (e) { if (e.target === $('prod-modal')) closeModal(); });
-            $('btn-logout').addEventListener('click', function () {
-                if (window.firebase && firebase.auth) firebase.auth().signOut();
-                setTimeout(function () { window.location.href = 'login.html'; }, 200);
-            });
-
-            if (window.AuthHelper) window.AuthHelper.onChange(onAuth);
-            else showState('state-login');
-        });
-    })();
-    </script>
+    <script src="js/admin.js"></script>
 </body>
 </html>

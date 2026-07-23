@@ -532,88 +532,179 @@ router.delete('/orders/:id', async (req, res) => {
   }
 });
 
-// ---- GET /api/admin/stats --- số liệu tổng hợp cho Dashboard --------------------
-// Trả: đếm sản phẩm/đơn/người dùng, tổng doanh thu (đơn KHÔNG cancelled),
-// % tăng trưởng doanh thu tháng này so tháng trước, và doanh thu THEO NGÀY của tháng hiện tại.
-// Doanh thu luôn LOẠI đơn 'cancelled'. Nhóm theo DAY(created_at) trên SQL, JS bù đủ mọi ngày
-// trong tháng (ngày trống = revenue 0, orders 0) theo giờ UTC (created_at lưu UTC).
+// ==== Helpers cho các route thống kê có filter thời gian ==========================
+// Doanh thu CHỈ tính đơn status IN ('paid','shipped','completed') — loại pending + cancelled.
+// Danh sách status là literal cố định (không phải input) nên nhúng thẳng an toàn;
+// MỌI giá trị ngày do client truyền đều PARAMETERIZED (request.input) — chống SQL injection.
+
+// Parse 'YYYY-MM-DD' -> Date (UTC 00:00). Chặt: loại ngày không tồn tại (vd 2026-02-30 bị cuộn).
+function parseYMD(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const d = new Date(s + 'T00:00:00Z');
+  if (isNaN(d.getTime())) return null;
+  if (d.toISOString().slice(0, 10) !== s) return null;
+  return d;
+}
+
+// Chuẩn hoá khoảng ngày từ query. Không truyền from/to -> 30 ngày gần nhất.
+// Trả { ok, from, to, fromDate, toDate, start, end } hoặc { ok:false, error }.
+function resolveDateRange(query) {
+  const fromRaw = query.from, toRaw = query.to;
+  const hasFrom = fromRaw != null && fromRaw !== '';
+  const hasTo = toRaw != null && toRaw !== '';
+  let fromDate, toDate;
+  if (!hasFrom && !hasTo) {
+    const now = new Date();
+    toDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    fromDate = new Date(toDate.getTime() - 30 * 86400000);
+  } else {
+    if (!hasFrom || !hasTo) return { ok: false, error: 'Phải truyền cả from và to (YYYY-MM-DD)' };
+    fromDate = parseYMD(fromRaw);
+    toDate = parseYMD(toRaw);
+    if (!fromDate || !toDate) return { ok: false, error: 'from/to phải đúng định dạng YYYY-MM-DD' };
+    if (fromDate.getTime() > toDate.getTime()) return { ok: false, error: 'from phải nhỏ hơn hoặc bằng to' };
+    if ((toDate.getTime() - fromDate.getTime()) / 86400000 > 366) {
+      return { ok: false, error: 'Khoảng thời gian tối đa 366 ngày' };
+    }
+  }
+  return {
+    ok: true,
+    from: fromDate.toISOString().slice(0, 10),
+    to: toDate.toISOString().slice(0, 10),
+    fromDate, toDate,
+    start: fromDate,
+    end: new Date(toDate.getTime() + 86400000), // end EXCLUSIVE = to + 1 ngày (gồm trọn ngày 'to')
+  };
+}
+
+// Doanh thu / số đơn / số khách (đơn hợp lệ) trong [start, end). Khách = distinct user_id có mua.
+async function rangeStats(pool, start, end) {
+  const r = await pool.request()
+    .input('start', sql.DateTime2, start)
+    .input('end', sql.DateTime2, end)
+    .query(`
+      SELECT COALESCE(SUM(total_amount), 0) AS revenue,
+             COUNT(*)                       AS orders,
+             COUNT(DISTINCT user_id)        AS customers
+      FROM dbo.orders
+      WHERE status IN ('paid','shipped','completed') AND created_at >= @start AND created_at < @end;`);
+  const row = r.recordset[0];
+  const revenue = Number(row.revenue) || 0;
+  const orders = Number(row.orders) || 0;
+  const customers = Number(row.customers) || 0;
+  return { revenue, orders, customers, aov: orders > 0 ? Math.round(revenue / orders) : 0 };
+}
+
+// ---- GET /api/admin/stats?from=&to= --- KPI kỳ hiện tại + kỳ trước + doanh thu/ngày --
+// 'previous' = kỳ liền trước cùng độ dài N ngày. Frontend tự tính % delta.
 router.get('/stats', async (req, res) => {
-  const now = new Date();
-  const curY = now.getUTCFullYear();
-  const curM = now.getUTCMonth(); // 0-11
-  const ym = `${curY}-${String(curM + 1).padStart(2, '0')}`;
-  const monthStart = new Date(Date.UTC(curY, curM, 1));
-  const nextMonthStart = new Date(Date.UTC(curY, curM + 1, 1));
-  const prevMonthStart = new Date(Date.UTC(curY, curM - 1, 1));
-  const daysInMonth = new Date(Date.UTC(curY, curM + 1, 0)).getUTCDate();
+  const rg = resolveDateRange(req.query);
+  if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
+
+  // Kỳ trước: cùng số ngày N, ngay liền trước kỳ hiện tại.
+  const N = Math.round((rg.toDate.getTime() - rg.fromDate.getTime()) / 86400000) + 1;
+  const prevStart = new Date(rg.fromDate.getTime() - N * 86400000);
+  const prevEnd = rg.fromDate; // exclusive = from
 
   try {
     const pool = await getPool();
 
-    // Các con số đếm + tổng doanh thu trong 1 truy vấn.
-    const totalsRes = await pool.request().query(`
-      SELECT
-        (SELECT COUNT(*) FROM dbo.products) AS products_count,
-        (SELECT COUNT(*) FROM dbo.orders)   AS orders_count,
-        (SELECT COUNT(*) FROM dbo.users)    AS users_count,
-        (SELECT COALESCE(SUM(total_amount), 0)
-           FROM dbo.orders WHERE status <> 'cancelled') AS revenue_total;`);
-    const t = totalsRes.recordset[0];
+    const current = await rangeStats(pool, rg.start, rg.end);
+    const previous = await rangeStats(pool, prevStart, prevEnd);
 
-    // Doanh thu + số đơn theo NGÀY trong tháng hiện tại (loại 'cancelled').
+    // Doanh thu theo ngày; bù đủ mọi ngày trong khoảng (ngày trống = 0) để chart không hụt cột.
     const dailyRes = await pool.request()
-      .input('start', sql.DateTime2, monthStart)
-      .input('end', sql.DateTime2, nextMonthStart)
+      .input('start', sql.DateTime2, rg.start)
+      .input('end', sql.DateTime2, rg.end)
       .query(`
-        SELECT DAY(created_at) AS d,
-               COALESCE(SUM(total_amount), 0) AS revenue,
-               COUNT(*) AS orders
+        SELECT CONVERT(char(10), created_at, 23) AS d, COALESCE(SUM(total_amount), 0) AS revenue
         FROM dbo.orders
-        WHERE status <> 'cancelled' AND created_at >= @start AND created_at < @end
-        GROUP BY DAY(created_at);`);
+        WHERE status IN ('paid','shipped','completed') AND created_at >= @start AND created_at < @end
+        GROUP BY CONVERT(char(10), created_at, 23);`);
+    const byDate = {};
+    for (const x of dailyRes.recordset) byDate[x.d] = Number(x.revenue) || 0;
 
-    const byDay = {};
-    for (const r of dailyRes.recordset) {
-      byDay[r.d] = { revenue: Number(r.revenue) || 0, orders: Number(r.orders) || 0 };
-    }
-    const revenue_by_day = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      revenue_by_day.push({
-        day: `${ym}-${String(d).padStart(2, '0')}`,
-        revenue: byDay[d] ? byDay[d].revenue : 0,
-        orders: byDay[d] ? byDay[d].orders : 0,
-      });
+    const dailyRevenue = [];
+    for (let t = rg.fromDate.getTime(); t <= rg.toDate.getTime(); t += 86400000) {
+      const key = new Date(t).toISOString().slice(0, 10);
+      dailyRevenue.push({ date: key, revenue: byDate[key] || 0 });
     }
 
-    // Tăng trưởng: doanh thu tháng này so tháng trước (loại 'cancelled'). Tháng trước = 0 => null.
-    const growthRes = await pool.request()
-      .input('curStart', sql.DateTime2, monthStart)
-      .input('nextStart', sql.DateTime2, nextMonthStart)
-      .input('prevStart', sql.DateTime2, prevMonthStart)
-      .query(`
-        SELECT
-          (SELECT COALESCE(SUM(total_amount), 0) FROM dbo.orders
-             WHERE status <> 'cancelled' AND created_at >= @curStart AND created_at < @nextStart) AS cur_rev,
-          (SELECT COALESCE(SUM(total_amount), 0) FROM dbo.orders
-             WHERE status <> 'cancelled' AND created_at >= @prevStart AND created_at < @curStart) AS prev_rev;`);
-    const curRev = Number(growthRes.recordset[0].cur_rev) || 0;
-    const prevRev = Number(growthRes.recordset[0].prev_rev) || 0;
-    const growth_pct = prevRev === 0
-      ? null
-      : Math.round(((curRev - prevRev) / prevRev) * 100 * 100) / 100;
-
-    res.json({
-      products_count: Number(t.products_count) || 0,
-      orders_count: Number(t.orders_count) || 0,
-      users_count: Number(t.users_count) || 0,
-      revenue_total: Number(t.revenue_total) || 0,
-      growth_pct,
-      month: ym,
-      revenue_by_day,
-    });
+    res.json({ range: { from: rg.from, to: rg.to }, current, previous, dailyRevenue });
   } catch (err) {
     console.error('[admin] stats error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không tải được số liệu thống kê' });
+  }
+});
+
+// ---- GET /api/admin/stats/top-products?from=&to=&limit= --------------------------
+// Top sản phẩm bán chạy (đơn hợp lệ) trong khoảng, giảm dần theo số lượng bán.
+// imageUrl = phần tử đầu của cột images (JSON array), fallback placeholder nếu rỗng/lỗi.
+router.get('/stats/top-products', async (req, res) => {
+  const rg = resolveDateRange(req.query);
+  if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
+
+  let limit = Number(req.query.limit);
+  limit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 50) : 5;
+
+  try {
+    const pool = await getPool();
+    const r = await pool.request()
+      .input('start', sql.DateTime2, rg.start)
+      .input('end', sql.DateTime2, rg.end)
+      .input('lim', sql.Int, limit)
+      .query(`
+        SELECT TOP (@lim)
+               p.id, p.name_vi AS name, p.images,
+               SUM(oi.quantity)   AS unitsSold,
+               SUM(oi.line_total) AS revenue
+        FROM dbo.order_items oi
+        JOIN dbo.orders o   ON o.id = oi.order_id
+        JOIN dbo.products p ON p.id = oi.product_id
+        WHERE o.status IN ('paid','shipped','completed') AND o.created_at >= @start AND o.created_at < @end
+        GROUP BY p.id, p.name_vi, p.images
+        ORDER BY unitsSold DESC;`);
+
+    const items = r.recordset.map((row) => {
+      let imageUrl = 'img/breeze.png';
+      if (row.images) {
+        try {
+          const arr = JSON.parse(row.images);
+          if (Array.isArray(arr) && arr.length && typeof arr[0] === 'string' && arr[0].trim()) imageUrl = arr[0];
+        } catch (e) { /* giữ placeholder */ }
+      }
+      return {
+        id: row.id, name: row.name, imageUrl,
+        unitsSold: Number(row.unitsSold) || 0, revenue: Number(row.revenue) || 0,
+      };
+    });
+    res.json(items);
+  } catch (err) {
+    console.error('[admin] top-products error:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không tải được sản phẩm bán chạy' });
+  }
+});
+
+// ---- GET /api/admin/stats/order-status?from=&to= ---------------------------------
+// Phân bố trạng thái đơn trong khoảng (GỒM mọi status để vẽ donut — không lọc theo doanh thu).
+router.get('/stats/order-status', async (req, res) => {
+  const rg = resolveDateRange(req.query);
+  if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
+
+  try {
+    const pool = await getPool();
+    const r = await pool.request()
+      .input('start', sql.DateTime2, rg.start)
+      .input('end', sql.DateTime2, rg.end)
+      .query(`
+        SELECT status, COUNT(*) AS count
+        FROM dbo.orders
+        WHERE created_at >= @start AND created_at < @end
+        GROUP BY status;`);
+    res.json(r.recordset.map((x) => ({ status: x.status, count: Number(x.count) || 0 })));
+  } catch (err) {
+    console.error('[admin] order-status error:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không tải được trạng thái đơn' });
   }
 });
 
