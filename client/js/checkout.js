@@ -128,6 +128,10 @@
         // PHASE 5: đối chiếu tổng hiển thị = tổng lineTotal thật
         console.log('[checkout] ∑lineTotal(subtotal)=', subtotal,
                     '| ship=', ship, '| total=', total, '| SL=', count, '| số dòng=', items.length);
+
+        // Voucher (js/voucher.js) nghe sự kiện này để trừ giảm giá & cập nhật dòng "Tổng".
+        // Phát SAU khi đã set DOM -> voucher.js ghi đè tổng hợp lệ, không bị đua thứ tự.
+        document.dispatchEvent(new CustomEvent('checkout:summary', { detail: { subtotal: subtotal, ship: ship } }));
         return items;
     }
 
@@ -385,6 +389,11 @@
                 ].filter(Boolean).join(', ')
             };
 
+            // Voucher (nếu đã áp) — server tính LẠI discount, giá trị client chỉ để tra mã.
+            var _vCode = (window.BreezeVoucher && window.BreezeVoucher.getAppliedCode)
+                ? window.BreezeVoucher.getAppliedCode() : null;
+            if (_vCode) payload.voucherCode = _vCode;
+
             if (!(window.AuthHelper && typeof window.AuthHelper.apiFetch === 'function')) {
                 showFormMsg('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.', 'err');
                 window.location.href = 'login.html?redirect=checkout.html';
@@ -405,10 +414,14 @@
 
                 if (r.status === 201) {
                     if (typeof window.refreshCart === 'function') window.refreshCart();
+                    if (window.BreezeVoucher && window.BreezeVoucher.clear) window.BreezeVoucher.clear();
                     var order = data.order || {};
-                    showFormMsg('Đặt hàng thành công! Mã đơn #' + order.id +
-                        '. Đang chuyển tới trang đơn hàng...', 'ok');
-                    setTimeout(function () { window.location.href = 'orders.html'; }, 1200);
+                    var okMsg = data.voucherDropped
+                        ? 'Mã giảm giá đã hết hiệu lực, đơn hàng được tính theo giá gốc. Mã đơn #' + order.id +
+                          '. Đang chuyển tới trang đơn hàng...'
+                        : 'Đặt hàng thành công! Mã đơn #' + order.id + '. Đang chuyển tới trang đơn hàng...';
+                    showFormMsg(okMsg, 'ok');
+                    setTimeout(function () { window.location.href = 'orders.html'; }, data.voucherDropped ? 2200 : 1200);
                     return; // giữ nút disabled vì đang rời trang
                 }
 

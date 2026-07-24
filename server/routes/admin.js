@@ -454,6 +454,7 @@ router.get('/orders', async (req, res) => {
     const ordersRes = await listReq.query(`
       SELECT o.id, o.user_id, u.email AS user_email, u.display_name AS user_name,
              o.status, o.total_amount, o.currency,
+             o.VoucherCode AS voucher_code, o.DiscountAmount AS discount_amount,
              o.shipping_name, o.shipping_phone, o.shipping_address, o.created_at
       FROM dbo.orders o
       JOIN dbo.users u ON u.id = o.user_id

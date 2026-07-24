@@ -640,3 +640,223 @@ html[data-theme="dark"] .co-select:not(:disabled) {
         transition: none;
     }
 }
+
+/* ============================================================
+   VOUCHER — mã giảm giá (Phase 3). Nằm giữa "Giao hàng" và "Tổng".
+   Theme-aware qua --co-*/--c-* token; không dùng #000/#fff thuần.
+   ============================================================ */
+.co-oi-voucher {
+    margin: 8px 0 2px;
+    font-family: var(--font-ui);
+}
+
+/* Dòng "Giảm giá" — vừa hiển thị số vừa là NÚT mở/đóng panel. Dùng chung .co-oi-row nên
+   kế thừa layout dòng summary; chỉ reset phần <button> để nhìn y hệt các dòng khác. */
+.voucher-line {
+    width: 100%;
+    margin: 0;
+    background: none;
+    border: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;   /* toàn dòng clickable, không thêm icon chevron */
+}
+/* Hover (khi CHƯA áp mã): in đậm chữ "Giảm giá" để gợi ý click được.
+   Số tiền vẫn giữ nguyên độ đậm nhờ .co-oi-discount-amt đặt font-weight riêng. */
+.voucher-line:not(:disabled):hover { font-weight: 600; }
+.voucher-line:focus-visible {
+    outline: none;
+    border-radius: 4px;
+    box-shadow: 0 0 0 3px rgba(26, 85, 200, .4);
+}
+/* APPLIED — khoá click, con trỏ mặc định; GIỮ giao diện bình thường (không xám như disabled) */
+.co-oi-voucher[data-state="applied"] .voucher-line,
+.voucher-line:disabled {
+    cursor: default;
+    color: var(--co-ink-soft);
+    opacity: 1;
+}
+
+/* EXPANDED — panel trượt mở (visibility ẩn khi đóng để không tab vào input ẩn) */
+.voucher-panel {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transition: max-height .2s ease, opacity .2s ease, visibility 0s linear .2s;
+}
+.co-oi-voucher[data-state="expanded"] .voucher-panel {
+    max-height: 260px;
+    opacity: 1;
+    visibility: visible;
+    margin-top: 8px;
+    transition: max-height .2s ease, opacity .2s ease, visibility 0s;
+}
+.voucher-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--co-muted);
+}
+.voucher-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.voucher-input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 38px 10px 12px;   /* chừa chỗ icon trạng thái bên phải */
+    font: inherit;
+    font-size: 14px;
+    letter-spacing: .06em;
+    text-transform: uppercase;      /* hiển thị IN HOA */
+    color: var(--co-ink);
+    background: var(--co-paper);
+    border: 1px solid var(--co-line);
+    border-radius: 8px;
+}
+.voucher-input::placeholder {
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--co-muted);
+    opacity: .8;
+}
+.voucher-input:focus-visible {
+    outline: none;
+    border-color: var(--co-focus);
+    box-shadow: 0 0 0 3px rgba(26, 85, 200, .25);
+}
+.voucher-input-wrap.is-invalid .voucher-input { border-color: var(--co-err); }
+.voucher-input-wrap.is-invalid .voucher-input:focus-visible {
+    box-shadow: 0 0 0 3px rgba(179, 38, 30, .25);
+}
+
+/* Icon trạng thái trong ô input (phải): spinner / ✓ / ✕ */
+.voucher-status {
+    position: absolute;
+    right: 10px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    font-size: 14px;
+    line-height: 1;
+    pointer-events: none;
+}
+.voucher-input-wrap.is-loading .voucher-status,
+.voucher-input-wrap.is-valid .voucher-status,
+.voucher-input-wrap.is-invalid .voucher-status { display: inline-flex; }
+.voucher-input-wrap.is-valid .voucher-status { color: var(--co-ok); }
+.voucher-input-wrap.is-valid .voucher-status::before { content: "✓"; }
+.voucher-input-wrap.is-invalid .voucher-status { color: var(--co-err); }
+.voucher-input-wrap.is-invalid .voucher-status::before { content: "✕"; }
+.voucher-input-wrap.is-loading .voucher-status::before {
+    content: "";
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--co-line);
+    border-top-color: var(--co-ink);
+    border-radius: 50%;
+    animation: voucher-spin .6s linear infinite;
+}
+@keyframes voucher-spin { to { transform: rotate(360deg); } }
+
+.voucher-panel-actions { margin-top: 10px; }
+.voucher-apply {
+    padding: 9px 20px;
+    font: inherit;
+    font-size: 13px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--c-on-accent);
+    background: var(--c-accent);
+    border: 1px solid var(--c-accent);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity .18s ease;
+}
+.voucher-apply:hover { opacity: .9; }
+.voucher-apply:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(26, 85, 200, .45);
+}
+.voucher-apply:disabled,
+.voucher-apply[disabled] {
+    background: var(--co-line);
+    border-color: var(--co-line);
+    color: var(--co-muted);
+    cursor: not-allowed;
+}
+
+.voucher-msg {
+    margin: 8px 0 0;
+    min-height: 1em;
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--co-muted);
+}
+.voucher-msg.is-err { color: var(--co-err); }
+.voucher-msg.is-ok { color: var(--co-ok); }
+
+/* APPLIED — chip thay cho input + nút */
+.voucher-applied { display: none; margin-top: 8px; }
+.co-oi-voucher[data-state="applied"] .voucher-panel {
+    max-height: 0;
+    opacity: 0;
+    visibility: hidden;
+    margin-top: 0;
+}
+.co-oi-voucher[data-state="applied"] .voucher-applied { display: block; }
+.voucher-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px 6px 14px;
+    font-size: 13px;
+    letter-spacing: .06em;
+    color: var(--co-ink);
+    background: var(--co-card);
+    border: 1px solid var(--co-line);
+    border-radius: 999px;
+}
+.voucher-chip-code { font-weight: 600; }
+.voucher-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1;
+    color: var(--co-muted);
+    background: none;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+}
+.voucher-chip-remove:hover { color: var(--co-ink); background: var(--co-line); }
+.voucher-chip-remove:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(26, 85, 200, .4);
+}
+
+/* Số tiền giảm: MỜ (muted, không đậm) khi chưa áp mã (−0₫); ACCENT + đậm khi đã áp thật. */
+.voucher-line .co-oi-discount-amt {
+    color: var(--co-muted);
+    font-weight: 400;
+}
+.co-oi-voucher[data-state="applied"] .co-oi-discount-amt {
+    color: var(--c-accent);
+    font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .voucher-panel { transition: none; }
+    .voucher-input-wrap.is-loading .voucher-status::before { animation: none; }
+}

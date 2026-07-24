@@ -1,6 +1,7 @@
 // Orders API (yêu cầu Firebase ID token — mọi route bọc verifyFirebaseToken).
 //   POST /api/orders        — tạo đơn từ giỏ hiện tại (TRANSACTION). Body (tuỳ chọn):
-//                             { shipping_name, shipping_phone, shipping_address }.
+//                             { shipping_name, shipping_phone, shipping_address, voucherCode }.
+//                             discount/total tính LẠI ở server; discountAmount/total client gửi bị bỏ qua.
 //   GET  /api/orders        — danh sách đơn của user (kèm items).
 //   GET  /api/orders/:id    — chi tiết 1 đơn (CHỈ chủ đơn; đơn người khác trả 404).
 //
@@ -10,6 +11,7 @@ const express = require('express');
 const router = express.Router();
 const { getPool, sql } = require('../db');
 const { verifyFirebaseToken } = require('../middleware/auth');
+const { getVoucher, calcDiscount, isFirstTimeCustomer } = require('../config/vouchers');
 
 const EFFECTIVE_PRICE =
   '(CASE WHEN p.sale_price IS NOT NULL THEN p.sale_price ELSE p.price END)';
@@ -28,6 +30,7 @@ router.post('/', async (req, res) => {
   const shippingName = str(req.body && req.body.shipping_name, 150);
   const shippingPhone = str(req.body && req.body.shipping_phone, 30);
   const shippingAddress = str(req.body && req.body.shipping_address, 400);
+  const rawVoucher = req.body && req.body.voucherCode; // tuỳ chọn — discount/total client gửi lên bị BỎ QUA
 
   let pool;
   try {
@@ -71,20 +74,43 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // 3) Tổng tiền tính ở server.
+    // 3) Tổng tiền hàng (subtotal) tính ở server — totalAmount = subtotal.
     const totalAmount = rows.reduce((s, r) => s + r.unit_price * r.quantity, 0);
 
-    // 4) Tạo orders, lấy id.
+    // 3b) Voucher (tuỳ chọn). BẢO MẬT: server TỰ tính lại discount từ subtotal ở trên
+    //     (giá DB), BỎ QUA hoàn toàn discountAmount/total client gửi. Mã không hợp lệ tại
+    //     thời điểm đặt hàng -> KHÔNG fail đơn, chỉ bỏ voucher và báo voucherDropped.
+    let voucherCode = null;
+    let discountAmount = 0;
+    let voucherDropped = false;
+    if (rawVoucher != null && String(rawVoucher).trim() !== '') {
+      const voucher = getVoucher(rawVoucher);
+      let ok = !!voucher;
+      if (ok && voucher.firstOrderOnly) ok = await isFirstTimeCustomer(req.user.id, pool);
+      if (ok && totalAmount < voucher.minSubtotal) ok = false;
+      if (ok) {
+        voucherCode = voucher.code;
+        discountAmount = calcDiscount(voucher, totalAmount);
+      } else {
+        voucherDropped = true; // client gửi mã nhưng không áp được -> báo để frontend thông báo
+      }
+    }
+    const finalTotal = Math.max(0, totalAmount - discountAmount); // shippingFee = 0 (Miễn phí)
+
+    // 4) Tạo orders, lấy id. total_amount = TỔNG ĐÃ TRỪ giảm giá; lưu kèm VoucherCode/DiscountAmount.
     const orderRes = await new sql.Request(tx)
       .input('uid', sql.Int, req.user.id)
-      .input('total', sql.Decimal(12, 2), totalAmount)
+      .input('total', sql.Decimal(12, 2), finalTotal)
       .input('sname', sql.NVarChar(150), shippingName)
       .input('sphone', sql.VarChar(30), shippingPhone)
       .input('saddr', sql.NVarChar(400), shippingAddress)
+      .input('vcode', sql.NVarChar(50), voucherCode)
+      .input('discount', sql.Decimal(18, 2), discountAmount)
       .query(`
-        INSERT INTO dbo.orders (user_id, status, total_amount, shipping_name, shipping_phone, shipping_address)
-        OUTPUT INSERTED.id, INSERTED.status, INSERTED.total_amount, INSERTED.created_at
-        VALUES (@uid, 'pending', @total, @sname, @sphone, @saddr);`);
+        INSERT INTO dbo.orders (user_id, status, total_amount, shipping_name, shipping_phone, shipping_address, VoucherCode, DiscountAmount)
+        OUTPUT INSERTED.id, INSERTED.status, INSERTED.total_amount, INSERTED.created_at,
+               INSERTED.VoucherCode, INSERTED.DiscountAmount
+        VALUES (@uid, 'pending', @total, @sname, @sphone, @saddr, @vcode, @discount);`);
     const order = orderRes.recordset[0];
 
     // 5) order_items (snapshot tên + giá) + trừ stock, từng dòng trong cùng transaction.
@@ -119,10 +145,14 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({
       status: 'ok',
+      voucherDropped, // true nếu client gửi mã nhưng mã hết hiệu lực -> frontend báo & tính theo giá gốc
       order: {
         id: order.id,
         status: order.status,
         total_amount: order.total_amount,
+        subtotal: totalAmount,
+        voucher_code: order.VoucherCode,
+        discount_amount: order.DiscountAmount,
         created_at: order.created_at,
         item_count: rows.length,
       },
