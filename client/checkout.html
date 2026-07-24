@@ -245,6 +245,38 @@
                             <span>Giao hàng</span>
                             <span id="co-oi-ship">Miễn phí</span>
                         </div>
+
+                        <!-- Voucher / mã giảm giá — dòng "Giảm giá" vừa hiện số giảm vừa là NÚT mở/đóng panel. Hành vi ở js/voucher.js -->
+                        <div class="co-oi-voucher" id="voucher-block" data-state="collapsed">
+                            <button type="button" class="co-oi-row voucher-line" id="voucher-line"
+                                    aria-expanded="false" aria-controls="voucher-panel">
+                                <span>Giảm giá</span>
+                                <span id="voucher-discount-amount" class="co-oi-discount-amt">−0₫</span>
+                            </button>
+
+                            <div class="voucher-panel" id="voucher-panel">
+                                <label class="voucher-label" for="voucher-code">Mã giảm giá</label>
+                                <div class="voucher-input-wrap">
+                                    <input class="voucher-input" id="voucher-code" type="text"
+                                           autocomplete="off" autocapitalize="characters" spellcheck="false"
+                                           maxlength="30" placeholder="Nhập mã" aria-describedby="voucher-msg">
+                                    <span class="voucher-status" id="voucher-status" aria-hidden="true"></span>
+                                </div>
+                                <div class="voucher-panel-actions">
+                                    <button type="button" class="voucher-apply" id="voucher-apply" disabled>Áp dụng</button>
+                                </div>
+                                <p class="voucher-msg" id="voucher-msg" role="status" aria-live="polite"></p>
+                            </div>
+
+                            <div class="voucher-applied" id="voucher-applied">
+                                <span class="voucher-chip">
+                                    <span class="voucher-chip-code" id="voucher-chip-code"></span>
+                                    <button type="button" class="voucher-chip-remove" id="voucher-remove"
+                                            aria-label="Xoá mã giảm giá">✕</button>
+                                </span>
+                            </div>
+                        </div>
+
                         <div class="co-oi-row co-oi-row--total">
                             <span>Tổng</span>
                             <span id="co-oi-total">0₫</span>
@@ -266,5 +298,6 @@
     <script src="js/account-menu.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/checkout.js"></script>
+    <script src="js/voucher.js"></script>
 </body>
 </html>

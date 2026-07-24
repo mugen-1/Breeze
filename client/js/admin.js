@@ -386,6 +386,11 @@
                     '<td class="inner">' + money(it.line_total) + '</td></tr>';
             }).join('');
             var cust = o.user_email || o.user_name || ('user #' + o.user_id);
+            // Dòng voucher chỉ hiện khi đơn có áp mã (mã hoặc số tiền giảm > 0).
+            var voucherLine = (o.voucher_code || Number(o.discount_amount) > 0)
+                ? '<p class="oi-voucher">Mã giảm giá: <strong>' + esc(o.voucher_code || '—') +
+                  '</strong> · Giảm ' + money(o.discount_amount || 0) + '</p>'
+                : '';
             return '<tr>' +
                     '<td class="num">' + o.id + '</td>' +
                     '<td>' + esc(cust) + '</td>' +
@@ -400,6 +405,7 @@
                 '<tr class="oi-detail" id="oi-' + o.id + '" style="display:none;"><td colspan="6">' +
                     '<table><thead><tr><th>Sản phẩm</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th></tr></thead>' +
                     '<tbody>' + (itemRows || '<tr><td class="inner" colspan="4">(không có dòng hàng)</td></tr>') + '</tbody></table>' +
+                    voucherLine +
                 '</td></tr>';
         }
 
