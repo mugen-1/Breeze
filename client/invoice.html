@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hoá đơn - BREEZE</title>
+    <!-- Hoá đơn LUÔN nền sáng (in ra giấy), bỏ qua breeze-theme của user. -->
+    <script>document.documentElement.setAttribute('data-theme','light');</script>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
+    <style>
+        /* Trang in độc lập: KHÔNG nạp global.css (rule section{padding-block} của nó
+           sẽ phá layout hoá đơn). Chỉ dùng design tokens Breeze qua tokens.css. */
+        * { box-sizing: border-box; }
+        /* [hidden] mặc định chỉ là display:none của UA -> bị mọi rule display của mình
+           ghi đè (vd .inv-sum-row/.inv-actions dùng flex). Ép để hidden luôn có tác dụng. */
+        [hidden] { display: none !important; }
+        body {
+            margin: 0;
+            background: #f2f1ee;
+            font-family: var(--font-ui, 'Jost', sans-serif);
+            color: var(--c-ink, #0e0e0e);
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* Khổ giấy A4 khi in */
+        @page { size: A4; margin: 14mm; }
+
+        .inv-sheet {
+            width: 190mm;
+            min-height: 250mm;
+            margin: 28px auto;
+            padding: 22mm 18mm;
+            background: #fff;
+            box-shadow: 0 6px 28px rgba(14, 14, 14, .12);
+        }
+
+        /* --- Header shop --- */
+        .inv-shop { text-align: center; }
+        .inv-shop-name {
+            font-family: var(--font-display, 'Cormorant Garamond', serif);
+            font-size: 34px; font-weight: 600; letter-spacing: 6px;
+            text-transform: uppercase; margin: 0 0 10px;
+        }
+        .inv-shop p { margin: 4px 0; font-size: 13.5px; color: var(--c-muted, #6b6b6b); }
+
+        .inv-rule { border: 0; border-top: 1px solid var(--c-ink, #0e0e0e); margin: 20px 0 22px; }
+
+        .inv-title {
+            font-family: var(--font-display, 'Cormorant Garamond', serif);
+            font-size: 26px; font-weight: 600; letter-spacing: 2px;
+            text-transform: uppercase; text-align: center; margin: 0 0 26px;
+        }
+
+        /* --- Thông tin khách --- */
+        .inv-meta { margin-bottom: 26px; }
+        .inv-meta p { margin: 7px 0; font-size: 14px; }
+        .inv-meta .lbl { color: var(--c-muted, #6b6b6b); }
+
+        /* --- Bảng sản phẩm --- */
+        table.inv-items { width: 100%; border-collapse: collapse; font-size: 14px; }
+        table.inv-items th {
+            text-align: left; font-weight: 600; font-size: 12.5px;
+            letter-spacing: .4px; text-transform: uppercase;
+            padding: 0 8px 9px; border-bottom: 1px solid var(--c-ink, #0e0e0e);
+        }
+        table.inv-items td { padding: 11px 8px; border-bottom: 1px solid var(--c-line, #e6e3dd); }
+        table.inv-items th:first-child, table.inv-items td:first-child { padding-left: 0; }
+        table.inv-items th:last-child, table.inv-items td:last-child { padding-right: 0; }
+        .col-qty { width: 70px; text-align: center; }
+        .col-price, .col-total { text-align: right; white-space: nowrap; }
+        .col-price { width: 130px; }
+        .col-total { width: 140px; }
+        .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+        /* --- Tổng kết --- */
+        .inv-sum { margin: 18px 0 0; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+        .inv-sum-row { display: flex; gap: 26px; font-size: 14px; min-width: 300px; justify-content: space-between; }
+        .inv-sum-row .lbl { color: var(--c-muted, #6b6b6b); }
+        .inv-sum-row.total {
+            font-size: 17px; font-weight: 600; padding-top: 10px;
+            border-top: 1px solid var(--c-ink, #0e0e0e); min-width: 300px;
+        }
+
+        .inv-pay { margin: 26px 0 0; font-size: 14px; }
+        .inv-pay .lbl { color: var(--c-muted, #6b6b6b); }
+
+        .inv-thanks {
+            margin: 40px 0 0; text-align: center; font-size: 14px;
+            font-style: italic; color: var(--c-muted, #6b6b6b);
+        }
+
+        /* --- Trạng thái tải / lỗi --- */
+        .inv-state { text-align: center; padding: 60px 20px; font-size: 15px; color: var(--c-muted, #6b6b6b); }
+        .inv-state a { color: var(--c-ink, #0e0e0e); }
+
+        /* --- Nút in (chỉ hiện trên màn hình) --- */
+        .inv-actions { position: fixed; top: 20px; right: 24px; display: flex; gap: 10px; z-index: 10; }
+        .inv-btn {
+            font-family: var(--font-ui, 'Jost', sans-serif); font-size: 13px;
+            letter-spacing: .5px; padding: 10px 20px; cursor: pointer;
+            border: 1px solid var(--c-ink, #0e0e0e); border-radius: 6px;
+            background: var(--c-ink, #0e0e0e); color: #fff;
+        }
+        .inv-btn.ghost { background: #fff; color: var(--c-ink, #0e0e0e); }
+        .inv-btn:hover { opacity: .88; }
+        .inv-btn:focus-visible { outline: 2px solid var(--c-ink, #0e0e0e); outline-offset: 2px; }
+
+        /* --- Khi IN: bỏ nút + nền, cho tờ hoá đơn tràn khổ giấy --- */
+        @media print {
+            body { background: #fff; }
+            .inv-actions { display: none !important; }
+            .inv-sheet {
+                width: auto; min-height: 0; margin: 0; padding: 0;
+                box-shadow: none;
+            }
+        }
+
+        @media (max-width: 820px) {
+            .inv-sheet { width: auto; min-height: 0; margin: 12px; padding: 24px 18px; }
+            .inv-actions { position: static; justify-content: flex-end; padding: 12px 12px 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="inv-actions" id="inv-actions" hidden>
+        <button type="button" class="inv-btn ghost" onclick="window.close()">Đóng</button>
+        <button type="button" class="inv-btn" onclick="window.print()">In hoá đơn</button>
+    </div>
+
+    <div class="inv-sheet">
+        <div class="inv-state" id="inv-state">Đang tải hoá đơn…</div>
+
+        <div id="inv-content" hidden>
+            <div class="inv-shop">
+                <h1 class="inv-shop-name">BREEZE</h1>
+                <p>Địa chỉ: 1 Nguyễn Huệ, Quận 1, TP.HCM</p>
+                <p>ĐT: 0123456789</p>
+            </div>
+
+            <hr class="inv-rule">
+
+            <h2 class="inv-title">Hoá đơn thanh toán</h2>
+
+            <div class="inv-meta">
+                <p><span class="lbl">Khách hàng:</span> <span id="inv-customer"></span></p>
+                <p><span class="lbl">Số điện thoại:</span> <span id="inv-phone"></span></p>
+                <p><span class="lbl">Địa chỉ:</span> <span id="inv-address"></span></p>
+                <p><span class="lbl">Ngày lập HĐ:</span> <span id="inv-date" class="num"></span></p>
+                <p><span class="lbl">Mã đơn:</span> <span id="inv-id" class="num"></span></p>
+            </div>
+
+            <table class="inv-items">
+                <thead>
+                    <tr>
+                        <th scope="col">Sản phẩm</th>
+                        <th scope="col" class="col-qty">SL</th>
+                        <th scope="col" class="col-price">Đơn giá</th>
+                        <th scope="col" class="col-total">Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody id="inv-items"></tbody>
+            </table>
+
+            <div class="inv-sum">
+                <div class="inv-sum-row">
+                    <span class="lbl">Tạm tính:</span>
+                    <span class="num" id="inv-subtotal"></span>
+                </div>
+                <!-- Dòng giảm giá chỉ hiện khi đơn có áp voucher -->
+                <div class="inv-sum-row" id="inv-discount-row" hidden>
+                    <span class="lbl" id="inv-discount-label">Giảm giá:</span>
+                    <span class="num" id="inv-discount"></span>
+                </div>
+                <div class="inv-sum-row total">
+                    <span>Tổng tiền:</span>
+                    <span class="num" id="inv-total"></span>
+                </div>
+            </div>
+
+            <p class="inv-pay"><span class="lbl">Hình thức thanh toán:</span> <span id="inv-payment"></span></p>
+
+            <p class="inv-thanks">Cảm ơn quý khách, hẹn gặp lại!</p>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/api-config.js"></script>
+    <script src="js/auth-helper.js"></script>
+    <script>
+    /* invoice.html — trang in hoá đơn 1 đơn hàng (HTML thuần, in bằng trình duyệt).
+       - Dữ liệu lấy từ API admin THẬT, KHÔNG hardcode: dùng lại GET /api/admin/orders?q=<id>
+         (search theo mã đơn khớp CHÍNH XÁC) — đã trả đủ khách/địa chỉ/items/voucher/thanh toán,
+         nên không cần thêm route mới.
+       - Route đó nằm trong router bọc verifyFirebaseToken + requireAdmin => trang này phải
+         đăng nhập admin mới xem được (token đính qua AuthHelper.apiFetch, KHÔNG để lộ trên URL). */
+    (function () {
+        'use strict';
+        var $ = function (id) { return document.getElementById(id); };
+        // Đồng bộ đúng nhãn với admin.js / UI checkout.
+        var PAYMENT_LABEL = { visa: 'Thẻ Visa', mastercard: 'Thẻ Mastercard', cod: 'Tiền mặt (COD)', momo: 'Ví MoMo' };
+
+        function money(n) { return Number(n || 0).toLocaleString('vi-VN') + 'đ'; }
+        function pad2(n) { return String(n).padStart(2, '0'); }
+        function fmtDateVN(iso) {                    // dd-mm-yyyy
+            try {
+                var d = new Date(iso);
+                return pad2(d.getDate()) + '-' + pad2(d.getMonth() + 1) + '-' + d.getFullYear();
+            } catch (e) { return iso || ''; }
+        }
+        function showState(msg) {
+            var st = $('inv-state');
+            st.hidden = false;
+            st.innerHTML = msg;
+            $('inv-content').hidden = true;
+            $('inv-actions').hidden = true;
+        }
+
+        function getOrderId() {
+            var raw = new URLSearchParams(window.location.search).get('orderId');
+            if (raw === null || raw === '' || !/^\d+$/.test(raw)) return null;
+            return raw;
+        }
+
+        function render(o) {
+            document.title = 'Hoá đơn #' + o.id + ' - BREEZE';
+            $('inv-customer').textContent = o.shipping_name || o.user_name || o.user_email || ('Khách #' + o.user_id);
+            $('inv-phone').textContent = o.shipping_phone || '—';
+            $('inv-address').textContent = o.shipping_address || '—';
+            $('inv-date').textContent = fmtDateVN(o.created_at);
+            $('inv-id').textContent = '#' + o.id;
+
+            var items = o.items || [];
+            $('inv-items').innerHTML = items.length
+                ? items.map(function (it) {
+                    return '<tr>' +
+                        '<td>' + escapeHtml(it.product_name) + '</td>' +
+                        '<td class="col-qty num">x' + it.quantity + '</td>' +
+                        '<td class="col-price num">' + money(it.unit_price) + '</td>' +
+                        '<td class="col-total num">' + money(it.line_total) + '</td>' +
+                    '</tr>';
+                }).join('')
+                : '<tr><td colspan="4" style="text-align:center;color:#6b6b6b;">(không có dòng hàng)</td></tr>';
+
+            // Tạm tính = tổng line_total của items; Tổng tiền lấy total_amount THẬT từ DB (đã trừ giảm).
+            var subtotal = items.reduce(function (s, it) { return s + Number(it.line_total || 0); }, 0);
+            var discount = Number(o.discount_amount || 0);
+            $('inv-subtotal').textContent = money(subtotal);
+            if (discount > 0 || o.voucher_code) {
+                $('inv-discount-row').hidden = false;
+                $('inv-discount-label').textContent = o.voucher_code
+                    ? 'Giảm giá (' + o.voucher_code + '):'
+                    : 'Giảm giá:';
+                $('inv-discount').textContent = '−' + money(discount);
+            }
+            $('inv-total').textContent = money(o.total_amount);
+            $('inv-payment').textContent = PAYMENT_LABEL[o.payment_method] || '—';
+
+            $('inv-state').hidden = true;
+            $('inv-content').hidden = false;
+            $('inv-actions').hidden = false;   // chỉ hiện khi đã có dữ liệu (không tự bật print dialog)
+        }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function load(user) {
+            if (!user) {
+                showState('Bạn cần đăng nhập tài khoản quản trị để xem hoá đơn.<br><a href="login.html">Đăng nhập</a>');
+                return;
+            }
+            var id = getOrderId();
+            if (!id) { showState('Thiếu hoặc sai mã đơn trên đường dẫn (?orderId=...).'); return; }
+
+            window.AuthHelper.apiFetch('/api/admin/orders?q=' + encodeURIComponent(id) + '&limit=1')
+                .then(function (r) {
+                    if (r.status === 401 || r.status === 403) throw new Error('FORBIDDEN');
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(function (data) {
+                    var o = (data.orders || [])[0];
+                    if (!o) { showState('Không tìm thấy đơn hàng #' + id + '.'); return; }
+                    render(o);
+                })
+                .catch(function (e) {
+                    console.error('[invoice] lỗi:', e);
+                    showState(e.message === 'FORBIDDEN'
+                        ? 'Tài khoản của bạn không có quyền xem hoá đơn.'
+                        : 'Không tải được hoá đơn. Vui lòng thử lại.');
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.AuthHelper && typeof window.AuthHelper.onChange === 'function') {
+                window.AuthHelper.onChange(load);
+            } else {
+                showState('Không khởi tạo được xác thực. Vui lòng tải lại trang.');
+            }
+        });
+    })();
+    </script>
+</body>
+</html>
