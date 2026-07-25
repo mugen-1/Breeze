@@ -3,6 +3,8 @@
         var $ = function (id) { return document.getElementById(id); };
         var ORDER_STATUSES = ['pending', 'paid', 'shipped', 'completed', 'cancelled'];
         var STATUS_LABEL = { pending: 'Chờ xử lý', paid: 'Đã thanh toán', shipped: 'Đang giao', completed: 'Hoàn tất', cancelled: 'Đã hủy' };
+        // Đồng bộ đúng tên hiển thị với 4 lựa chọn ở UI checkout (client/checkout.html).
+        var PAYMENT_LABEL = { visa: 'Thẻ Visa', mastercard: 'Thẻ Mastercard', cod: 'Tiền mặt (COD)', momo: 'Ví MoMo' };
 
         var categories = [];   // [{id, slug, name_vi}]
         var catById = {};
@@ -356,14 +358,14 @@
 
         function loadOrders(page) {
             _orderPage = page || 1;
-            $('order-body').innerHTML = skeletonRows(6, 8);
+            $('order-body').innerHTML = skeletonRows(7, 8);
             $('order-pager').innerHTML = '';
             return api(orderQuery())
                 .then(function (r) { if (!r.ok) throw new Error('orders ' + r.status); return r.json(); })
                 .then(renderOrders)
                 .catch(function (e) {
                     console.error('[admin] load orders lỗi:', e);
-                    $('order-body').innerHTML = '<tr><td colspan="6" class="adm-empty">Không tải được đơn hàng.</td></tr>';
+                    $('order-body').innerHTML = '<tr><td colspan="7" class="adm-empty">Không tải được đơn hàng.</td></tr>';
                 });
         }
 
@@ -391,10 +393,13 @@
                 ? '<p class="oi-voucher">Mã giảm giá: <strong>' + esc(o.voucher_code || '—') +
                   '</strong> · Giảm ' + money(o.discount_amount || 0) + '</p>'
                 : '';
+            // Đơn không có/không nhận diện được hình thức thanh toán -> "—" (không để trống vỡ bảng).
+            var paymentLabel = esc(PAYMENT_LABEL[o.payment_method] || '—');
             return '<tr>' +
                     '<td class="num">' + o.id + '</td>' +
                     '<td>' + esc(cust) + '</td>' +
                     '<td>' + fmtDate(o.created_at) + '</td>' +
+                    '<td>' + paymentLabel + '</td>' +
                     '<td class="num">' + money(o.total_amount) + '</td>' +
                     '<td><select class="status-sel" data-order="' + o.id + '">' + opts + '</select></td>' +
                     '<td style="white-space:nowrap;">' +
@@ -402,7 +407,7 @@
                         '<button type="button" class="adm-btn danger small" data-del-order="' + o.id + '">Xoá</button>' +
                     '</td>' +
                 '</tr>' +
-                '<tr class="oi-detail" id="oi-' + o.id + '" style="display:none;"><td colspan="6">' +
+                '<tr class="oi-detail" id="oi-' + o.id + '" style="display:none;"><td colspan="7">' +
                     '<table><thead><tr><th>Sản phẩm</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th></tr></thead>' +
                     '<tbody>' + (itemRows || '<tr><td class="inner" colspan="4">(không có dòng hàng)</td></tr>') + '</tbody></table>' +
                     voucherLine +
@@ -431,7 +436,7 @@
             if (!orders.length) {
                 // Phân biệt: đang lọc mà rỗng vs thật sự chưa có đơn nào.
                 var filtering = _orderFilters.status || _orderFilters.q;
-                tb.innerHTML = '<tr><td colspan="6" class="adm-empty">' +
+                tb.innerHTML = '<tr><td colspan="7" class="adm-empty">' +
                     (filtering ? 'Không tìm thấy đơn phù hợp.' : 'Chưa có đơn hàng nào.') + '</td></tr>';
                 $('order-pager').innerHTML = '';
                 return;
