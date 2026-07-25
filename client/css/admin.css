@@ -292,6 +292,14 @@ table.adm-table tr:last-child td { border-bottom:none; }
 /* Hover row (bỏ qua hàng chi tiết oi-detail có nền riêng) */
 table.adm-table > tbody > tr:not(.oi-detail):hover > td { background:var(--c-cream); }
 
+/* Bảng Đơn hàng: bỏ khung ngoài + đường kẻ ngang giữa các dòng (style tối giản,
+   không đóng khung) — CHỈ giữ đường mảnh ngăn header (đã có sẵn ở th, không đụng).
+   Scope qua #tab-orders (id có sẵn) để KHÔNG ảnh hưởng bảng Sản phẩm/Người dùng
+   cũng đang dùng chung .adm-table/.adm-table-wrap. Cột giữ nguyên vị trí/độ rộng —
+   chỉ tăng padding dọc để bù khoảng cách dòng, không đụng padding ngang (căn cột). */
+#tab-orders .adm-table-wrap { border:none; }
+#tab-orders table.adm-table td { padding-top:16px; padding-bottom:16px; border-bottom:none; }
+
 /* --- Toolbar filter/search (panel Đơn hàng) --- */
 .adm-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .adm-search-sm { position:relative; display:flex; align-items:center; }
