@@ -377,8 +377,7 @@
         }
 
         // Dựng HTML cho 1 đơn (hàng chính + hàng chi tiết ẩn). Giữ nguyên markup cũ.
-        // index: thứ tự dòng trong danh sách đang render (map truyền tự động).
-        function orderRowHTML(o, index) {
+        function orderRowHTML(o) {
             var opts = ORDER_STATUSES.map(function (s) {
                 return '<option value="' + s + '"' + (s === o.status ? ' selected' : '') + '>' + STATUS_LABEL[s] + '</option>';
             }).join('');
@@ -396,15 +395,7 @@
                 : '';
             // Đơn không có/không nhận diện được hình thức thanh toán -> "—" (không để trống vỡ bảng).
             var paymentLabel = esc(PAYMENT_LABEL[o.payment_method] || '—');
-            // GIAI ĐOẠN TEST: MỌI dòng đều có nút "Xuất hoá đơn" cho đồng bộ giao diện,
-            // nhưng chỉ 2 dòng ĐẦU bấm được (mở trang in PDF); từ dòng 3 nút ở dạng thô
-            // (disabled) — chưa xuất hoá đơn được.
-            // Giới hạn CHỈ ở tầng frontend: backend + trang in đã chạy đủ cho MỌI đơn, nên
-            // muốn mở cho tất cả chỉ cần bỏ nhánh disabled dưới đây, không sửa gì thêm.
-            var invoiceBtn = (index < 2)
-                ? '<button type="button" class="adm-btn ghost small" data-invoice="' + o.id + '">Xuất hoá đơn</button> '
-                : '<button type="button" class="adm-btn ghost small" disabled aria-disabled="true"' +
-                  ' title="Chức năng đang hoàn thiện — chưa xuất được hoá đơn cho đơn này">Xuất hoá đơn</button> ';
+            var invoiceBtn = '<button type="button" class="adm-btn ghost small" data-invoice="' + o.id + '">Xuất hoá đơn</button> ';
             return '<tr>' +
                     '<td class="num">' + o.id + '</td>' +
                     '<td>' + esc(cust) + '</td>' +
