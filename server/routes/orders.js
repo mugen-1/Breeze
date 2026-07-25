@@ -1,6 +1,7 @@
 // Orders API (yêu cầu Firebase ID token — mọi route bọc verifyFirebaseToken).
-//   POST /api/orders        — tạo đơn từ giỏ hiện tại (TRANSACTION). Body (tuỳ chọn):
-//                             { shipping_name, shipping_phone, shipping_address, voucherCode }.
+//   POST /api/orders        — tạo đơn từ giỏ hiện tại (TRANSACTION). Body:
+//                             { shipping_name, shipping_phone, shipping_address, voucherCode,
+//                               paymentMethod (BẮT BUỘC — visa|mastercard|cod|momo) }.
 //                             discount/total tính LẠI ở server; discountAmount/total client gửi bị bỏ qua.
 //   GET  /api/orders        — danh sách đơn của user (kèm items).
 //   GET  /api/orders/:id    — chi tiết 1 đơn (CHỈ chủ đơn; đơn người khác trả 404).
@@ -11,10 +12,15 @@ const express = require('express');
 const router = express.Router();
 const { getPool, sql } = require('../db');
 const { verifyFirebaseToken } = require('../middleware/auth');
-const { getVoucher, calcDiscount, isFirstTimeCustomer } = require('../config/vouchers');
+const { getVoucher, calcDiscount, checkCondition, isFirstTimeCustomer } = require('../config/vouchers');
 
 const EFFECTIVE_PRICE =
   '(CASE WHEN p.sale_price IS NOT NULL THEN p.sale_price ELSE p.price END)';
+
+// Hình thức thanh toán hợp lệ — KHÔNG xử lý thanh toán thật, chỉ lưu lựa chọn của
+// khách để tham khảo/thống kê. Whitelist bắt buộc: input người dùng, sai phải báo
+// rõ (400), không được âm thầm suy đoán/gán mặc định thay khách.
+const PAYMENT_METHODS = ['visa', 'mastercard', 'cod', 'momo'];
 
 router.use(verifyFirebaseToken);
 
@@ -31,6 +37,16 @@ router.post('/', async (req, res) => {
   const shippingPhone = str(req.body && req.body.shipping_phone, 30);
   const shippingAddress = str(req.body && req.body.shipping_address, 400);
   const rawVoucher = req.body && req.body.voucherCode; // tuỳ chọn — discount/total client gửi lên bị BỎ QUA
+
+  // paymentMethod BẮT BUỘC + whitelist: giá trị lạ/rỗng -> 400 rõ ràng, KHÔNG tạo đơn,
+  // KHÔNG âm thầm gán mặc định (đây là lựa chọn của khách, sai thì phải báo).
+  const paymentMethod = req.body && req.body.paymentMethod;
+  if (typeof paymentMethod !== 'string' || !PAYMENT_METHODS.includes(paymentMethod)) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'paymentMethod không hợp lệ. Chọn 1 trong: ' + PAYMENT_METHODS.join(', '),
+    });
+  }
 
   let pool;
   try {
@@ -86,18 +102,26 @@ router.post('/', async (req, res) => {
     if (rawVoucher != null && String(rawVoucher).trim() !== '') {
       const voucher = getVoucher(rawVoucher);
       let ok = !!voucher;
-      if (ok && voucher.firstOrderOnly) ok = await isFirstTimeCustomer(req.user.id, pool);
+      if (ok) {
+        // KIỂM TRA LẠI điều kiện tại thời điểm đặt (tính lại từ giỏ đã khoá) — không tin client.
+        const cartQty = rows.reduce((s, r) => s + r.quantity, 0);
+        let isFirstTime;
+        if (voucher.condition && voucher.condition.type === 'first_order') {
+          isFirstTime = await isFirstTimeCustomer(req.user.id, pool);
+        }
+        ok = checkCondition(voucher, { cartQuantity: cartQty, isFirstTime: isFirstTime }).ok;
+      }
       if (ok && totalAmount < voucher.minSubtotal) ok = false;
       if (ok) {
         voucherCode = voucher.code;
         discountAmount = calcDiscount(voucher, totalAmount);
       } else {
-        voucherDropped = true; // client gửi mã nhưng không áp được -> báo để frontend thông báo
+        voucherDropped = true; // mã sai / điều kiện không thoả lúc đặt -> bỏ voucher, báo frontend
       }
     }
     const finalTotal = Math.max(0, totalAmount - discountAmount); // shippingFee = 0 (Miễn phí)
 
-    // 4) Tạo orders, lấy id. total_amount = TỔNG ĐÃ TRỪ giảm giá; lưu kèm VoucherCode/DiscountAmount.
+    // 4) Tạo orders, lấy id. total_amount = TỔNG ĐÃ TRỪ giảm giá; lưu kèm VoucherCode/DiscountAmount/PaymentMethod.
     const orderRes = await new sql.Request(tx)
       .input('uid', sql.Int, req.user.id)
       .input('total', sql.Decimal(12, 2), finalTotal)
@@ -106,11 +130,12 @@ router.post('/', async (req, res) => {
       .input('saddr', sql.NVarChar(400), shippingAddress)
       .input('vcode', sql.NVarChar(50), voucherCode)
       .input('discount', sql.Decimal(18, 2), discountAmount)
+      .input('pmethod', sql.NVarChar(20), paymentMethod)
       .query(`
-        INSERT INTO dbo.orders (user_id, status, total_amount, shipping_name, shipping_phone, shipping_address, VoucherCode, DiscountAmount)
+        INSERT INTO dbo.orders (user_id, status, total_amount, shipping_name, shipping_phone, shipping_address, VoucherCode, DiscountAmount, PaymentMethod)
         OUTPUT INSERTED.id, INSERTED.status, INSERTED.total_amount, INSERTED.created_at,
-               INSERTED.VoucherCode, INSERTED.DiscountAmount
-        VALUES (@uid, 'pending', @total, @sname, @sphone, @saddr, @vcode, @discount);`);
+               INSERTED.VoucherCode, INSERTED.DiscountAmount, INSERTED.PaymentMethod
+        VALUES (@uid, 'pending', @total, @sname, @sphone, @saddr, @vcode, @discount, @pmethod);`);
     const order = orderRes.recordset[0];
 
     // 5) order_items (snapshot tên + giá) + trừ stock, từng dòng trong cùng transaction.
@@ -153,6 +178,7 @@ router.post('/', async (req, res) => {
         subtotal: totalAmount,
         voucher_code: order.VoucherCode,
         discount_amount: order.DiscountAmount,
+        payment_method: order.PaymentMethod,
         created_at: order.created_at,
         item_count: rows.length,
       },

@@ -1,13 +1,3 @@
-// Admin API (Phase 5) — MỌI route bọc verifyFirebaseToken + requireAdmin.
-//   POST   /api/admin/products            — tạo sản phẩm.
-//   PUT    /api/admin/products/:id         — sửa sản phẩm (cập nhật từng phần).
-//   DELETE /api/admin/products/:id         — xoá: SOFT (is_active=0) nếu đã có đơn
-//                                            tham chiếu; HARD nếu chưa (tránh vỡ order_items).
-//   GET    /api/admin/orders               — mọi đơn của mọi user, phân trang ?page=&limit=.
-//   PUT    /api/admin/orders/:id/status    — đổi trạng thái đơn (whitelist).
-//   DELETE /api/admin/orders/:id           — xoá hẳn 1 đơn (order_items cascade theo).
-//
-// Nguyên tắc: TIN server, KHÔNG tin client. Mọi input validate + parameterized.
 const express = require('express');
 const router = express.Router();
 const { getPool, sql } = require('../db');
@@ -455,6 +445,7 @@ router.get('/orders', async (req, res) => {
       SELECT o.id, o.user_id, u.email AS user_email, u.display_name AS user_name,
              o.status, o.total_amount, o.currency,
              o.VoucherCode AS voucher_code, o.DiscountAmount AS discount_amount,
+             o.PaymentMethod AS payment_method,
              o.shipping_name, o.shipping_phone, o.shipping_address, o.created_at
       FROM dbo.orders o
       JOIN dbo.users u ON u.id = o.user_id
