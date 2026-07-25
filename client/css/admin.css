@@ -206,6 +206,9 @@ body.adm-authed .adm-main { margin-left:232px; }
 .adm-btn.ghost { background:var(--c-bg); color:var(--c-ink); border:1px solid var(--c-ink); }
 .adm-btn.danger { background:var(--c-danger); }
 .adm-btn.small { padding:6px 14px; font-size:11px; letter-spacing:.5px; }
+/* Nút chưa dùng được (vd "Xuất hoá đơn" ở các đơn chưa mở chức năng): mờ + không bấm. */
+.adm-btn:disabled { opacity:.4; cursor:not-allowed; }
+.adm-btn:disabled:hover { opacity:.4; }
 
 /* --- Panel (khung view, chuyển bằng sidebar) --- */
 /* max-width KHÔNG đặt ở #panel nữa — mỗi view tự quyết định độ rộng (xem dưới).

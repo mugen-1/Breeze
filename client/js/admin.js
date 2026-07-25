@@ -396,12 +396,15 @@
                 : '';
             // Đơn không có/không nhận diện được hình thức thanh toán -> "—" (không để trống vỡ bảng).
             var paymentLabel = esc(PAYMENT_LABEL[o.payment_method] || '—');
-            // GIAI ĐOẠN TEST: nút "Xuất hoá đơn" chỉ hiện ở 2 dòng ĐẦU của danh sách đang render.
-            // Giới hạn CHỈ ở tầng frontend — backend + trang in đã hoạt động đủ cho MỌI đơn,
-            // nên bỏ điều kiện index < 2 dưới đây là áp dụng được cho tất cả, không cần sửa gì thêm.
+            // GIAI ĐOẠN TEST: MỌI dòng đều có nút "Xuất hoá đơn" cho đồng bộ giao diện,
+            // nhưng chỉ 2 dòng ĐẦU bấm được (mở trang in PDF); từ dòng 3 nút ở dạng thô
+            // (disabled) — chưa xuất hoá đơn được.
+            // Giới hạn CHỈ ở tầng frontend: backend + trang in đã chạy đủ cho MỌI đơn, nên
+            // muốn mở cho tất cả chỉ cần bỏ nhánh disabled dưới đây, không sửa gì thêm.
             var invoiceBtn = (index < 2)
                 ? '<button type="button" class="adm-btn ghost small" data-invoice="' + o.id + '">Xuất hoá đơn</button> '
-                : '';
+                : '<button type="button" class="adm-btn ghost small" disabled aria-disabled="true"' +
+                  ' title="Chức năng đang hoàn thiện — chưa xuất được hoá đơn cho đơn này">Xuất hoá đơn</button> ';
             return '<tr>' +
                     '<td class="num">' + o.id + '</td>' +
                     '<td>' + esc(cust) + '</td>' +
