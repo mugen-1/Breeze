@@ -120,8 +120,8 @@
 
         // --- i18n khung (VI/EN): nhãn sidebar/topbar/placeholder -------------
         var ADM_I18N = {
-            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Đơn hàng', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm mã đơn / khách hàng…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất', revenueChart: 'Doanh thu theo ngày (tháng này)', noRevData: 'Chưa có dữ liệu doanh thu' },
-            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Orders', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search Order...', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders', revenueChart: 'Daily revenue (this month)', noRevData: 'No revenue data yet' }
+            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Hoá đơn', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm mã đơn / khách hàng…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất', revenueChart: 'Doanh thu theo ngày (tháng này)', noRevData: 'Chưa có dữ liệu doanh thu' },
+            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Invoices', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search Order...', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders', revenueChart: 'Daily revenue (this month)', noRevData: 'No revenue data yet' }
         };
         function applyAdmLang(lang) {
             var t = ADM_I18N[lang] || ADM_I18N.vi;
@@ -377,7 +377,8 @@
         }
 
         // Dựng HTML cho 1 đơn (hàng chính + hàng chi tiết ẩn). Giữ nguyên markup cũ.
-        function orderRowHTML(o) {
+        // index: thứ tự dòng trong danh sách đang render (map truyền tự động).
+        function orderRowHTML(o, index) {
             var opts = ORDER_STATUSES.map(function (s) {
                 return '<option value="' + s + '"' + (s === o.status ? ' selected' : '') + '>' + STATUS_LABEL[s] + '</option>';
             }).join('');
@@ -395,6 +396,12 @@
                 : '';
             // Đơn không có/không nhận diện được hình thức thanh toán -> "—" (không để trống vỡ bảng).
             var paymentLabel = esc(PAYMENT_LABEL[o.payment_method] || '—');
+            // GIAI ĐOẠN TEST: nút "Xuất hoá đơn" chỉ hiện ở 2 dòng ĐẦU của danh sách đang render.
+            // Giới hạn CHỈ ở tầng frontend — backend + trang in đã hoạt động đủ cho MỌI đơn,
+            // nên bỏ điều kiện index < 2 dưới đây là áp dụng được cho tất cả, không cần sửa gì thêm.
+            var invoiceBtn = (index < 2)
+                ? '<button type="button" class="adm-btn ghost small" data-invoice="' + o.id + '">Xuất hoá đơn</button> '
+                : '';
             return '<tr>' +
                     '<td class="num">' + o.id + '</td>' +
                     '<td>' + esc(cust) + '</td>' +
@@ -404,6 +411,7 @@
                     '<td><select class="status-sel" data-order="' + o.id + '">' + opts + '</select></td>' +
                     '<td style="white-space:nowrap;">' +
                         '<button type="button" class="adm-btn ghost small" data-toggle="' + o.id + '">Chi tiết</button> ' +
+                        invoiceBtn +
                         '<button type="button" class="adm-btn danger small" data-del-order="' + o.id + '">Xoá</button>' +
                     '</td>' +
                 '</tr>' +
@@ -426,6 +434,12 @@
             });
             $('order-body').querySelectorAll('[data-del-order]').forEach(function (b) {
                 b.addEventListener('click', function () { deleteOrder(b.getAttribute('data-del-order'), b); });
+            });
+            // Mở trang in hoá đơn ở TAB MỚI (trang tự xác thực admin rồi gọi API lấy dữ liệu đơn).
+            $('order-body').querySelectorAll('[data-invoice]').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    window.open('invoice.html?orderId=' + encodeURIComponent(b.getAttribute('data-invoice')), '_blank');
+                });
             });
         }
 
