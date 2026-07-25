@@ -208,11 +208,12 @@ body.adm-authed .adm-main { margin-left:232px; }
 .adm-btn.small { padding:6px 14px; font-size:11px; letter-spacing:.5px; }
 
 /* --- Panel (khung view, chuyển bằng sidebar) --- */
-/* max-width KHÔNG đặt ở #panel nữa — mỗi view tự quyết định độ rộng (xem dưới),
-   để riêng trang Đơn hàng (#tab-orders) giãn full chiều rộng còn lại sau sidebar,
-   trong khi Dashboard/Products/Users/Settings giữ nguyên độ rộng đọc thoải mái 1180px. */
+/* max-width KHÔNG đặt ở #panel nữa — mỗi view tự quyết định độ rộng (xem dưới).
+   Đơn hàng/Sản phẩm/Người dùng (bảng dữ liệu) giãn full chiều rộng còn lại sau
+   sidebar, tránh khoảng trắng thừa hai bên; Dashboard/Settings (bố cục card/grid,
+   không phải bảng dài) giữ độ rộng đọc thoải mái 1180px. */
 #panel { max-width:none; padding:30px 28px 80px; display:none; }
-#view-dashboard, #tab-products, #view-users, #view-settings {
+#view-dashboard, #view-settings {
     max-width:1180px; margin-left:auto; margin-right:auto;
 }
 
@@ -292,13 +293,19 @@ table.adm-table tr:last-child td { border-bottom:none; }
 /* Hover row (bỏ qua hàng chi tiết oi-detail có nền riêng) */
 table.adm-table > tbody > tr:not(.oi-detail):hover > td { background:var(--c-cream); }
 
-/* Bảng Đơn hàng: bỏ khung ngoài + đường kẻ ngang giữa các dòng (style tối giản,
-   không đóng khung) — CHỈ giữ đường mảnh ngăn header (đã có sẵn ở th, không đụng).
-   Scope qua #tab-orders (id có sẵn) để KHÔNG ảnh hưởng bảng Sản phẩm/Người dùng
-   cũng đang dùng chung .adm-table/.adm-table-wrap. Cột giữ nguyên vị trí/độ rộng —
-   chỉ tăng padding dọc để bù khoảng cách dòng, không đụng padding ngang (căn cột). */
-#tab-orders .adm-table-wrap { border:none; }
-#tab-orders table.adm-table td { padding-top:16px; padding-bottom:16px; border-bottom:none; }
+/* Bảng dữ liệu dạng danh sách (Đơn hàng/Sản phẩm/Người dùng): bỏ khung ngoài +
+   đường kẻ ngang giữa các dòng (style tối giản, không đóng khung) — CHỈ giữ đường
+   mảnh ngăn header (đã có sẵn ở th, không đụng). Scope qua 3 id có sẵn để KHÔNG
+   ảnh hưởng widget "Đơn hàng gần đây" trong Dashboard (cũng dùng .adm-table nhưng
+   nằm trong .dash-card, không dùng .adm-table-wrap nên không khớp selector này).
+   Cột giữ nguyên vị trí/độ rộng — chỉ tăng padding dọc bù khoảng cách dòng,
+   không đụng padding ngang (căn cột). */
+#tab-orders .adm-table-wrap,
+#tab-products .adm-table-wrap,
+#view-users .adm-table-wrap { border:none; }
+#tab-orders table.adm-table td,
+#tab-products table.adm-table td,
+#view-users table.adm-table td { padding-top:16px; padding-bottom:16px; border-bottom:none; }
 
 /* --- Toolbar filter/search (panel Đơn hàng) --- */
 .adm-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
