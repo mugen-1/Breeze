@@ -377,6 +377,7 @@
             }
 
             // Ghép payload từ các field đã có (Họ trước Tên theo tiếng Việt).
+            var payChecked = document.querySelector('input[name="payment"]:checked'); // validateForm() đã đảm bảo có chọn
             var payload = {
                 shipping_name: ($('f-lastname') ? $('f-lastname').value.trim() : '') + ' ' +
                                ($('f-firstname') ? $('f-firstname').value.trim() : ''),
@@ -386,7 +387,8 @@
                     $('f-ward') ? $('f-ward').value.trim() : '',
                     $('f-district') ? $('f-district').value.trim() : '',
                     $('f-city') ? $('f-city').value.trim() : ''
-                ].filter(Boolean).join(', ')
+                ].filter(Boolean).join(', '),
+                paymentMethod: payChecked ? payChecked.value : ''
             };
 
             // Voucher (nếu đã áp) — server tính LẠI discount, giá trị client chỉ để tra mã.
