@@ -56,6 +56,9 @@
             <button type="button" class="adm-nav-item" data-nav="orders">
                 <i class="fa fa-file-text-o" aria-hidden="true"></i> <span data-i18n="orders">Hoá đơn</span>
             </button>
+            <button type="button" class="adm-nav-item" data-nav="statistics">
+                <i class="fa fa-bar-chart" aria-hidden="true"></i> <span data-i18n="statistics">Thống kê</span>
+            </button>
             <button type="button" class="adm-nav-item" data-nav="users">
                 <i class="fa fa-users" aria-hidden="true"></i> <span data-i18n="users">Người dùng</span>
             </button>
@@ -275,6 +278,37 @@
                 </table>
             </div>
             <div class="adm-pager" id="order-pager"></div>
+        </section>
+
+        <!-- Thống kê: sản phẩm bán được trong khoảng (gom theo SẢN PHẨM, không gộp theo đơn) -->
+        <section id="view-statistics" style="display:none;">
+            <div class="adm-section-head">
+                <h3><span data-i18n="statisticsTitle">Thống kê sản phẩm bán được</span></h3>
+                <div class="adm-toolbar">
+                    <select id="stat-preset" class="dash-preset" aria-label="Khoảng thời gian">
+                        <option value="7d" selected>7 ngày qua</option>
+                        <option value="30d">30 ngày qua</option>
+                        <option value="month">Tháng này</option>
+                        <option value="year">Năm nay</option>
+                    </select>
+                </div>
+            </div>
+            <div class="adm-table-wrap">
+                <table class="adm-table">
+                    <thead><tr>
+                        <th>Tên sản phẩm</th><th class="num">Số lượng</th><th class="num">Doanh thu</th>
+                    </tr></thead>
+                    <tbody id="stat-body">
+                        <tr><td colspan="3" class="adm-loading">Đang tải…</td></tr>
+                    </tbody>
+                    <tfoot id="stat-foot" hidden>
+                        <tr>
+                            <th scope="row" colspan="2">Tổng doanh thu</th>
+                            <td class="num" id="stat-total">—</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
         </section>
 
         <!-- Người dùng (chỉ xem) -->
