@@ -63,10 +63,10 @@ body.home header {
   padding: 34px 50px 18px;                     /* chừa khoảng trống nhỏ phía trên */
   transition: background .3s ease;
 }
-/* Cụm icon phải trên index, thứ tự trái -> phải: search -> giỏ -> tài khoản.
-   Cả 3 đều absolute nên xếp theo right giảm dần, cách nhau ~44px để không đè. */
-body.home .box { right: 102px; }              /* search: xa nhất bên trái */
-body.home .cart-icon-btn { right: 58px; }     /* giỏ: ở giữa */
+/* Cụm icon phải trên index, thứ tự trái -> phải: search -> tài khoản.
+   Không còn icon giỏ riêng (lối vào giỏ nằm trong menu icon tài khoản), nên search
+   dời sát vào icon tài khoản. Cả 2 đều absolute, cách nhau ~44px để không đè. */
+body.home .box { right: 58px; }               /* search: kề trái icon tài khoản */
 .account-icon-btn {                           /* tài khoản: sát mép phải */
   position: absolute;
   right: 14px;

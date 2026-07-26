@@ -12,6 +12,9 @@ var CART_KEY = 'bookstore_cart';
 var _cart = [];            // nguồn sự thật in-memory (cả guest lẫn server mode)
 var _serverMode = false;   // true khi đã đăng nhập & đồng bộ server
 var _entering = false;     // chống chạy chồng khi vào server mode
+// Giỏ gắn với DANH TÍNH: mỗi tài khoản một giỏ (server), khách một giỏ riêng (localStorage).
+var _uid = null;           // uid Firebase của chủ giỏ đang hiển thị; null = khách
+var _authResolved = false; // đã biết chắc đang là khách hay tài khoản nào chưa
 
 function _lang() {
     return (window.__i18n && window.__i18n.current) || localStorage.getItem('ql_lang') || 'vi';
@@ -88,8 +91,13 @@ function _enterServerMode() {
     _entering = true;
     _serverMode = true;
 
+    var forUid = _uid;   // giỏ đang tải là của tài khoản này; đổi người giữa chừng -> bỏ kết quả
+
     // Chỉ id sản phẩm THẬT (số dương) mới merge lên server; bỏ id cục bộ âm (item không có product_id).
     var guest = _readLocal().filter(function (g) { return typeof g.id === 'number' && g.id > 0; });
+    // Xoá NGAY giỏ khách: từ lúc này giỏ thuộc về tài khoản vừa đăng nhập, không được
+    // rơi lại cho khách hay tài khoản khác dùng chung máy (kể cả khi merge dưới đây lỗi).
+    _writeLocal([]);
 
     var chain = _serverGet();
     if (guest.length) {
@@ -107,23 +115,40 @@ function _enterServerMode() {
     }
 
     chain.then(function (data) {
-        _writeLocal([]);           // giỏ guest đã lên server, xoá để không merge lại
+        if (_uid !== forUid) return;   // đã đăng xuất / đổi tài khoản -> KHÔNG hiện giỏ vừa tải
         _applyServerCart(data);
     }).catch(function (e) {
         console.error('[cart] không đồng bộ được giỏ server:', e);
         // giữ nguyên giỏ hiện có, vẫn cho phép thử lại lần sau
-    }).finally(function () { _entering = false; });
+    }).finally(function () {
+        _entering = false;
+        // Đổi tài khoản trong lúc đang tải -> tải lại giỏ của tài khoản hiện tại.
+        if (_uid && _uid !== forUid) _enterServerMode();
+    });
 }
 
 function _exitServerMode() {
     _serverMode = false;
-    _cart = _readLocal();
+    _cart = _readLocal();   // về giỏ của khách trên máy này
     _notify();
 }
 
+// Đổi danh tính (đăng nhập / đăng xuất / đổi tài khoản) -> nạp lại giỏ đúng chủ.
+// Badge vì thế luôn là số của người đang đăng nhập, không dùng chung với khách hay user khác.
 function _onAuth(user) {
-    if (user && !_serverMode) _enterServerMode();
-    else if (!user && _serverMode) _exitServerMode();
+    var uid = user ? user.uid : null;
+    if (_authResolved && uid === _uid) return;   // cùng một người -> khỏi nạp lại
+    _authResolved = true;
+    _uid = uid;
+
+    if (uid) {
+        _serverMode = false;   // buộc nạp lại từ đầu khi đổi sang tài khoản khác
+        _cart = [];            // không để giỏ của chủ cũ hiện trong lúc chờ server
+        _notify();
+        _enterServerMode();
+    } else {
+        _exitServerMode();
+    }
 }
 
 // ---- thao tác giỏ ----
@@ -171,9 +196,16 @@ function _isSoldOut(item) {
     return !!item && item.getAttribute('data-stock') === '0';
 }
 
+// Khách bấm thêm giỏ TRƯỚC khi biết trạng thái đăng nhập (giỏ đang để rỗng chờ xác định):
+// nạp lại giỏ khách đã lưu để lần ghi sau không xoá mất món của lần truy cập trước.
+function _hydrateGuestIfNeeded() {
+    if (!_authResolved && !_serverMode && _cart.length === 0) _cart = _readLocal();
+}
+
 function addToCart(btn) {
     const item = btn.closest('.product-item');
     if (_isSoldOut(item)) return;                 // chặn thêm giỏ khi hết hàng
+    _hydrateGuestIfNeeded();
     const nameEl = item.querySelector('.product-name') || item.querySelector('.product-cat');
     const salePriceEl = item.querySelector('.price-sale');
     const priceEl = salePriceEl || item.querySelector('.product-price');
@@ -282,17 +314,6 @@ function formatPrice(n) {
     return n.toLocaleString('vi-VN') + 'đ';
 }
 
-function _injectCartIcon() {
-    const header = document.querySelector('header');
-    if (!header || header.querySelector('.cart-icon-btn')) return;
-    const a = document.createElement('a');
-    a.href = 'cart.html';
-    a.className = 'cart-icon-btn';
-    a.title = 'Giỏ hàng';
-    a.innerHTML = '<i class="fa fa-shopping-cart"></i><span class="cart-badge">0</span>';
-    header.appendChild(a);
-}
-
 function _injectAddToCartButtons() {
     document.querySelectorAll('.product-info').forEach(function (info) {
         if (info.querySelector('.btn-add-cart, .btn-soldout')) return;
@@ -382,8 +403,16 @@ function startCheckout(opts) {
 window.startCheckout = startCheckout;
 
 document.addEventListener('DOMContentLoaded', function () {
-    _injectCartIcon();
-    _cart = _readLocal();       // khởi tạo giỏ guest; server mode sẽ ghi đè khi authchange
+    // Header KHÔNG còn icon giỏ riêng — lối vào giỏ nằm trong menu icon tài khoản
+    // (js/account-menu.js). Badge số lượng cũng gắn trên icon tài khoản đó.
+    if (window.AuthHelper && typeof window.AuthHelper.onChange === 'function') {
+        // Chưa biết ai đang dùng máy -> để giỏ RỖNG, chưa đọc localStorage:
+        // giỏ khách không được hiện cho tài khoản vừa đăng nhập và ngược lại.
+        // _onAuth bên dưới nạp đúng giỏ ngay khi biết: khách -> localStorage, user -> server.
+        _cart = [];
+    } else {
+        _cart = _readLocal();   // trang không nạp auth-helper: chỉ có chế độ khách
+    }
     _updateAllBadges();
     _injectAddToCartButtons();
     _initSearchPersist();

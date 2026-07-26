@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Kết quả tìm kiếm - BookStore</title>
+    <title>Kết quả tìm kiếm - BREEZE</title>
     <script>(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" type="text/css" href="css/global.css">
@@ -26,95 +26,82 @@
             box-sizing: border-box;
         }
 
+        /* Dùng biến theme (tokens.css) thay màu cứng — nếu không thì chữ #111 chìm
+           hẳn vào nền tối khi bật dark mode. */
         .search-title {
             text-align: center;
             margin: 32px 0 24px;
             font-size: 15px;
-            color: #111;
-            border-bottom: 1px solid #e5e5e5;
+            color: var(--c-ink, #111);
+            border-bottom: 1px solid var(--c-line, #e5e5e5);
             padding-bottom: 20px;
         }
-        .search-title span { color: #111; font-weight: 700; }
+        .search-title span { color: var(--c-ink, #111); font-weight: 700; }
 
         .no-result {
             text-align: center;
             padding: 80px 20px;
-            color: #888;
+            color: var(--c-muted, #888);
             font-size: 15px;
         }
-        .no-result i { font-size: 48px; display: block; margin-bottom: 16px; color: #ccc; }
-        .no-result a { color: #555; text-decoration: underline; }
-
-        /* Grid san pham: trai sang phai, deu nhau */
-        #results {
-            justify-content: flex-start !important;
-            gap: 24px;
-        }
-
-        #results > li {
-            flex-basis: calc(25% - 18px) !important;
-            padding: 0 !important;
-            margin-bottom: 30px;
-        }
-
-        /* Card san pham */
-        .product-item {
-            width: 100%;
-            border: 1px solid #ececec;
-            border-radius: 6px;
-            overflow: hidden;
-            transition: box-shadow 0.2s, transform 0.2s;
-        }
-        .product-item:hover {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-            transform: translateY(-2px);
-        }
-
-        /* Anh san pham lon, day du, giu ty le */
-        .product-top {
+        .no-result i {
+            font-size: 48px;
             display: block;
-            width: 100%;
-            background: #f7f7f7;
+            margin-bottom: 16px;
+            color: var(--c-line, #ccc);
         }
-        #results .product-thumb {
-            display: block;
-            width: 100%;
-        }
-        #results .product-thumb img {
-            height: 280px;
-            width: 100%;
-            object-fit: contain;
-            display: block;
-            padding: 12px;
-            box-sizing: border-box;
-        }
+        .no-result a { color: var(--c-ink, #555); text-decoration: underline; }
 
-        /* Thong tin san pham */
-        .product-info {
-            padding: 10px 12px 14px;
-            background: #fff;
+        /* Card sản phẩm KHÔNG khai báo lại ở đây: dùng chung CSS trang danh mục
+           (.main-content ul.products trong global.css) để kết quả tìm kiếm trông
+           y hệt trang Áo/Quần/Giày — kể cả nút "Thêm vào giỏ" hiện khi rê chuột. */
+        .main-content { padding-top: 0; }
+
+        /* Thanh tìm kiếm trên header — CHỈ trang này (trang khác vẫn dùng icon kính lúp). */
+        .ph-search {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            height: 36px;
+            padding: 0 4px 0 14px;
+            border: 1px solid var(--c-line, #e6e3dd);
+            border-radius: 999px;
+            background: var(--c-surface, #fff);
+            transition: border-color .2s ease;
         }
-        .product-danhmuc {
-            font-size: 10px;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin: 0 0 4px;
-        }
-        #results .product-cat {
-            text-transform: none;
-            font-size: 13px;
-            color: #222;
-            font-weight: 500;
-            line-height: 1.4;
-            display: block;
-            margin-bottom: 6px;
-        }
-        #results .product-cat:hover { color: #4CAF50; }
-        #results .product-price {
-            color: #111;
-            font-weight: 700;
+        .ph-search:focus-within { border-color: var(--c-ink, #0e0e0e); }
+        .ph-search-input {
+            border: 0;
+            outline: 0;
+            background: transparent;
+            font-family: var(--font-ui, 'Jost', sans-serif);
             font-size: 14px;
+            color: var(--c-ink, #0e0e0e);
+            line-height: 34px;
+            width: 190px;
+        }
+        .ph-search-input::placeholder { color: var(--c-muted, #6b6b6b); }
+        .ph-search-btn {
+            appearance: none;
+            -webkit-appearance: none;
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity .2s ease;
+        }
+        .ph-search-btn:hover { opacity: .55; }
+        /* global.css có '.fa-search { color:#fff !important }' (dành cho nút tìm trên nền
+           tối ở index) -> ở đây nền sáng thì icon tàng hình. Ghi đè riêng cho nút này. */
+        .ph-search-btn .fa { color: var(--c-ink, #0e0e0e) !important; font-size: 15px; }
+        @media (max-width: 720px) {
+            .ph-search-input { width: 108px; }
+            .ph-search { padding-left: 10px; }
         }
     </style>
 </head>
@@ -125,8 +112,15 @@
         </button>
         <a href="index.html" class="ph-logo">BREEZE</a>
         <div class="ph-actions">
-            <a href="search.html" aria-label="Tìm kiếm"><i class="fa fa-search" aria-hidden="true"></i></a>
-            <a href="cart.html" aria-label="Giỏ hàng"><i class="fa fa-shopping-bag" aria-hidden="true"></i></a>
+            <!-- Thay icon kính lúp bằng ô tìm kiếm thật (giống index), ngay cạnh icon tài khoản.
+                 Submit GET -> search.html?q=... , cùng cách với thanh tìm kiếm ngoài index. -->
+            <form class="ph-search" id="search-form" action="search.html" method="get" role="search">
+                <input class="ph-search-input" id="search-input" type="text" name="q"
+                       placeholder="Tìm sản phẩm..." autocomplete="off" aria-label="Tìm sản phẩm">
+                <button class="ph-search-btn" type="submit" aria-label="Tìm kiếm">
+                    <i class="fa fa-search" aria-hidden="true"></i>
+                </button>
+            </form>
             <a href="login.html" aria-label="Tài khoản"><i class="fa fa-user" aria-hidden="true"></i></a>
         </div>
     </div>
@@ -185,7 +179,10 @@
 
     <div id="wrapper">
         <p class="search-title" id="search-title"></p>
-        <ul class="products" id="results"></ul>
+        <!-- .main-content: mượn nguyên grid + card của trang danh mục trong global.css -->
+        <div class="main-content">
+            <ul class="products" id="results"></ul>
+        </div>
         <div class="no-result" id="no-result" style="display:none;">
             <i class="fa fa-search"></i>
             Không tìm thấy sản phẩm nào phù hợp với từ khóa.
@@ -231,51 +228,148 @@
         </div>
     </footer>
 
-    <script src="js/search-data.js"></script>
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        const tuKhoa = params.get('q') || '';
-
-        document.getElementById('search-input').value = tuKhoa;
-
-        const titleEl = document.getElementById('search-title');
-        const resultsEl = document.getElementById('results');
-        const noResultEl = document.getElementById('no-result');
-
-        if (!tuKhoa.trim()) {
-            titleEl.innerHTML = 'Nhập về khóa tim kiếm.';
-        } else {
-            const ketQua = timKiem(tuKhoa.trim());
-            titleEl.innerHTML = 'Tìm kiếm: <span>"' + tuKhoa + '"</span> — ' + ketQua.length + ' Kết quả';
-
-            if (ketQua.length === 0) {
-                noResultEl.style.display = 'block';
-            } else {
-                ketQua.forEach(function(sp) {
-                    resultsEl.innerHTML += `
-                        <li>
-                            <div class="product-item reveal">
-                                <div class="product-top">
-                                    <a href="${sp.trang}" class="product-thumb">
-                                        <img src="${sp.anh}" alt="${sp.tenGoc}" onerror="this.src='img/gc8.png'">
-                                    </a>
-                                </div>
-                                <div class="product-info">
-                                    <p class="product-danhmuc">${sp.danhmuc}</p>
-                                    <a href="${sp.trang}" class="product-cat">${sp.tenGoc}</a>
-                                    <div class="product-price">${sp.gia}</div>
-                                </div>
-                            </div>
-                        </li>`;
-                });
-            }
-        }
-    </script>
-
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/api-config.js"></script>
+    <script src="js/auth-helper.js"></script>
+    <script src="js/account-menu.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/cart-drawer.js"></script>
     <script src="js/i18n.js"></script>
     <script src="js/drawer-menu.js"></script>
     <script src="js/reveal.js"></script>
+
+    <!-- Tìm kiếm: lấy sản phẩm THẬT từ /api/products rồi lọc phía client.
+         Đặt SAU cart.js để dùng lại _injectAddToCartButtons(); sau api-config.js để có API_BASE.
+         Catalog ~50 sản phẩm (~16KB) nên lọc client là đủ; nếu sau này hàng nhiều lên thì
+         chuyển sang tham số ?q= ở /api/products. -->
+    <script>
+    (function () {
+        'use strict';
+
+        var API_BASE = window.API_BASE || '';
+        var keyword = (new URLSearchParams(window.location.search).get('q') || '').trim();
+
+        var inputEl = document.getElementById('search-input');
+        var titleEl = document.getElementById('search-title');
+        var resultsEl = document.getElementById('results');
+        var noResultEl = document.getElementById('no-result');
+        var matched = [];
+
+        if (inputEl) inputEl.value = keyword;   // giữ lại từ khoá để sửa & tìm tiếp
+
+        function lang() {
+            return (window.__i18n && window.__i18n.current) || localStorage.getItem('ql_lang') || 'vi';
+        }
+        function productName(p) {
+            return lang() === 'en' ? (p.name_en || p.name_vi) : (p.name_vi || p.name_en);
+        }
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+        function formatPrice(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
+
+        // Bỏ dấu để gõ không dấu vẫn ra: "quan nam" -> khớp "Quần Nam".
+        // Lưu ý: đ/Đ KHÔNG tách được bằng NFD nên phải thay tay sau khi bỏ dấu thanh.
+        function norm(s) {
+            return String(s == null ? '' : s)
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[̀-ͯ]/g, '')
+                .replace(/đ/g, 'd')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        // Card DÙNG ĐÚNG markup trang danh mục (products-render.js): .product-item[data-id]
+        // [data-stock] + .product-name + .product-price -> ăn nguyên CSS và nút thêm giỏ.
+        function cardHTML(p) {
+            var imgs = (p.images && p.images.length) ? p.images : ['img/breeze.png'];
+            var imgDefault = imgs[0];
+            var imgHover = imgs[1] || imgs[0];
+            var nameEsc = esc(productName(p));
+
+            var priceHTML = (p.sale_price != null)
+                ? '<div class="product-price">' +
+                      '<span class="price-default">' + formatPrice(p.price) + '</span> ' +
+                      '<span class="price-sale">' + formatPrice(p.sale_price) + '</span>' +
+                  '</div>'
+                : '<div class="product-price">' + formatPrice(p.price) + '</div>';
+
+            var stock = Number(p.stock);
+            var soldOut = Number.isFinite(stock) && stock <= 0;
+            var stockAttr = Number.isFinite(stock) ? stock : '';
+
+            return '' +
+                '<li>' +
+                    '<div class="product-item reveal in' + (soldOut ? ' is-soldout' : '') + '"' +
+                         ' data-id="' + p.id + '" data-stock="' + stockAttr + '">' +
+                        '<div class="product-top">' +
+                            '<a href="product.html?id=' + p.id + '" class="product-thumb">' +
+                                '<img class="thumb-default" src="' + esc(imgDefault) + '" alt="' + nameEsc + '">' +
+                                '<img class="thumb-hover thumb-fill" src="' + esc(imgHover) + '" alt="' + nameEsc + '">' +
+                                (soldOut ? '<span class="soldout-badge">Hết hàng</span>' : '') +
+                            '</a>' +
+                        '</div>' +
+                        '<div class="product-info">' +
+                            '<a href="product.html?id=' + p.id + '" class="product-name">' + nameEsc + '</a>' +
+                            priceHTML +
+                        '</div>' +
+                    '</div>' +
+                '</li>';
+        }
+
+        if (!keyword) {
+            titleEl.textContent = 'Nhập từ khoá để tìm sản phẩm.';
+            return;
+        }
+
+        titleEl.textContent = 'Đang tìm...';
+
+        fetch(API_BASE + '/api/products')
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (list) {
+                // Khớp TẤT CẢ từ trong ô tìm kiếm (không cần đúng thứ tự):
+                // "quan nam suong" vẫn ra "QUẦN NAM ỐNG SUÔNG".
+                var tokens = norm(keyword).split(' ').filter(Boolean);
+                matched = (list || []).filter(function (p) {
+                    var hay = norm((p.name_vi || '') + ' ' + (p.name_en || ''));
+                    return tokens.every(function (t) { return hay.indexOf(t) !== -1; });
+                });
+
+                titleEl.innerHTML = 'Tìm kiếm: <span>"' + esc(keyword) + '"</span> — ' +
+                    matched.length + ' kết quả';
+
+                if (!matched.length) {
+                    noResultEl.style.display = 'block';
+                    return;
+                }
+                resultsEl.innerHTML = matched.map(cardHTML).join('');
+                // Cards dựng sau DOMContentLoaded -> tự gọi để có nút "Thêm vào giỏ".
+                if (typeof window._injectAddToCartButtons === 'function') {
+                    window._injectAddToCartButtons();
+                }
+            })
+            .catch(function (err) {
+                console.error('[search] không tải được sản phẩm:', err);
+                titleEl.textContent = 'Không tải được sản phẩm (' + err.message +
+                    '). Kiểm tra server đã chạy chưa?';
+            });
+
+        // Đổi VI/EN: chỉ đổi chữ, không dựng lại card (giữ trạng thái nút thêm giỏ).
+        document.addEventListener('langchange', function () {
+            matched.forEach(function (p) {
+                var el = resultsEl.querySelector('.product-item[data-id="' + p.id + '"] .product-name');
+                if (el) el.textContent = productName(p);
+            });
+        });
+    })();
+    </script>
 </body>
 </html>
