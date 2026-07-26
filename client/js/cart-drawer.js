@@ -76,17 +76,6 @@
         });
     }
 
-    // Đảm bảo cart link tĩnh (.ph-actions) cũng có badge để đồng bộ số realtime
-    function ensurePhBadge() {
-        var link = document.querySelector('.ph-actions a[aria-label="Giỏ hàng"]');
-        if (link && !link.querySelector('.cart-badge')) {
-            var b = document.createElement('span');
-            b.className = 'cart-badge';
-            b.textContent = '0';
-            link.appendChild(b);
-        }
-    }
-
     function render() {
         var items = cart();
         var count = items.reduce(function (s, i) { return s + i.qty; }, 0);
@@ -132,7 +121,6 @@
 
     function init() {
         build();
-        ensurePhBadge();
         render();
         if (typeof _updateAllBadges === 'function') _updateAllBadges();
 
@@ -145,9 +133,10 @@
             };
         }
 
-        // Click icon giỏ hàng (icon inject của cart.js hoặc link tĩnh) → mở mini-cart
+        // Header không còn icon giỏ riêng — lối vào giỏ nằm trong menu icon tài khoản.
+        // Mini-cart vẫn mở qua addToCart ở trên, hoặc bất kỳ nút [data-cart-open] nào.
         document.addEventListener('click', function (e) {
-            var trigger = e.target.closest('.cart-icon-btn, .ph-actions a[aria-label="Giỏ hàng"], [data-cart-open]');
+            var trigger = e.target.closest('[data-cart-open]');
             if (trigger) { e.preventDefault(); open(); }
         });
 
@@ -156,8 +145,8 @@
             if (e.key === 'Escape') close();
         });
 
-        // Giỏ đổi (đồng bộ server / merge khi đăng nhập) -> render lại drawer + badge
-        document.addEventListener('cartchange', function () { render(); ensurePhBadge(); });
+        // Giỏ đổi (đồng bộ server / merge khi đăng nhập) -> render lại drawer
+        document.addEventListener('cartchange', function () { render(); });
     }
 
     if (document.readyState === 'loading') {

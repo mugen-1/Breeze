@@ -28,16 +28,33 @@
   pop.hidden = true;
   document.body.appendChild(pop);       // nội dung dựng động theo trạng thái đăng nhập (render)
 
+  // Badge số lượng giỏ gắn NGAY TRÊN icon tài khoản (header không còn icon giỏ riêng).
+  // cart.js quét mọi '.cart-badge' trong _updateAllBadges() nên số tự đồng bộ realtime.
+  if (!trigger.querySelector('.cart-badge')) {
+    var badge = document.createElement('span');
+    badge.className = 'cart-badge';
+    badge.textContent = '0';
+    badge.style.display = 'none';
+    trigger.appendChild(badge);
+  }
+
   // Lời chào "Xin chào, <tên>" chèn cạnh icon, chỉ hiện khi đã đăng nhập.
   var greet = document.createElement('span');
   greet.className = 'acct-greet';
   greet.hidden = true;
   if (trigger.parentNode) trigger.parentNode.insertBefore(greet, trigger);
 
-  // Trang index (hero): KHÔNG hiện lời chào cạnh icon, chỉ dropdown khi bấm.
-  var isIndexPage = (function () {
+  // Trang KHÔNG hiện lời chào cạnh icon (tên vẫn nằm trong dropdown khi bấm):
+  //   - index (hero): giữ header thoáng
+  //   - search: nhường chỗ cho thanh tìm kiếm ngay cạnh icon tài khoản
+  //   - 3 trang chính sách: chỉ giữ thanh tìm kiếm + icon tài khoản, bỏ lời chào
+  var NO_GREET_PAGES = {
+    '': true, 'index.html': true, 'search.html': true,
+    'chinhsachbaomat.html': true, 'chinhsachdoitra.html': true, 'chinhsachgiaohang.html': true,
+  };
+  var hideGreeting = (function () {
     var p = (location.pathname.split('/').pop() || '').toLowerCase();
-    return p === '' || p === 'index.html';
+    return !!NO_GREET_PAGES[p];
   })();
 
   trigger.setAttribute('aria-haspopup', 'menu');
@@ -86,6 +103,13 @@
   });
 
   // ---- hành động 2 nút ----
+  // Đích của các mục điều hướng — CHỈ trỏ tới trang có sẵn, không sửa gì trong các trang đó.
+  var NAV_TARGETS = {
+    profile: 'profile.html',   // Thông tin tài khoản
+    cart: 'cart.html',         // Giỏ hàng
+    orders: 'orders.html',     // Đơn hàng ("Đơn Hàng Của Tôi")
+  };
+
   pop.addEventListener('click', function (e) {
     var btn = e.target.closest('.acct-pop-btn');
     if (!btn) return;
@@ -95,6 +119,8 @@
       window.location.href = 'login.html';
     } else if (act === 'logout') {
       doLogout();
+    } else if (NAV_TARGETS[act]) {
+      window.location.href = NAV_TARGETS[act];
     }
   });
 
@@ -113,15 +139,27 @@
     if (user) {
       var nm = nameOf(user);
       greet.textContent = 'Xin chào, ' + nm;
-      greet.hidden = isIndexPage;   // index: ẩn lời chào, các trang khác vẫn hiện
+      greet.hidden = hideGreeting;   // index + search: ẩn lời chào, các trang khác vẫn hiện
       pop.innerHTML =
         '<div class="acct-pop-name">' + escapeHtml(nm) + '</div>' +
-        '<button type="button" class="acct-pop-btn" data-act="logout" role="menuitem">Đăng xuất</button>';
+        '<button type="button" class="acct-pop-btn" data-act="profile" role="menuitem">Thông tin tài khoản</button>' +
+        '<button type="button" class="acct-pop-btn" data-act="cart" role="menuitem">' +
+          'Giỏ hàng<span class="cart-badge acct-pop-badge">0</span>' +
+        '</button>' +
+        '<button type="button" class="acct-pop-btn" data-act="orders" role="menuitem">Đơn hàng</button>' +
+        '<button type="button" class="acct-pop-btn acct-pop-btn--sep" data-act="logout" role="menuitem">Đăng xuất</button>';
     } else {
       greet.hidden = true;
+      // Khách vẫn có giỏ riêng (localStorage) -> vẫn vào xem/sửa được ở cart.html.
+      // Không dẫn thẳng tới checkout: nút Thanh Toán trong cart.html sẽ đẩy sang login.
       pop.innerHTML =
-        '<button type="button" class="acct-pop-btn" data-act="login" role="menuitem">Đăng nhập</button>';
+        '<button type="button" class="acct-pop-btn" data-act="cart" role="menuitem">' +
+          'Giỏ hàng<span class="cart-badge acct-pop-badge">0</span>' +
+        '</button>' +
+        '<button type="button" class="acct-pop-btn acct-pop-btn--sep" data-act="login" role="menuitem">Đăng nhập</button>';
     }
+    // Badge trong menu vừa được dựng lại -> đồng bộ số lượng ngay (cart.js quét .cart-badge).
+    if (typeof window._updateAllBadges === 'function') window._updateAllBadges();
     if (!pop.hidden) place();   // đang mở thì canh lại vị trí theo chiều cao mới
   }
 
@@ -188,7 +226,13 @@
       '.acct-pop-btn{appearance:none;-webkit-appearance:none;border:0;background:transparent;' +
         'font:inherit;font-size:14px;letter-spacing:.02em;color:var(--c-ink,#0e0e0e);' +
         'text-align:left;padding:10px 14px;cursor:pointer;border-radius:7px;' +
+        'display:flex;align-items:center;justify-content:space-between;gap:12px;' +
         'transition:background-color .18s var(--ease,ease),color .18s var(--ease,ease);}' +
+      // Gạch ngăn trước "Đăng xuất" — tách hành động rời phiên khỏi nhóm điều hướng.
+      '.acct-pop-btn--sep{margin-top:4px;padding-top:12px;' +
+        'border-top:1px solid var(--c-line,#e6e3dd);border-radius:0 0 7px 7px;}' +
+      // Badge trong menu: huỷ định vị tuyệt đối của .cart-badge (vốn dành cho icon).
+      '.acct-pop-badge{position:static;top:auto;right:auto;flex:0 0 auto;}' +
       '.acct-pop-btn:hover,.acct-pop-btn:focus-visible{background:var(--c-ink,#0e0e0e);' +
         'color:var(--c-cream,#f6f4ef);outline:none;}' +
       '.acct-toast{position:fixed;left:50%;bottom:32px;transform:translate(-50%,12px);z-index:1100;' +
