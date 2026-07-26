@@ -825,6 +825,97 @@ router.get('/stats/order-status', async (req, res) => {
   }
 });
 
+// ---- GET /api/admin/statistics?range=7d|30d|month|year ---------------------------
+// Thống kê sản phẩm bán được: gom theo SẢN PHẨM (không gộp theo đơn), doanh thu SAU
+// khi phân bổ voucher (đơn không có DiscountAmount thì tỉ lệ = 0, ra đúng line_total).
+// Chỉ tính đơn 'paid' + 'completed' — KHÔNG gồm 'shipped': status là chuỗi admin gán
+// tay qua PUT /orders/:id/status, không gắn với việc đã thu tiền (đơn COD có thể đang
+// "shipped" mà giao hàng chưa thu tiền xong) nên không được coi là doanh thu chắc chắn.
+const VN_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7 — quy ước "ngày" theo giờ VN cho khớp dashboard (browser VN).
+const STATISTICS_RANGE_KEYS = ['7d', '30d', 'month', 'year'];
+
+// "Nửa đêm giờ VN của ngày y-m-d" quy đổi ra Date UTC thật (để so sánh với created_at lưu UTC).
+function vnMidnightUTC(y, m, d) {
+  return new Date(Date.UTC(y, m, d) - VN_OFFSET_MS);
+}
+
+// Date UTC thật -> chuỗi 'YYYY-MM-DD' theo giờ VN (chỉ để hiển thị, không dùng để so sánh).
+function ymdVN(utcInstant) {
+  const shifted = new Date(utcInstant.getTime() + VN_OFFSET_MS);
+  const p2 = (n) => String(n).padStart(2, '0');
+  return shifted.getUTCFullYear() + '-' + p2(shifted.getUTCMonth() + 1) + '-' + p2(shifted.getUTCDate());
+}
+
+// range whitelist -> { start, end, from, to } (start/end = mốc UTC thật; end EXCLUSIVE).
+// Server tự tính hoàn toàn theo giờ VN hiện tại — KHÔNG nhận from/to từ client.
+function resolveStatisticsRange(rangeKey) {
+  if (!STATISTICS_RANGE_KEYS.includes(rangeKey)) return null;
+
+  const shiftedNow = new Date(Date.now() + VN_OFFSET_MS);
+  const y = shiftedNow.getUTCFullYear(), m = shiftedNow.getUTCMonth(), d = shiftedNow.getUTCDate();
+  const todayStart = vnMidnightUTC(y, m, d);
+  const end = new Date(todayStart.getTime() + 86400000); // hết ngày hôm nay (giờ VN)
+
+  let start;
+  if (rangeKey === '7d') start = new Date(todayStart.getTime() - 6 * 86400000);
+  else if (rangeKey === '30d') start = new Date(todayStart.getTime() - 29 * 86400000);
+  else if (rangeKey === 'month') start = vnMidnightUTC(y, m, 1);
+  else start = vnMidnightUTC(y, 0, 1); // 'year'
+
+  return { start, end, from: ymdVN(start), to: ymdVN(new Date(end.getTime() - 1)) };
+}
+
+router.get('/statistics', async (req, res) => {
+  const rg = resolveStatisticsRange(req.query.range);
+  if (!rg) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'range không hợp lệ. Hợp lệ: ' + STATISTICS_RANGE_KEYS.join(', '),
+    });
+  }
+
+  try {
+    const pool = await getPool();
+    const r = await pool.request()
+      .input('start', sql.DateTime2, rg.start)
+      .input('end', sql.DateTime2, rg.end)
+      .query(`
+        WITH order_subtotal AS (
+          SELECT order_id, SUM(quantity * unit_price) AS subtotal
+          FROM dbo.order_items
+          GROUP BY order_id
+        )
+        SELECT
+          oi.product_id AS productId,
+          COALESCE(MAX(p.name_vi), MAX(oi.product_name)) AS productName,
+          SUM(oi.quantity) AS quantity,
+          ROUND(SUM(
+            oi.quantity * oi.unit_price *
+            (1 - CASE WHEN os.subtotal > 0 THEN o.DiscountAmount * 1.0 / os.subtotal ELSE 0 END)
+          ), 0) AS revenue
+        FROM dbo.order_items oi
+        JOIN dbo.orders o ON o.id = oi.order_id
+        JOIN order_subtotal os ON os.order_id = oi.order_id
+        LEFT JOIN dbo.products p ON p.id = oi.product_id
+        WHERE o.status IN ('paid', 'completed')
+          AND o.created_at >= @start AND o.created_at < @end
+        GROUP BY oi.product_id
+        ORDER BY revenue DESC;`);
+
+    const items = r.recordset.map((row) => ({
+      productName: row.productName,
+      quantity: Number(row.quantity) || 0,
+      revenue: Number(row.revenue) || 0,
+    }));
+    const totalRevenue = items.reduce((sum, it) => sum + it.revenue, 0);
+
+    res.json({ range: req.query.range, from: rg.from, to: rg.to, items, totalRevenue });
+  } catch (err) {
+    console.error('[admin] statistics error:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không tải được thống kê sản phẩm' });
+  }
+});
+
 // ---- GET /api/admin/users --- danh sách người dùng, phân trang (chỉ xem) ------
 // Giống /api/admin/orders: ?page=&limit= (mặc định 20, tối đa 100). Chỉ đọc.
 router.get('/users', async (req, res) => {

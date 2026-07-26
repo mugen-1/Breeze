@@ -312,11 +312,24 @@ table.adm-table > tbody > tr:not(.oi-detail):hover > td { background:var(--c-cre
 #tab-orders .adm-table-wrap,
 #tab-products .adm-table-wrap,
 #view-users .adm-table-wrap,
-#view-blacklist .adm-table-wrap { border:none; }
+#view-blacklist .adm-table-wrap,
+#view-statistics .adm-table-wrap { border:none; }
 #tab-orders table.adm-table td,
 #tab-products table.adm-table td,
 #view-users table.adm-table td,
-#view-blacklist table.adm-table td { padding-top:16px; padding-bottom:16px; border-bottom:none; }
+#view-blacklist table.adm-table td,
+#view-statistics table.adm-table td { padding-top:16px; padding-bottom:16px; border-bottom:none; }
+
+/* Dòng "Tổng doanh thu" (tfoot bảng Thống kê): tách khỏi danh sách bằng 1 đường mảnh
+   phía trên, vì các dòng td ở trên đã bỏ hết border-bottom theo style tối giản. */
+#view-statistics table.adm-table tfoot th,
+#view-statistics table.adm-table tfoot td {
+    border-top:1px solid var(--c-line); background:var(--c-surface);
+    padding-top:15px; padding-bottom:15px;
+}
+#view-statistics table.adm-table tfoot td {
+    font-size:15px; font-weight:700; color:var(--c-ink); font-variant-numeric:tabular-nums;
+}
 
 /* --- Toolbar filter/search (panel Đơn hàng) --- */
 .adm-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }

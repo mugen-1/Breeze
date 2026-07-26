@@ -70,6 +70,7 @@
             dashboard: 'view-dashboard',
             products: 'tab-products',
             orders: 'tab-orders',
+            statistics: 'view-statistics',
             users: 'view-users',
             blacklist: 'view-blacklist'
         };
@@ -121,8 +122,8 @@
 
         // --- i18n khung (VI/EN): nhãn sidebar/topbar/placeholder -------------
         var ADM_I18N = {
-            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Hoá đơn', users: 'Người dùng', blacklist: 'Danh sách Đen', logout: 'Đăng xuất', search: 'Tìm mã đơn / khách hàng…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất', revenueChart: 'Doanh thu theo ngày (tháng này)', noRevData: 'Chưa có dữ liệu doanh thu' },
-            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Invoices', users: 'Users', blacklist: 'Blacklist', logout: 'Sign Out', search: 'Search Order...', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders', revenueChart: 'Daily revenue (this month)', noRevData: 'No revenue data yet' }
+            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Hoá đơn', statistics: 'Thống kê', statisticsTitle: 'Thống kê sản phẩm bán được', users: 'Người dùng', blacklist: 'Danh sách Đen', logout: 'Đăng xuất', search: 'Tìm mã đơn / khách hàng…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất', revenueChart: 'Doanh thu theo ngày (tháng này)', noRevData: 'Chưa có dữ liệu doanh thu' },
+            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Invoices', statistics: 'Statistics', statisticsTitle: 'Product Sales Statistics', users: 'Users', blacklist: 'Blacklist', logout: 'Sign Out', search: 'Search Order...', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders', revenueChart: 'Daily revenue (this month)', noRevData: 'No revenue data yet' }
         };
         function applyAdmLang(lang) {
             var t = ADM_I18N[lang] || ADM_I18N.vi;
@@ -1040,6 +1041,51 @@
                 .catch(function (e) { console.error(e); toast('Lỗi kết nối máy chủ', true); btn.disabled = false; });
         }
 
+        // --- Thống kê sản phẩm bán được --------------------------------------
+        // Chỉ gửi KEY preset ('7d'|'30d'|'month'|'year') — server tự tính khoảng ngày
+        // theo giờ VN, không nhận from/to từ client. Value của <select> CHÍNH LÀ key nên
+        // không cần map thêm. totalRevenue lấy thẳng từ server, KHÔNG tự cộng ở client.
+        var _statLoaded = false;   // nạp lần đầu khi mở section; sau đó chỉ nạp lại khi đổi preset
+
+        function statPreset() {
+            var sel = $('stat-preset');
+            return sel ? sel.value : '7d';
+        }
+
+        function loadStatistics() {
+            var body = $('stat-body'), foot = $('stat-foot');
+            if (!body) return Promise.resolve();
+            body.innerHTML = skeletonRows(3, 6);
+            if (foot) foot.hidden = true;
+            return api('/api/admin/statistics?range=' + encodeURIComponent(statPreset()))
+                .then(function (r) { if (!r.ok) throw new Error('statistics ' + r.status); return r.json(); })
+                .then(renderStatistics)
+                .catch(function (e) {
+                    console.error('[admin] load statistics lỗi:', e);
+                    body.innerHTML = '<tr><td colspan="3" class="adm-empty">Không tải được thống kê.</td></tr>';
+                    if (foot) foot.hidden = true;
+                });
+        }
+
+        function renderStatistics(data) {
+            var items = (data && data.items) || [];
+            var body = $('stat-body'), foot = $('stat-foot'), total = $('stat-total');
+            if (!items.length) {
+                body.innerHTML = '<tr><td colspan="3" class="adm-empty">Không có dữ liệu trong khoảng thời gian này</td></tr>';
+                if (foot) foot.hidden = true;
+                return;
+            }
+            body.innerHTML = items.map(function (it) {
+                return '<tr>' +
+                    '<td>' + esc(it.productName || '—') + '</td>' +
+                    '<td class="num">' + Number(it.quantity || 0).toLocaleString('vi-VN') + '</td>' +
+                    '<td class="num">' + money(it.revenue) + '</td>' +
+                '</tr>';
+            }).join('');
+            if (total) total.textContent = money((data && data.totalRevenue) || 0);
+            if (foot) foot.hidden = false;
+        }
+
         // --- Wire up ---------------------------------------------------------
         document.addEventListener('DOMContentLoaded', function () {
             bindNav();
@@ -1074,6 +1120,19 @@
             var ordStatus = $('order-status-filter'); if (ordStatus) ordStatus.addEventListener('change', onOrderFilterChange);
             var ordSearch = $('order-search'); if (ordSearch) ordSearch.addEventListener('input', onOrderSearchInput);
             var blSearch = $('blacklist-search'); if (blSearch) blSearch.addEventListener('input', onBlacklistSearchInput);
+
+            // Thống kê: nạp LƯỜI (lần đầu mở section) + nạp lại mỗi khi đổi preset.
+            var statNav = document.querySelector('.adm-nav-item[data-nav="statistics"]');
+            if (statNav) statNav.addEventListener('click', function () {
+                if (_statLoaded) return;
+                _statLoaded = true;
+                loadStatistics();
+            });
+            var statPresetSel = $('stat-preset');
+            if (statPresetSel) statPresetSel.addEventListener('change', function () {
+                _statLoaded = true;
+                loadStatistics();
+            });
 
             // Search topbar (toàn layout): Enter -> nhảy sang Đơn hàng và tìm (mã đơn = khớp chính xác).
             var topSearch = $('top-search');
