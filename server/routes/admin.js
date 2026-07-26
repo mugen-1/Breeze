@@ -489,21 +489,38 @@ router.put('/orders/:id/status', async (req, res) => {
     });
   }
 
+  const tx = new sql.Transaction(await getPool());
   try {
-    const pool = await getPool();
-    const upd = await pool.request()
+    await tx.begin();
+    const upd = await new sql.Request(tx)
       .input('id', sql.Int, idc.value)
       .input('status', sql.VarChar(20), status)
       .query(`
         UPDATE dbo.orders SET status = @status
-        OUTPUT INSERTED.id, INSERTED.status, INSERTED.total_amount, INSERTED.created_at
+        OUTPUT INSERTED.id, INSERTED.status, INSERTED.total_amount, INSERTED.created_at, INSERTED.user_id
         WHERE id = @id;`);
 
     if (upd.recordset.length === 0) {
+      await tx.rollback();
       return res.status(404).json({ status: 'error', message: 'Không tìm thấy đơn hàng' });
     }
-    res.json({ status: 'ok', order: upd.recordset[0] });
+    const order = upd.recordset[0];
+
+    // Đơn CHUYỂN sang huỷ -> đưa user vào danh sách đen (nếu chưa có). Đây là trạng thái
+    // ĐƯỢC LƯU (không tính động), nên đổi khỏi huỷ sang trạng thái khác KHÔNG tự gỡ lại —
+    // chỉ admin bấm "Gỡ Tài Khoản" (POST /api/admin/blacklist/:userId/release) mới gỡ được.
+    if (status === 'cancelled') {
+      await new sql.Request(tx).input('uid', sql.Int, order.user_id)
+        .query('UPDATE dbo.users SET IsBlacklisted = 1 WHERE id = @uid AND IsBlacklisted = 0;');
+    }
+
+    await tx.commit();
+    res.json({
+      status: 'ok',
+      order: { id: order.id, status: order.status, total_amount: order.total_amount, created_at: order.created_at },
+    });
   } catch (err) {
+    try { await tx.rollback(); } catch (_) { /* ignore */ }
     console.error('[admin] update order status error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không cập nhật được trạng thái đơn' });
   }
@@ -531,6 +548,104 @@ router.delete('/orders/:id', async (req, res) => {
   } catch (err) {
     console.error('[admin] delete order error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không xoá được đơn hàng' });
+  }
+});
+
+// ---- GET /api/admin/blacklist --- đơn ĐÃ HUỶ của các user đang bị blacklist ------
+// Hiển thị THEO ĐƠN (không gộp theo user): 1 user huỷ 3 đơn -> 3 dòng.
+// IsBlacklisted là trạng thái ĐƯỢC LƯU (dbo.users), KHÔNG tính động ở đây.
+// ?q= tìm theo mã đơn / khách hàng — cùng logic với GET /api/admin/orders:
+//   toàn chữ số -> khớp CHÍNH XÁC o.id; còn lại -> LIKE email/tên khách (escape).
+router.get('/blacklist', async (req, res) => {
+  let page = Number(req.query.page);
+  let limit = Number(req.query.limit);
+  page = Number.isInteger(page) && page > 0 ? page : 1;
+  limit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 100) : 20;
+  const offset = (page - 1) * limit;
+
+  const { q } = req.query;
+  let qId = null;
+  let likeVal = null;
+  if (q !== undefined && String(q).trim() !== '') {
+    const raw = String(q).trim().slice(0, 100);
+    if (/^\d+$/.test(raw)) {
+      const n = Number(raw);
+      qId = (Number.isSafeInteger(n) && n >= 0 && n <= 2147483647) ? n : -1;
+    } else {
+      likeVal = '%' + raw.replace(/[\\%_[]/g, (c) => '\\' + c) + '%';
+    }
+  }
+
+  // LEFT JOIN từ users (không phải orders): user bị blacklist THỦ CÔNG (không qua
+  // huỷ đơn) sẽ KHÔNG có đơn cancelled nào để join — nếu dùng INNER JOIN họ sẽ biến
+  // mất khỏi trang này hoàn toàn và KHÔNG CÒN CÁCH NÀO gỡ (nút Gỡ chỉ nằm trên dòng ở
+  // đây). LEFT JOIN đảm bảo họ vẫn có 1 dòng riêng (order_id = null) để admin gỡ được.
+  function applyFilters(request) {
+    const clauses = ['u.IsBlacklisted = 1'];
+    if (qId !== null) {
+      request.input('qid', sql.Int, qId);
+      clauses.push('o.id = @qid');
+    } else if (likeVal) {
+      request.input('q', sql.NVarChar(120), likeVal);
+      clauses.push("(u.email LIKE @q ESCAPE '\\' OR u.display_name LIKE @q ESCAPE '\\')");
+    }
+    return 'WHERE ' + clauses.join(' AND ');
+  }
+
+  try {
+    const pool = await getPool();
+
+    const countReq = pool.request();
+    const whereCount = applyFilters(countReq);
+    const countRes = await countReq.query(`
+      SELECT COUNT(*) AS total
+      FROM dbo.users u
+      LEFT JOIN dbo.orders o ON o.user_id = u.id AND o.status = 'cancelled'
+      ${whereCount};`);
+    const total = countRes.recordset[0].total;
+
+    const listReq = pool.request()
+      .input('offset', sql.Int, offset)
+      .input('limit', sql.Int, limit);
+    const whereList = applyFilters(listReq);
+    const listRes = await listReq.query(`
+        SELECT o.id AS order_id, u.id AS user_id, u.email AS user_email, u.display_name AS user_name,
+               o.status, o.total_amount, o.currency, o.PaymentMethod AS payment_method,
+               o.shipping_name, o.shipping_phone, o.shipping_address, o.created_at
+        FROM dbo.users u
+        LEFT JOIN dbo.orders o ON o.user_id = u.id AND o.status = 'cancelled'
+        ${whereList}
+        ORDER BY o.created_at DESC, o.id DESC
+        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;`);
+
+    res.json({ page, limit, total, total_pages: Math.ceil(total / limit), orders: listRes.recordset });
+  } catch (err) {
+    console.error('[admin] list blacklist error:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không tải được danh sách đen' });
+  }
+});
+
+// ---- POST /api/admin/blacklist/:userId/release --- gỡ 1 user khỏi danh sách đen --
+router.post('/blacklist/:userId/release', async (req, res) => {
+  const idc = reqInt(req.params.userId, 1, 'userId');
+  if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
+
+  try {
+    const pool = await getPool();
+    const upd = await pool.request()
+      .input('uid', sql.Int, idc.value)
+      .query(`
+        UPDATE dbo.users SET IsBlacklisted = 0
+        OUTPUT INSERTED.id, INSERTED.email, INSERTED.IsBlacklisted AS is_blacklisted
+        WHERE id = @uid;`);
+
+    if (upd.recordset.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'Không tìm thấy người dùng' });
+    }
+    res.json({ status: 'ok', user: upd.recordset[0] });
+  } catch (err) {
+    console.error('[admin] release blacklist error:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không gỡ được người dùng khỏi danh sách đen' });
   }
 });
 
@@ -728,7 +843,8 @@ router.get('/users', async (req, res) => {
       .input('offset', sql.Int, offset)
       .input('limit', sql.Int, limit)
       .query(`
-        SELECT id, email, display_name, role, created_at, last_login
+        SELECT id, email, display_name, role, created_at, last_login,
+               IsBlacklisted AS is_blacklisted
         FROM dbo.users
         ORDER BY created_at DESC, id DESC
         OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;`);
@@ -741,6 +857,45 @@ router.get('/users', async (req, res) => {
   } catch (err) {
     console.error('[admin] list users error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không tải được danh sách người dùng' });
+  }
+});
+
+// ---- POST /api/admin/users/:userId/blacklist --- thêm THỦ CÔNG vào danh sách đen ---
+// Nút này CHỈ dùng để blacklist LẠI một user đã từng bị huỷ đơn trước đó (vd: admin
+// vừa "Gỡ Tài Khoản" nhưng muốn đưa lại). User CHƯA từng có đơn huỷ nào thì bị chặn ở
+// đây — muốn blacklist họ, admin phải vào Hoá Đơn và cập nhật 1 đơn của họ sang trạng
+// thái "Đã huỷ" (tự động blacklist qua PUT /orders/:id/status). Idempotent: user đã
+// blacklist rồi thì vẫn trả ok, không lỗi. Không cho blacklist tài khoản admin.
+router.post('/users/:userId/blacklist', async (req, res) => {
+  const idc = reqInt(req.params.userId, 1, 'userId');
+  if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
+
+  try {
+    const pool = await getPool();
+    const target = await pool.request().input('uid', sql.Int, idc.value)
+      .query('SELECT id, role FROM dbo.users WHERE id = @uid;');
+    if (target.recordset.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'Không tìm thấy người dùng' });
+    }
+    if (target.recordset[0].role === 'admin') {
+      return res.status(400).json({ status: 'error', message: 'Không thể đưa tài khoản admin vào danh sách đen' });
+    }
+
+    const cancelled = await pool.request().input('uid', sql.Int, idc.value)
+      .query("SELECT TOP 1 id FROM dbo.orders WHERE user_id = @uid AND status = 'cancelled';");
+    if (cancelled.recordset.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'Hành Động Không Thành Công' });
+    }
+
+    const upd = await pool.request().input('uid', sql.Int, idc.value)
+      .query(`
+        UPDATE dbo.users SET IsBlacklisted = 1
+        OUTPUT INSERTED.id, INSERTED.email, INSERTED.IsBlacklisted AS is_blacklisted
+        WHERE id = @uid;`);
+    res.json({ status: 'ok', user: upd.recordset[0] });
+  } catch (err) {
+    console.error('[admin] add blacklist error:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không thêm được vào danh sách đen' });
   }
 });
 

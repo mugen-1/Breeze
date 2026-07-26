@@ -59,8 +59,14 @@
             <button type="button" class="adm-nav-item" data-nav="users">
                 <i class="fa fa-users" aria-hidden="true"></i> <span data-i18n="users">Người dùng</span>
             </button>
-            <button type="button" class="adm-nav-item" data-nav="settings">
-                <i class="fa fa-cog" aria-hidden="true"></i> <span data-i18n="settings">Cài đặt</span>
+            <button type="button" class="adm-nav-item" data-nav="blacklist">
+                <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <circle cx="12" cy="12" r="2.2"/>
+                    <path d="M12 12 L12 3.2 A8.8 8.8 0 0 1 19.6 7.6 Z"/>
+                    <path d="M12 12 L18.8 16.4 A8.8 8.8 0 0 1 8.8 20.2 Z"/>
+                    <path d="M12 12 L5.2 16.4 A8.8 8.8 0 0 1 5.2 7.6 Z"/>
+                </svg>
+                <span data-i18n="blacklist">Danh sách Đen</span>
             </button>
         </nav>
     </aside>
@@ -279,23 +285,41 @@
             <div class="adm-table-wrap">
                 <table class="adm-table">
                     <thead><tr>
-                        <th>Email</th><th>Tên</th><th>Vai trò</th><th>Ngày tạo</th><th>Đăng nhập gần nhất</th>
+                        <th>Email</th><th>Tên</th><th>Vai trò</th><th>Ngày tạo</th><th>Đăng nhập gần nhất</th><th>Blacklist</th>
                     </tr></thead>
                     <tbody id="user-body">
-                        <tr><td colspan="5" class="adm-loading">Đang tải…</td></tr>
+                        <tr><td colspan="6" class="adm-loading">Đang tải…</td></tr>
                     </tbody>
                 </table>
             </div>
             <div class="adm-pager" id="user-pager"></div>
         </section>
 
-        <!-- Cài đặt (tạm rỗng) -->
-        <section id="view-settings" style="display:none;">
-            <div class="adm-placeholder">
-                <i class="fa fa-cog" aria-hidden="true"></i>
-                <h3 data-i18n="settings">Cài đặt</h3>
-                <p data-i18n="settingsMsg">Tuỳ chọn cấu hình sẽ có ở đây.</p>
+        <!-- Danh sách Đen: đơn ĐÃ HUỶ của user đang bị blacklist (theo ĐƠN, không gộp) -->
+        <section id="view-blacklist" style="display:none;">
+            <div class="adm-section-head">
+                <h3><span data-i18n="blacklist">Danh sách Đen</span> <span class="adm-count" id="blacklist-count"></span></h3>
+                <div class="adm-toolbar">
+                    <div class="adm-search-sm">
+                        <i class="fa fa-search" aria-hidden="true"></i>
+                        <input type="search" id="blacklist-search" placeholder="Tìm mã đơn / khách hàng…"
+                               aria-label="Tìm đơn theo mã hoặc khách hàng">
+                    </div>
+                </div>
             </div>
+            <div class="adm-table-wrap">
+                <table class="adm-table">
+                    <thead><tr>
+                        <th class="num">Mã đơn</th><th>Khách hàng</th><th>Ngày đặt</th>
+                        <th>Hình thức thanh toán</th>
+                        <th class="num">Tổng tiền</th><th>Trạng thái</th><th></th>
+                    </tr></thead>
+                    <tbody id="blacklist-body">
+                        <tr><td colspan="7" class="adm-loading">Đang tải…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="adm-pager" id="blacklist-pager"></div>
         </section>
     </div>
     </main>

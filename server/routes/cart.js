@@ -82,6 +82,14 @@ router.get('/', async (req, res) => {
 
 // ---- POST /api/cart ----  body: { product_id, quantity, mode? }
 router.post('/', async (req, res) => {
+  // User bị blacklist (từng huỷ đơn, admin chưa gỡ): chặn thêm/sửa giỏ ở BACKEND —
+  // không được chỉ ẩn nút frontend (bỏ qua bằng DevTools nếu chỉ chặn UI).
+  if (req.user.is_blacklisted) {
+    return res.status(403).json({
+      status: 'error', error: 'BLACKLISTED', message: 'Không Thể Thực Hiện Hành Động',
+    });
+  }
+
   const pid = parseProductId(req.body && req.body.product_id);
   if (!pid.ok) {
     return res.status(400).json({ status: 'error', message: 'product_id phải là số nguyên không âm' });

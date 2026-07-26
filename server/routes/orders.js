@@ -33,6 +33,14 @@ function str(v, max) {
 
 // ---- POST /api/orders ----  tạo đơn từ giỏ (transaction; rollback nếu thiếu stock) ----
 router.post('/', async (req, res) => {
+  // User bị blacklist (từng huỷ đơn, admin chưa gỡ): chặn đặt hàng ở BACKEND —
+  // không được chỉ ẩn nút frontend (bỏ qua bằng DevTools nếu chỉ chặn UI).
+  if (req.user.is_blacklisted) {
+    return res.status(403).json({
+      status: 'error', error: 'BLACKLISTED', message: 'Không Thể Thực Hiện Hành Động',
+    });
+  }
+
   const shippingName = str(req.body && req.body.shipping_name, 150);
   const shippingPhone = str(req.body && req.body.shipping_phone, 30);
   const shippingAddress = str(req.body && req.body.shipping_address, 400);
