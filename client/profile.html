@@ -516,6 +516,57 @@
             .addr-btn { width: 100%; text-align: center; }
         }
 
+        /* ===== Mục "Quyền riêng tư": 3 toggle tự lưu + vùng xoá tài khoản ===== */
+        .privacy-row {
+            display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
+            padding: 18px 0; border-bottom: 1px solid var(--c-line);
+        }
+        .privacy-row:last-of-type { border-bottom: 0; }
+        .privacy-row-main { flex: 1; min-width: 0; }
+        .privacy-row-title { font-family: var(--font-ui); font-size: 14.5px; color: var(--c-ink); margin: 0 0 4px; }
+        .privacy-row-desc { font-family: var(--font-ui); font-size: 13px; color: var(--c-muted); line-height: 1.55; margin: 0; }
+        /* Switch dựng từ checkbox thật -> giữ nguyên ngữ nghĩa + bàn phím + screen reader */
+        .privacy-switch { position: relative; flex: 0 0 auto; width: 46px; height: 26px; }
+        .privacy-switch input {
+            position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+            opacity: 0; cursor: pointer; z-index: 1;
+        }
+        .privacy-switch input:disabled { cursor: progress; }
+        .privacy-track {
+            position: absolute; inset: 0; border-radius: 999px; background: var(--c-line);
+            transition: background-color .22s var(--ease, ease); pointer-events: none;
+        }
+        .privacy-track::after {
+            content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+            border-radius: 50%; background: var(--c-bg); box-shadow: 0 1px 3px rgba(14,14,14,.28);
+            transition: transform .22s var(--ease, ease);
+        }
+        .privacy-switch input:checked ~ .privacy-track { background: var(--c-ink); }
+        .privacy-switch input:checked ~ .privacy-track::after { transform: translateX(20px); }
+        .privacy-switch input:focus-visible ~ .privacy-track { outline: 2px solid var(--c-ink); outline-offset: 2px; }
+        .privacy-switch input:disabled ~ .privacy-track { opacity: .55; }
+
+        /* Vùng nguy hiểm: viền đỏ nhạt để tách hẳn khỏi các thao tác thường */
+        .danger-zone {
+            margin-top: 34px; padding: 20px; border: 1px solid #e0c2c2;
+            border-radius: 10px; background: rgba(160, 40, 40, .04);
+        }
+        .danger-zone-title {
+            font-family: var(--font-ui); font-size: 14px; font-weight: 600;
+            color: #8a2b2b; margin: 0 0 6px;
+        }
+        .danger-zone-desc { font-family: var(--font-ui); font-size: 13px; color: var(--c-muted); line-height: 1.6; margin: 0 0 16px; }
+        .btn-danger {
+            font-family: var(--font-ui); font-size: 14px; padding: 10px 20px; cursor: pointer;
+            background: var(--c-bg); border: 1px solid #b23b3b; color: #b23b3b;
+            border-radius: 4px; transition: background-color .2s, color .2s;
+        }
+        .btn-danger:hover { background: #b23b3b; color: var(--c-bg); }
+        .btn-danger:focus-visible { outline: 2px solid #b23b3b; outline-offset: 2px; }
+        .btn-danger:disabled { opacity: .55; cursor: not-allowed; background: var(--c-bg); color: #b23b3b; }
+        .del-warn-list { margin: 0 0 16px; padding-left: 20px; font-family: var(--font-ui); font-size: 13.5px; color: var(--c-ink); line-height: 1.7; }
+        .del-error { font-family: var(--font-ui); font-size: 13px; color: #b23b3b; margin: 10px 0 0; min-height: 18px; }
+
         /* ===== Phase 5: mục "Giao diện" (theme picker) ===== */
         .settings-desc { font-family: var(--font-ui); font-size: 14px; color: var(--c-muted); line-height: 1.6; margin-bottom: 4px; }
         .theme-lbl { font-family: var(--font-ui); font-size: 12px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--c-muted); margin: 24px 0 10px; }
@@ -658,14 +709,12 @@
                     <span>Giao diện</span>
                 </a>
 
-                <!-- Nhóm "Coming soon": disable, không click -->
-                <span class="settings-nav-item is-soon" aria-disabled="true" tabindex="-1" title="Sắp ra mắt">
+                <a class="settings-nav-item" href="#privacy" data-section="privacy">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M12 3l7 3v5c0 4.6-3 8.2-7 10-4-1.8-7-5.4-7-10V6l7-3z"/>
                     </svg>
                     <span>Quyền riêng tư</span>
-                    <span class="settings-soon-tag">Sắp ra mắt</span>
-                </span>
+                </a>
             </nav>
 
             <div class="settings-panel">
@@ -888,6 +937,58 @@
                         <button type="button" class="theme-seg-btn" data-theme-choice="dark">Tối</button>
                     </div>
                 </section>
+
+                <section class="settings-section" id="section-privacy" aria-labelledby="title-privacy">
+                    <h2 class="settings-section-title" id="title-privacy">Quyền riêng tư</h2>
+                    <p class="settings-desc">Kiểm soát cách Breeze sử dụng thông tin của bạn. Thay đổi được lưu ngay.</p>
+                    <p class="sr-only" id="privacy-live" role="status" aria-live="polite"></p>
+
+                    <div id="privacy-rows">
+                        <div class="privacy-row">
+                            <div class="privacy-row-main">
+                                <p class="privacy-row-title" id="pv-lbl-profile">Hồ sơ công khai</p>
+                                <p class="privacy-row-desc">Cho phép người dùng khác xem tên hiển thị và đánh giá của bạn.</p>
+                            </div>
+                            <span class="privacy-switch">
+                                <input type="checkbox" id="pv-show_profile_public" data-privacy="show_profile_public"
+                                       aria-labelledby="pv-lbl-profile">
+                                <span class="privacy-track" aria-hidden="true"></span>
+                            </span>
+                        </div>
+
+                        <div class="privacy-row">
+                            <div class="privacy-row-main">
+                                <p class="privacy-row-title" id="pv-lbl-mkt">Email tiếp thị</p>
+                                <p class="privacy-row-desc">Nhận email về bộ sưu tập mới, khuyến mãi và ưu đãi riêng.</p>
+                            </div>
+                            <span class="privacy-switch">
+                                <input type="checkbox" id="pv-allow_marketing_email" data-privacy="allow_marketing_email"
+                                       aria-labelledby="pv-lbl-mkt">
+                                <span class="privacy-track" aria-hidden="true"></span>
+                            </span>
+                        </div>
+
+                        <div class="privacy-row">
+                            <div class="privacy-row-main">
+                                <p class="privacy-row-title" id="pv-lbl-perso">Cá nhân hoá</p>
+                                <p class="privacy-row-desc">Dùng lịch sử mua hàng để gợi ý sản phẩm phù hợp hơn với bạn.</p>
+                            </div>
+                            <span class="privacy-switch">
+                                <input type="checkbox" id="pv-allow_data_personalization" data-privacy="allow_data_personalization"
+                                       aria-labelledby="pv-lbl-perso">
+                                <span class="privacy-track" aria-hidden="true"></span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="danger-zone">
+                        <p class="danger-zone-title">Xoá tài khoản</p>
+                        <p class="danger-zone-desc">
+                            Xoá vĩnh viễn tài khoản và dữ liệu cá nhân của bạn. Hành động này không thể hoàn tác.
+                        </p>
+                        <button type="button" class="btn-danger" id="btn-delete-account">Xoá tài khoản</button>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
@@ -1007,6 +1108,34 @@
         </div>
     </div>
 
+    <!-- Modal xác nhận xoá tài khoản: bắt buộc nhập mật khẩu (server verify lại lần nữa) -->
+    <div class="addr-modal-overlay" id="del-modal-overlay" hidden>
+        <div class="addr-modal" role="dialog" aria-modal="true" aria-labelledby="del-modal-title" id="del-modal">
+            <form id="del-form" novalidate>
+                <div class="addr-modal-head">
+                    <h2 class="addr-modal-title" id="del-modal-title">Xoá tài khoản</h2>
+                </div>
+                <div class="addr-modal-body">
+                    <p class="danger-zone-desc" style="margin-bottom:12px;">Khi xoá tài khoản:</p>
+                    <ul class="del-warn-list">
+                        <li>Thông tin cá nhân, địa chỉ và phương thức thanh toán sẽ bị xoá vĩnh viễn.</li>
+                        <li>Lịch sử đơn hàng được giữ lại nhưng ẩn danh (không còn gắn với bạn).</li>
+                        <li>Bạn không thể đăng nhập lại bằng tài khoản này.</li>
+                    </ul>
+                    <div class="addr-form-field col-2">
+                        <label class="acct-label" for="del-password">Nhập mật khẩu để xác nhận</label>
+                        <input class="acct-input" id="del-password" type="password" autocomplete="current-password" required>
+                    </div>
+                    <p class="del-error" id="del-error" role="alert"></p>
+                </div>
+                <div class="addr-modal-foot">
+                    <button type="button" class="addr-btn addr-btn-ghost" id="del-cancel">Hủy</button>
+                    <button type="submit" class="btn-danger" id="del-confirm">Xoá vĩnh viễn</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <footer id="footer" class="footer-cols">
         <div class="footer-content reveal">
             <h6 class="footer-logo">BREEZE</h6>
@@ -1061,7 +1190,7 @@
         (function () {
             'use strict';
 
-            var SECTIONS = ['account', 'addresses', 'payments', 'theme'];   // section có thể mở
+            var SECTIONS = ['account', 'addresses', 'payments', 'theme', 'privacy'];   // section có thể mở
             var _meLoaded = false;                     // tránh gọi /api/me lặp
 
             function show(id, mode) {
@@ -1568,6 +1697,169 @@
                 if (sec === 'addresses') loadAddresses();   // lazy: chỉ nạp khi mở tab
                 if (sec === 'payments') loadPaymentMethods();
                 if (sec === 'theme') syncThemeUI();
+                if (sec === 'privacy') loadPrivacy();
+            }
+
+            /* ===== Quyền riêng tư: 3 toggle tự lưu (PATCH từng field) ===== */
+            var _privacyLoaded = false;
+
+            function privacyInputs() {
+                return document.querySelectorAll('input[data-privacy]');
+            }
+
+            // Khoá/mở toàn bộ toggle khi đang gọi API — tránh bấm dồn gây race.
+            function setPrivacyBusy(busy) {
+                var els = privacyInputs();
+                for (var i = 0; i < els.length; i++) els[i].disabled = !!busy;
+            }
+
+            function applyPrivacy(data) {
+                var els = privacyInputs();
+                for (var i = 0; i < els.length; i++) {
+                    var k = els[i].getAttribute('data-privacy');
+                    els[i].checked = !!(data && data[k]);
+                }
+            }
+
+            function loadPrivacy() {
+                if (_privacyLoaded) return;
+                setPrivacyBusy(true);
+                window.AuthHelper.apiFetch('/api/account/privacy-settings')
+                    .then(function (r) { if (!r.ok) throw new Error('privacy ' + r.status); return r.json(); })
+                    .then(function (data) { applyPrivacy(data); _privacyLoaded = true; })
+                    .catch(function (e) {
+                        console.error('[profile] tải quyền riêng tư lỗi:', e);
+                        toast('Không tải được tuỳ chọn quyền riêng tư', false);
+                    })
+                    .then(function () { setPrivacyBusy(false); });
+            }
+
+            function onPrivacyToggle(e) {
+                var el = e.target;
+                var key = el && el.getAttribute && el.getAttribute('data-privacy');
+                if (!key) return;
+                var want = el.checked;
+                var body = {}; body[key] = want;
+
+                setPrivacyBusy(true);
+                window.AuthHelper.apiFetch('/api/account/privacy-settings', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                })
+                    .then(function (r) {
+                        return r.json().then(function (j) { return { ok: r.ok, data: j }; });
+                    })
+                    .then(function (out) {
+                        if (!out.ok) {
+                            el.checked = !want;   // lưu hỏng -> trả switch về trạng thái cũ
+                            toast((out.data && out.data.message) || 'Không lưu được tuỳ chọn', false);
+                            return;
+                        }
+                        applyPrivacy(out.data);   // dùng state server trả về làm nguồn sự thật
+                        var live = document.getElementById('privacy-live');
+                        if (live) live.textContent = 'Đã lưu tuỳ chọn quyền riêng tư';
+                        toast('Đã lưu');
+                    })
+                    .catch(function (err) {
+                        el.checked = !want;
+                        console.error('[profile] lưu quyền riêng tư lỗi:', err);
+                        toast('Không lưu được tuỳ chọn', false);
+                    })
+                    .then(function () { setPrivacyBusy(false); });
+            }
+
+            /* ===== Xoá tài khoản: modal + nhập mật khẩu (server verify lại) ===== */
+            function delEls() {
+                return {
+                    overlay: byId('del-modal-overlay'),
+                    pass: byId('del-password'),
+                    err: byId('del-error'),
+                    confirm: byId('del-confirm'),
+                };
+            }
+
+            function openDelModal() {
+                var d = delEls();
+                if (!d.overlay) return;
+                d.pass.value = '';
+                d.err.textContent = '';
+                d.confirm.disabled = false;
+                d.overlay.hidden = false;
+                requestAnimationFrame(function () {
+                    d.overlay.classList.add('is-open');
+                    d.pass.focus();
+                });
+            }
+
+            function closeDelModal() {
+                var d = delEls();
+                if (!d.overlay) return;
+                d.overlay.classList.remove('is-open');
+                setTimeout(function () { d.overlay.hidden = true; }, 200);
+            }
+
+            function submitDelete(e) {
+                e.preventDefault();
+                var d = delEls();
+                var pw = d.pass.value;
+                if (!pw) { d.err.textContent = 'Vui lòng nhập mật khẩu'; d.pass.focus(); return; }
+
+                d.err.textContent = '';
+                d.confirm.disabled = true;
+                d.confirm.textContent = 'Đang xoá…';
+
+                window.AuthHelper.apiFetch('/api/account', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pw }),
+                })
+                    .then(function (r) {
+                        return r.json().then(function (j) { return { ok: r.ok, data: j }; });
+                    })
+                    .then(function (out) {
+                        if (!out.ok) {
+                            d.err.textContent = (out.data && out.data.message) || 'Không xoá được tài khoản';
+                            d.confirm.disabled = false;
+                            d.confirm.textContent = 'Xoá vĩnh viễn';
+                            return;
+                        }
+                        // Xoá xong: tài khoản Firebase đã bị huỷ -> dọn phiên rồi về trang chủ.
+                        closeDelModal();
+                        toast('Tài khoản đã được xoá');
+                        try { localStorage.removeItem('userName'); } catch (er) { /* bỏ qua */ }
+                        var fb = (window.firebase && firebase.auth) ? firebase.auth() : null;
+                        var done = function () { window.location.href = 'index.html'; };
+                        if (fb) fb.signOut().then(done).catch(done); else setTimeout(done, 900);
+                    })
+                    .catch(function (err) {
+                        console.error('[profile] xoá tài khoản lỗi:', err);
+                        d.err.textContent = 'Lỗi kết nối máy chủ, vui lòng thử lại';
+                        d.confirm.disabled = false;
+                        d.confirm.textContent = 'Xoá vĩnh viễn';
+                    });
+            }
+
+            function bindPrivacy() {
+                var rows = byId('privacy-rows');
+                if (rows) rows.addEventListener('change', onPrivacyToggle);
+
+                var btn = byId('btn-delete-account');
+                if (btn) btn.addEventListener('click', openDelModal);
+
+                var form = byId('del-form');
+                if (form) form.addEventListener('submit', submitDelete);
+
+                var cancel = byId('del-cancel');
+                if (cancel) cancel.addEventListener('click', closeDelModal);
+
+                var ov = byId('del-modal-overlay');
+                if (ov) {
+                    ov.addEventListener('mousedown', function (e) { if (e.target === ov) closeDelModal(); });
+                    ov.addEventListener('keydown', function (e) {
+                        if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); closeDelModal(); }
+                    });
+                }
             }
 
             // Auth gate: khách -> notice; đã đăng nhập -> shell + nạp thông tin.
@@ -1576,8 +1868,9 @@
                     || (window.AuthHelper && typeof window.AuthHelper.isLoggedIn === 'function'
                         && window.AuthHelper.isLoggedIn());
                 if (!loggedIn) {
-                    _meLoaded = false;    // đăng xuất -> cho phép nạp lại khi đăng nhập lần sau
-                    _addrLoaded = false;  // reset danh sách địa chỉ
+                    _meLoaded = false;      // đăng xuất -> cho phép nạp lại khi đăng nhập lần sau
+                    _addrLoaded = false;    // reset danh sách địa chỉ
+                    _privacyLoaded = false; // reset tuỳ chọn riêng tư (user khác -> giá trị khác)
                     show('profile-login', 'block');
                     show('profile-status', 'none');
                     show('settings-body', 'none');
@@ -1612,6 +1905,7 @@
             var saveBtn = document.getElementById('ad-save');
             if (saveBtn) saveBtn.addEventListener('click', saveProfile);
             initAddresses();   // gắn sự kiện khối "Địa chỉ giao hàng"
+            bindPrivacy();     // gắn sự kiện khối "Quyền riêng tư" + modal xoá tài khoản
 
             // Phiên hết hạn (đã tự refresh mà vẫn 401): báo lỗi + đưa về đăng nhập lại.
             document.addEventListener('authexpired', function () {

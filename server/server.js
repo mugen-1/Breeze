@@ -18,6 +18,8 @@ const ordersRouter = require('./routes/orders');
 const vouchersRouter = require('./routes/vouchers');
 const addressesRouter = require('./routes/addresses');
 const paymentsRouter = require('./routes/payments');
+const privacyRouter = require('./routes/privacy');
+const accountRouter = require('./routes/account');
 const adminRouter = require('./routes/admin');
 
 const app = express();
@@ -82,6 +84,11 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/vouchers', vouchersRouter);
 app.use('/api/account/addresses', addressesRouter);
 app.use('/api/account/payment-methods', paymentsRouter);
+app.use('/api/account/privacy-settings', privacyRouter);
+// PHẢI mount SAU các nhánh con ở trên: '/api/account' khớp cả '/api/account/...' nên nếu
+// đặt trước sẽ chặn mất addresses/payment-methods. Router này chỉ còn bắt phần đuôi
+// chưa ai nhận: POST /verify-password và DELETE / (xoá tài khoản).
+app.use('/api/account', accountRouter);
 app.use('/api/admin', adminRouter);
 
 // --- Static frontend ---------------------------------------------------------

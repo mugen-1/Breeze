@@ -2,7 +2,7 @@
 // Gom một chỗ để chính sách bảo mật dễ đọc/chỉnh; server.js chỉ việc app.use(...).
 const helmet = require('helmet');
 const cors = require('cors');
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 
 // Origin trình duyệt được phép gọi API. Override qua ALLOWED_ORIGINS (ngăn cách
 // bằng dấu phẩy) trong .env; không có thì dùng default dev (:3000 = Express phục
@@ -56,4 +56,27 @@ function buildApiLimiter() {
   });
 }
 
-module.exports = { buildCors, buildHelmet, buildApiLimiter, allowedOrigins, DEFAULT_ORIGINS };
+// Rate limit theo TỪNG USER (không theo IP) cho thao tác nhạy cảm cần mật khẩu.
+// Vì sao không dùng IP: nhiều user có thể chung 1 IP (NAT/công ty/wifi công cộng) —
+// giới hạn theo IP sẽ khoá nhầm người vô can. Khoá theo req.user.id (đã qua
+// verifyFirebaseToken nên không giả mạo được); nếu chưa xác thực thì lùi về IP.
+function buildUserActionLimiter(opts) {
+  const o = opts || {};
+  return rateLimit({
+    windowMs: o.windowMs || 60 * 1000,
+    limit: o.limit || 10,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    // ipKeyGenerator: gom IPv6 theo /64 — không có nó, 1 người dùng IPv6 có thể đổi
+    // địa chỉ trong dải của mình để lách sạch giới hạn.
+    keyGenerator: (req) => (req.user && req.user.id ? 'u:' + req.user.id : 'ip:' + ipKeyGenerator(req.ip)),
+    message: {
+      status: 'error',
+      message: o.message || 'Bạn đã thao tác quá nhiều lần, vui lòng thử lại sau',
+    },
+  });
+}
+
+module.exports = {
+  buildCors, buildHelmet, buildApiLimiter, buildUserActionLimiter, allowedOrigins, DEFAULT_ORIGINS,
+};
