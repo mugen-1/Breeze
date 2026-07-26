@@ -58,7 +58,8 @@
                     $('who').textContent = me.email || me.display_name || me.firebase_uid;
                     showState('panel');
                     return loadCategories().then(loadProducts).then(function () { return loadOrders(1); })
-                        .then(loadDashboard).then(function () { return loadUsers(1); });
+                        .then(loadDashboard).then(function () { return loadUsers(1); })
+                        .then(function () { return loadBlacklist(1); });
                 })
                 .catch(function (e) { console.error('[admin] auth/me lỗi:', e); showState('state-forbidden'); });
         }
@@ -70,7 +71,7 @@
             products: 'tab-products',
             orders: 'tab-orders',
             users: 'view-users',
-            settings: 'view-settings'
+            blacklist: 'view-blacklist'
         };
         function bindNav() {
             var items = document.querySelectorAll('.adm-nav-item');
@@ -120,8 +121,8 @@
 
         // --- i18n khung (VI/EN): nhãn sidebar/topbar/placeholder -------------
         var ADM_I18N = {
-            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Hoá đơn', users: 'Người dùng', settings: 'Cài đặt', logout: 'Đăng xuất', search: 'Tìm mã đơn / khách hàng…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', settingsMsg: 'Tuỳ chọn cấu hình sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất', revenueChart: 'Doanh thu theo ngày (tháng này)', noRevData: 'Chưa có dữ liệu doanh thu' },
-            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Invoices', users: 'Users', settings: 'Settings', logout: 'Sign Out', search: 'Search Order...', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', settingsMsg: 'Configuration options will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders', revenueChart: 'Daily revenue (this month)', noRevData: 'No revenue data yet' }
+            vi: { dashboard: 'Dashboard', products: 'Sản phẩm', orders: 'Hoá đơn', users: 'Người dùng', blacklist: 'Danh sách Đen', logout: 'Đăng xuất', search: 'Tìm mã đơn / khách hàng…', dashMsg: 'Số liệu tổng quan sẽ hiển thị ở đây.', usersMsg: 'Quản lý người dùng sẽ có ở đây.', mRevenue: 'Tổng doanh thu', mOrders: 'Tổng đơn hàng', mUsers: 'Số người dùng', mGrowth: 'Tăng trưởng', recentOrders: 'Đơn hàng mới nhất', revenueChart: 'Doanh thu theo ngày (tháng này)', noRevData: 'Chưa có dữ liệu doanh thu' },
+            en: { dashboard: 'Dashboard', products: 'Products', orders: 'Invoices', users: 'Users', blacklist: 'Blacklist', logout: 'Sign Out', search: 'Search Order...', dashMsg: 'Overview metrics will appear here.', usersMsg: 'User management will live here.', mRevenue: 'Total Revenue', mOrders: 'Total Orders', mUsers: 'Users', mGrowth: 'Growth', recentOrders: 'Recent Orders', revenueChart: 'Daily revenue (this month)', noRevData: 'No revenue data yet' }
         };
         function applyAdmLang(lang) {
             var t = ADM_I18N[lang] || ADM_I18N.vi;
@@ -874,14 +875,14 @@
         var _userPage = 1;
         function loadUsers(page) {
             _userPage = page || 1;
-            $('user-body').innerHTML = skeletonRows(5, 8);
+            $('user-body').innerHTML = skeletonRows(6, 8);
             $('user-pager').innerHTML = '';
             return api('/api/admin/users?page=' + _userPage + '&limit=20')
                 .then(function (r) { if (!r.ok) throw new Error('users ' + r.status); return r.json(); })
                 .then(renderUsers)
                 .catch(function (e) {
                     console.error('[admin] load users lỗi:', e);
-                    $('user-body').innerHTML = '<tr><td colspan="5" class="adm-empty">Không tải được người dùng.</td></tr>';
+                    $('user-body').innerHTML = '<tr><td colspan="6" class="adm-empty">Không tải được người dùng.</td></tr>';
                 });
         }
 
@@ -895,19 +896,33 @@
             var users = (data && data.users) || [];
             $('user-count').textContent = '(' + ((data && data.total) || 0) + ')';
             if (!users.length) {
-                $('user-body').innerHTML = '<tr><td colspan="5" class="adm-empty">Chưa có người dùng nào.</td></tr>';
+                $('user-body').innerHTML = '<tr><td colspan="6" class="adm-empty">Chưa có người dùng nào.</td></tr>';
                 $('user-pager').innerHTML = '';
                 return;
             }
             $('user-body').innerHTML = users.map(function (u) {
+                var isAdmin = String(u.role || '').toLowerCase() === 'admin';
+                var blCell;
+                if (isAdmin) {
+                    blCell = '—'; // không cho blacklist tài khoản admin
+                } else if (u.is_blacklisted) {
+                    blCell = '<span class="pill off">Trong danh sách đen</span>';
+                } else {
+                    blCell = '<button type="button" class="adm-btn danger small" data-blacklist="' + u.id + '">Thêm vào Blacklist</button>';
+                }
                 return '<tr>' +
                     '<td>' + esc(u.email || '—') + '</td>' +
                     '<td>' + esc(u.display_name || '—') + '</td>' +
                     '<td>' + rolePill(u.role) + '</td>' +
                     '<td>' + (u.created_at ? fmtDate(u.created_at) : '—') + '</td>' +
                     '<td>' + (u.last_login ? fmtDate(u.last_login) : '—') + '</td>' +
+                    '<td>' + blCell + '</td>' +
                 '</tr>';
             }).join('');
+
+            $('user-body').querySelectorAll('[data-blacklist]').forEach(function (b) {
+                b.addEventListener('click', function () { addToBlacklist(b.getAttribute('data-blacklist'), b); });
+            });
 
             var totalPages = (data && data.total_pages) || 1;
             $('user-pager').innerHTML =
@@ -917,6 +932,112 @@
             var prev = $('user-pg-prev'), next = $('user-pg-next');
             if (prev) prev.addEventListener('click', function () { loadUsers(_userPage - 1); });
             if (next) next.addEventListener('click', function () { loadUsers(_userPage + 1); });
+        }
+
+        // Thêm THỦ CÔNG 1 user vào danh sách đen (độc lập với huỷ đơn) — ảnh hưởng
+        // quyền mua hàng của user nên xác nhận trước.
+        function addToBlacklist(userId, btn) {
+            if (!window.confirm('Đưa tài khoản này vào danh sách đen? Họ sẽ không thể thêm giỏ hàng / thanh toán cho tới khi được gỡ.')) return;
+            btn.disabled = true;
+            api('/api/admin/users/' + userId + '/blacklist', { method: 'POST' })
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (res) {
+                    if (!res.ok) { toast((res.j && res.j.message) || 'Thêm thất bại', true); btn.disabled = false; return; }
+                    toast('Đã đưa vào danh sách đen');
+                    loadUsers(_userPage); // tải lại — dòng này đổi từ nút sang badge
+                })
+                .catch(function (e) { console.error(e); toast('Lỗi kết nối máy chủ', true); btn.disabled = false; });
+        }
+
+        // --- Danh sách Đen (đơn ĐÃ HUỶ của user đang bị blacklist, theo ĐƠN) --
+        var _blacklistPage = 1;
+        var _blacklistQuery = '';           // gửi xuống server; lọc TOÀN BỘ, không chỉ 1 trang
+        var _blacklistSearchTimer = null;
+
+        function blacklistQuery() {
+            var params = ['page=' + _blacklistPage, 'limit=20'];
+            if (_blacklistQuery) params.push('q=' + encodeURIComponent(_blacklistQuery));
+            return '/api/admin/blacklist?' + params.join('&');
+        }
+
+        function loadBlacklist(page) {
+            _blacklistPage = page || 1;
+            $('blacklist-body').innerHTML = skeletonRows(7, 6);
+            $('blacklist-pager').innerHTML = '';
+            return api(blacklistQuery())
+                .then(function (r) { if (!r.ok) throw new Error('blacklist ' + r.status); return r.json(); })
+                .then(renderBlacklist)
+                .catch(function (e) {
+                    console.error('[admin] load blacklist lỗi:', e);
+                    $('blacklist-body').innerHTML = '<tr><td colspan="7" class="adm-empty">Không tải được danh sách đen.</td></tr>';
+                });
+        }
+
+        // Đổi ô search -> nạp lại từ server (về trang 1), debounce để đỡ gọi API mỗi phím.
+        function onBlacklistSearchInput() {
+            if (_blacklistSearchTimer) clearTimeout(_blacklistSearchTimer);
+            _blacklistSearchTimer = setTimeout(function () {
+                var el = $('blacklist-search');
+                _blacklistQuery = el ? el.value.trim() : '';
+                loadBlacklist(1);
+            }, 300);
+        }
+
+        function renderBlacklist(data) {
+            var orders = (data && data.orders) || [];
+            $('blacklist-count').textContent = '(' + ((data && data.total) || 0) + ')';
+            if (!orders.length) {
+                var msg = _blacklistQuery ? 'Không tìm thấy đơn phù hợp.' : 'Danh sách đen đang trống.';
+                $('blacklist-body').innerHTML = '<tr><td colspan="7" class="adm-empty">' + msg + '</td></tr>';
+                $('blacklist-pager').innerHTML = '';
+                return;
+            }
+            $('blacklist-body').innerHTML = orders.map(function (o) {
+                var cust = o.user_email || o.user_name || ('user #' + o.user_id);
+                // order_id null -> user bị blacklist THỦ CÔNG, chưa từng có đơn huỷ nào.
+                var noOrder = o.order_id == null;
+                var statusCell = noOrder
+                    ? '<span class="pill off">Chưa có đơn huỷ</span>'
+                    : statusPill(o.status);
+                return '<tr>' +
+                    '<td class="num">' + (noOrder ? '—' : o.order_id) + '</td>' +
+                    '<td>' + esc(cust) + '</td>' +
+                    '<td>' + (noOrder ? '—' : fmtDate(o.created_at)) + '</td>' +
+                    '<td>' + (noOrder ? '—' : esc(PAYMENT_LABEL[o.payment_method] || '—')) + '</td>' +
+                    '<td class="num">' + (noOrder ? '—' : money(o.total_amount)) + '</td>' +
+                    '<td>' + statusCell + '</td>' +
+                    '<td style="white-space:nowrap;">' +
+                        '<button type="button" class="adm-btn accent small" data-release="' + o.user_id + '">Gỡ Tài Khoản</button>' +
+                    '</td>' +
+                '</tr>';
+            }).join('');
+
+            $('blacklist-body').querySelectorAll('[data-release]').forEach(function (b) {
+                b.addEventListener('click', function () { releaseUser(b.getAttribute('data-release'), b); });
+            });
+
+            var totalPages = (data && data.total_pages) || 1;
+            $('blacklist-pager').innerHTML =
+                '<button type="button" id="bl-pg-prev"' + (_blacklistPage <= 1 ? ' disabled' : '') + '>← Trước</button>' +
+                '<span>Trang ' + _blacklistPage + ' / ' + totalPages + '</span>' +
+                '<button type="button" id="bl-pg-next"' + (_blacklistPage >= totalPages ? ' disabled' : '') + '>Sau →</button>';
+            var prevBl = $('bl-pg-prev'), nextBl = $('bl-pg-next');
+            if (prevBl) prevBl.addEventListener('click', function () { loadBlacklist(_blacklistPage - 1); });
+            if (nextBl) nextBl.addEventListener('click', function () { loadBlacklist(_blacklistPage + 1); });
+        }
+
+        // Gỡ 1 user khỏi danh sách đen — ảnh hưởng quyền user nên xác nhận trước.
+        function releaseUser(userId, btn) {
+            if (!window.confirm('Gỡ tài khoản này khỏi danh sách đen? Khách sẽ được thêm giỏ hàng / thanh toán trở lại.')) return;
+            btn.disabled = true;
+            api('/api/admin/blacklist/' + userId + '/release', { method: 'POST' })
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (res) {
+                    if (!res.ok) { toast((res.j && res.j.message) || 'Gỡ thất bại', true); btn.disabled = false; return; }
+                    toast('Đã gỡ tài khoản khỏi danh sách đen');
+                    loadBlacklist(_blacklistPage); // tải lại — mọi dòng của user này biến mất khỏi bảng
+                })
+                .catch(function (e) { console.error(e); toast('Lỗi kết nối máy chủ', true); btn.disabled = false; });
         }
 
         // --- Wire up ---------------------------------------------------------
@@ -952,6 +1073,7 @@
             });
             var ordStatus = $('order-status-filter'); if (ordStatus) ordStatus.addEventListener('change', onOrderFilterChange);
             var ordSearch = $('order-search'); if (ordSearch) ordSearch.addEventListener('input', onOrderSearchInput);
+            var blSearch = $('blacklist-search'); if (blSearch) blSearch.addEventListener('input', onBlacklistSearchInput);
 
             // Search topbar (toàn layout): Enter -> nhảy sang Đơn hàng và tìm (mã đơn = khớp chính xác).
             var topSearch = $('top-search');

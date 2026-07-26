@@ -176,6 +176,9 @@ body.adm-authed .adm-sidebar { display:block; }
     font-family:inherit; font-size:13.5px; letter-spacing:.5px; color:var(--c-muted); padding:11px 14px;
 }
 .adm-nav-item .fa { width:18px; text-align:center; font-size:15px; }
+/* Icon phóng xạ (Danh sách Đen) — FA 4.7 không có icon này, dùng SVG inline,
+   giữ đúng kích thước/màu (currentColor) như các icon .fa khác trong sidebar. */
+.adm-nav-icon { width:18px; height:15px; flex-shrink:0; }
 .adm-nav-item:hover { color:var(--c-ink); background:rgba(14,14,14,.04); }
 .adm-nav-item.active { color:var(--c-ink); font-weight:600; border-left-color:var(--c-ink); background:rgba(14,14,14,.05); }
 
@@ -205,6 +208,9 @@ body.adm-authed .adm-main { margin-left:232px; }
 .adm-btn:hover { opacity:.85; }
 .adm-btn.ghost { background:var(--c-bg); color:var(--c-ink); border:1px solid var(--c-ink); }
 .adm-btn.danger { background:var(--c-danger); }
+/* "Gỡ Tài Khoản": hành động phục hồi quyền, KHÔNG phải xoá dữ liệu -> màu xanh
+   (thành công/cho phép lại) thay vì đỏ (Xoá), tránh gây hiểu nhầm là huỷ dữ liệu. */
+.adm-btn.accent { background:var(--c-success); }
 .adm-btn.small { padding:6px 14px; font-size:11px; letter-spacing:.5px; }
 /* Nút chưa dùng được (vd "Xuất hoá đơn" ở các đơn chưa mở chức năng): mờ + không bấm. */
 .adm-btn:disabled { opacity:.4; cursor:not-allowed; }
@@ -212,11 +218,11 @@ body.adm-authed .adm-main { margin-left:232px; }
 
 /* --- Panel (khung view, chuyển bằng sidebar) --- */
 /* max-width KHÔNG đặt ở #panel nữa — mỗi view tự quyết định độ rộng (xem dưới).
-   Đơn hàng/Sản phẩm/Người dùng (bảng dữ liệu) giãn full chiều rộng còn lại sau
-   sidebar, tránh khoảng trắng thừa hai bên; Dashboard/Settings (bố cục card/grid,
+   Đơn hàng/Sản phẩm/Người dùng/Danh sách Đen (bảng dữ liệu) giãn full chiều rộng
+   còn lại sau sidebar, tránh khoảng trắng thừa hai bên; Dashboard (bố cục card/grid,
    không phải bảng dài) giữ độ rộng đọc thoải mái 1180px. */
 #panel { max-width:none; padding:30px 28px 80px; display:none; }
-#view-dashboard, #view-settings {
+#view-dashboard {
     max-width:1180px; margin-left:auto; margin-right:auto;
 }
 
@@ -296,19 +302,21 @@ table.adm-table tr:last-child td { border-bottom:none; }
 /* Hover row (bỏ qua hàng chi tiết oi-detail có nền riêng) */
 table.adm-table > tbody > tr:not(.oi-detail):hover > td { background:var(--c-cream); }
 
-/* Bảng dữ liệu dạng danh sách (Đơn hàng/Sản phẩm/Người dùng): bỏ khung ngoài +
-   đường kẻ ngang giữa các dòng (style tối giản, không đóng khung) — CHỈ giữ đường
-   mảnh ngăn header (đã có sẵn ở th, không đụng). Scope qua 3 id có sẵn để KHÔNG
+/* Bảng dữ liệu dạng danh sách (Đơn hàng/Sản phẩm/Người dùng/Danh sách Đen): bỏ khung
+   ngoài + đường kẻ ngang giữa các dòng (style tối giản, không đóng khung) — CHỈ giữ
+   đường mảnh ngăn header (đã có sẵn ở th, không đụng). Scope qua id có sẵn để KHÔNG
    ảnh hưởng widget "Đơn hàng gần đây" trong Dashboard (cũng dùng .adm-table nhưng
    nằm trong .dash-card, không dùng .adm-table-wrap nên không khớp selector này).
    Cột giữ nguyên vị trí/độ rộng — chỉ tăng padding dọc bù khoảng cách dòng,
    không đụng padding ngang (căn cột). */
 #tab-orders .adm-table-wrap,
 #tab-products .adm-table-wrap,
-#view-users .adm-table-wrap { border:none; }
+#view-users .adm-table-wrap,
+#view-blacklist .adm-table-wrap { border:none; }
 #tab-orders table.adm-table td,
 #tab-products table.adm-table td,
-#view-users table.adm-table td { padding-top:16px; padding-bottom:16px; border-bottom:none; }
+#view-users table.adm-table td,
+#view-blacklist table.adm-table td { padding-top:16px; padding-bottom:16px; border-bottom:none; }
 
 /* --- Toolbar filter/search (panel Đơn hàng) --- */
 .adm-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }

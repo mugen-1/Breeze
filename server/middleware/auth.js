@@ -28,15 +28,15 @@ async function upsertUser(decoded) {
       USING (SELECT @uid AS firebase_uid) AS src
         ON target.firebase_uid = src.firebase_uid
       WHEN MATCHED THEN
-        UPDATE SET email = @email,
-                   display_name = @displayName,
+        UPDATE SET email = COALESCE(@email, target.email),
+                   display_name = COALESCE(@displayName, target.display_name),
                    last_login = SYSUTCDATETIME()
       WHEN NOT MATCHED THEN
         INSERT (firebase_uid, email, display_name, last_login)
         VALUES (@uid, @email, @displayName, SYSUTCDATETIME());
 
       SELECT id, firebase_uid, email, display_name, role, created_at, last_login,
-             phone, dob, gender, country
+             phone, dob, gender, country, IsBlacklisted AS is_blacklisted
       FROM dbo.users
       WHERE firebase_uid = @uid;
     `);
@@ -51,7 +51,7 @@ async function upsertUser(decoded) {
       .query(`
         UPDATE dbo.users SET role = 'admin' WHERE firebase_uid = @uid;
         SELECT id, firebase_uid, email, display_name, role, created_at, last_login,
-               phone, dob, gender, country
+               phone, dob, gender, country, IsBlacklisted AS is_blacklisted
         FROM dbo.users WHERE firebase_uid = @uid;
       `);
     user = upd.recordset[0];

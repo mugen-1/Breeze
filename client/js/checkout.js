@@ -450,6 +450,12 @@
                     return;
                 }
 
+                if (r.status === 403 && data.error === 'BLACKLISTED') {
+                    showFormMsg('Không Thể Thực Hiện Hành Động', 'err');
+                    enableBtn();
+                    return;
+                }
+
                 showFormMsg(data.message || 'Không tạo được đơn hàng, vui lòng thử lại.', 'err');
                 enableBtn();
             }).catch(function () {
