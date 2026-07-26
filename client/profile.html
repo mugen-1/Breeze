@@ -23,9 +23,10 @@
         #settings-wrapper {
             flex: 1;
             width: 100%;
-            max-width: 1080px;
             margin: 48px auto 96px;
-            padding: 0 24px;
+            /* Trải gần full-width để tiêu đề + sidebar ra sát mép trái; panel nội dung
+               vẫn canh CHÍNH GIỮA trang nhờ grid 3 cột ở .settings-grid bên dưới. */
+            padding: 0 clamp(24px, 5vw, 88px);
             box-sizing: border-box;
         }
         .settings-title {
@@ -50,13 +51,17 @@
         .settings-notice svg { width: 52px; height: 52px; display: block; margin: 0 auto 18px; color: var(--c-line); }
         .settings-notice a { color: var(--c-ink); text-decoration: underline; text-underline-offset: 3px; }
 
-        /* Grid 2 cột: sidebar trái + panel phải */
+        /* Grid 3 cột: [nav sát trái | panel | đệm phải].
+           Hai cột 1fr hai bên BẰNG NHAU nên panel luôn nằm đúng giữa trang, bất kể
+           màn rộng bao nhiêu; nav neo ở mép trái cột 1 (justify-self:start). */
         .settings-grid {
             display: grid;
-            grid-template-columns: 236px 1fr;
-            gap: 56px;
+            grid-template-columns: 1fr minmax(0, 560px) 1fr;
+            gap: 0 40px;
             align-items: start;
         }
+        .settings-nav { grid-column: 1; justify-self: start; width: 236px; }
+        .settings-panel { grid-column: 2; }
 
         /* ---- Sidebar ---- */
         .settings-nav { display: flex; flex-direction: column; gap: 2px; }
@@ -109,6 +114,11 @@
         .settings-panel { min-width: 0; }
         .settings-section { display: none; }
         .settings-section.is-active { display: block; }
+        /* global.css có `section:not(.hero){padding-block:var(--pad-section)}` = 140px,
+           làm panel thụt hẳn xuống dưới sidebar. Trong trang Cài đặt, panel phải bắt đầu
+           NGANG HÀNG với sidebar -> khử padding đó (cùng cách .policy-body section đang làm).
+           Dùng selector 2 class để thắng specificity (0,1,1) của rule toàn cục. */
+        .settings-panel .settings-section { padding-block: 0; }
         .settings-section-title {
             font-family: var(--font-display);
             font-size: clamp(22px, 3vw, 28px);
@@ -485,7 +495,10 @@
         @media (max-width: 820px) {
             #settings-wrapper { margin: 32px auto 72px; }
             .settings-title { margin-bottom: 28px; }
+            /* Hẹp: bỏ grid 3 cột, xếp dọc (nav thành tab cuộn ngang ở trên) */
             .settings-grid { grid-template-columns: 1fr; gap: 28px; }
+            .settings-nav { grid-column: 1; width: auto; justify-self: stretch; }
+            .settings-panel { grid-column: 1; }
             .settings-nav {
                 flex-direction: row;
                 gap: 4px;
