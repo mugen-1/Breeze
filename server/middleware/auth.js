@@ -36,7 +36,7 @@ async function upsertUser(decoded) {
         VALUES (@uid, @email, @displayName, SYSUTCDATETIME());
 
       SELECT id, firebase_uid, email, display_name, role, created_at, last_login,
-             phone, dob, gender, country, IsBlacklisted AS is_blacklisted
+             phone, dob, gender, country, avatar_url, IsBlacklisted AS is_blacklisted
       FROM dbo.users
       WHERE firebase_uid = @uid;
     `);
@@ -51,7 +51,7 @@ async function upsertUser(decoded) {
       .query(`
         UPDATE dbo.users SET role = 'admin' WHERE firebase_uid = @uid;
         SELECT id, firebase_uid, email, display_name, role, created_at, last_login,
-               phone, dob, gender, country, IsBlacklisted AS is_blacklisted
+               phone, dob, gender, country, avatar_url, IsBlacklisted AS is_blacklisted
         FROM dbo.users WHERE firebase_uid = @uid;
       `);
     user = upd.recordset[0];

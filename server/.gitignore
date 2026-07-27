@@ -13,3 +13,6 @@ firebase-service-account.json
 # Logs
 npm-debug.log*
 *.log
+
+# Ảnh user upload (avatar) — dữ liệu runtime, không commit vào repo
+uploads/
