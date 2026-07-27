@@ -91,6 +91,14 @@ app.use('/api/account/privacy-settings', privacyRouter);
 app.use('/api/account', accountRouter);
 app.use('/api/admin', adminRouter);
 
+// --- Static: ảnh đại diện -----------------------------------------------------
+// Chỉ phục vụ ĐÚNG folder uploads/avatars (không phải cả uploads/), express.static
+// không bật directory listing nên không liệt kê được file. Mount TRƯỚC client/ vì
+// client/ không có thư mục 'avatars' — giữ đường dẫn này tách bạch với site tĩnh.
+// Ảnh ghi đè cùng tên khi user đổi avatar; express.static gửi ETag + max-age=0 nên
+// trình duyệt revalidate mỗi lần, đổi ảnh là thấy ngay, không kẹt cache.
+app.use('/avatars', express.static(path.join(__dirname, 'uploads', 'avatars')));
+
 // --- Static frontend ---------------------------------------------------------
 // Tiện dev: phục vụ client/ ngay trên cùng origin => mở http://localhost:3000/sanpham-ao.html
 // (fetch API cùng origin, không vướng CORS). Production sẽ tách CDN ở Phase 5.
