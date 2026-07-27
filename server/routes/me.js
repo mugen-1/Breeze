@@ -7,6 +7,7 @@
 // riêng (addresses, payment_methods, user_privacy_settings).
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const sharp = require('sharp');
@@ -124,7 +125,27 @@ router.put('/', verifyFirebaseToken, async (req, res) => {
                                 không giữ metadata nên EXIF/GPS bị loại luôn.
      5. tên file sinh từ uid -> chống path traversal, mỗi user đúng 1 file.        */
 
+/* Tên file avatar mang PHIÊN BẢN: '{uid}-{version}.webp'.
+   Vì sao không dùng '{uid}.webp' rồi ghi đè: express.static phục vụ file theo 2 bước
+   TÁCH RỜI — fs.stat() lấy size, rồi mở read stream giới hạn đúng size đó. Nếu file bị
+   thay ngay giữa 2 bước (kể cả thay bằng rename nguyên tử), Content-Length lấy từ ảnh cũ
+   còn nội dung đọc từ ảnh mới => client nhận ảnh CỤT. Đã đo được thật: 14/6143 lượt đọc
+   hỏng khi ép upload chồng lên nhau.
+   Đặt tên mới mỗi lần upload thì file cũ không bao giờ bị đụng vào trong lúc đang đọc,
+   và URL tự đổi theo ảnh nên không cần cache-busting '?t=' ở client. */
 const AVATAR_DIR = path.join(__dirname, '..', 'uploads', 'avatars');
+
+/* Xoá ảnh avatar cũ (best-effort). Chỉ nhận đúng dạng '/avatars/<tên an toàn>.webp'
+   rồi ghép lại từ basename — không bao giờ dùng thẳng chuỗi trong DB để tạo đường dẫn,
+   phòng trường hợp giá trị đó bị can thiệp. */
+function removeOldAvatar(oldUrl, keepFileName) {
+  if (!oldUrl || typeof oldUrl !== 'string') return;
+  const m = /^\/avatars\/([A-Za-z0-9_-]+\.webp)$/.exec(oldUrl);
+  if (!m) return;
+  const oldName = m[1];
+  if (oldName === keepFileName) return;                 // trùng file vừa ghi -> giữ lại
+  fs.promises.unlink(path.join(AVATAR_DIR, oldName)).catch(() => {});
+}
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;          // 2MB
 const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp'];   // SVG bị loại (XSS)
 
@@ -132,6 +153,41 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: AVATAR_MAX_BYTES, files: 1 },
 });
+
+/* Ghi file NGUYÊN TỬ: ghi ra file tạm rồi rename đè lên file thật.
+   Vì sao không writeFile thẳng: mọi user dùng CHUNG một tên file ({uid}.webp) và file
+   này đang được express.static phục vụ. writeFile mở với flag 'w' => TRUNCATE file cũ
+   rồi mới ghi, nên có một khoảng thời gian file rỗng/dở dang; request GET
+   /avatars/{uid}.webp rơi đúng lúc đó sẽ nhận ảnh hỏng.
+   rename() là nguyên tử ở tầng filesystem: người đọc luôn thấy TRỌN VẸN ảnh cũ hoặc
+   ảnh mới, không có trạng thái ở giữa.
+   Tên tạm phải DUY NHẤT để 2 upload đồng thời của cùng một user không đè temp của nhau.
+   Prefix '.' để express.static (dotfiles:'ignore' mặc định) không bao giờ phục vụ file tạm. */
+async function writeFileAtomic(finalPath, buf) {
+  const dir = path.dirname(finalPath);
+  const tmpPath = path.join(
+    dir,
+    '.' + path.basename(finalPath) + '.' + process.pid + '-' + Date.now() +
+      '-' + Math.random().toString(36).slice(2, 8) + '.tmp'
+  );
+  try {
+    await fs.promises.writeFile(tmpPath, buf);
+    // Windows: MoveFileEx có thể trả EPERM/EBUSY nếu file đích đang bị mở đọc ngay
+    // khoảnh khắc đó -> thử lại vài lần thay vì fail luôn.
+    for (let i = 0; ; i++) {
+      try {
+        await fs.promises.rename(tmpPath, finalPath);
+        return;
+      } catch (err) {
+        if (i >= 4 || (err.code !== 'EPERM' && err.code !== 'EBUSY' && err.code !== 'EACCES')) throw err;
+        await new Promise((r) => setTimeout(r, 40 * (i + 1)));
+      }
+    }
+  } catch (err) {
+    await fs.promises.unlink(tmpPath).catch(() => {});   // dọn temp nếu hỏng giữa chừng
+    throw err;
+  }
+}
 
 // Bọc multer để lỗi (quá dung lượng...) trả JSON gọn thay vì ném ra error handler chung.
 function uploadAvatar(req, res, next) {
@@ -180,23 +236,42 @@ router.post('/avatar', verifyFirebaseToken, uploadAvatar, async (req, res) => {
       .webp({ quality: 82 })
       .toBuffer();
 
-    const fileName = uid + '.webp';
+    // Tên file có PHIÊN BẢN, mỗi lần upload một tên mới => không bao giờ ghi đè file
+    // đang được phục vụ (xem chú thích ở AVATAR_DIR để biết vì sao bắt buộc như vậy).
+    const version = Date.now().toString(36) + crypto.randomBytes(3).toString('hex');
+    const fileName = uid + '-' + version + '.webp';
     await fs.promises.mkdir(AVATAR_DIR, { recursive: true });
-    await fs.promises.writeFile(path.join(AVATAR_DIR, fileName), webp);
+    await writeFileAtomic(path.join(AVATAR_DIR, fileName), webp);
 
-    const avatarUrl = '/avatars/' + fileName;   // path tương đối, phục vụ qua express.static
+    // DB lưu path SẠCH, tuyệt đối KHÔNG kèm '?t=...'. Bản thân tên file đã đổi mỗi lần
+    // upload nên URL tự khác đi — client cứ gán thẳng img.src = avatar_url là ra ảnh mới,
+    // không cần cache-busting thủ công ở bất kỳ đâu.
+    const avatarUrl = '/avatars/' + fileName;
     const pool = await getPool();
     const result = await pool
       .request()
       .input('uid', sql.VarChar(128), uid)
       .input('url', sql.NVarChar(255), avatarUrl)
       .query(`
-        UPDATE dbo.users SET avatar_url = @url WHERE firebase_uid = @uid;
+        UPDATE dbo.users SET avatar_url = @url
+        OUTPUT deleted.avatar_url AS old_url
+        WHERE firebase_uid = @uid;
 
         SELECT ${USER_COLS}
         FROM dbo.users WHERE firebase_uid = @uid;`);
 
-    res.json(toDto(result.recordset[0]));
+    // Xoá ảnh cũ SAU khi DB đã trỏ sang ảnh mới. Thứ tự này quan trọng: nếu đổi thứ tự,
+    // có khoảnh khắc DB trỏ tới file vừa bị xoá -> ảnh vỡ. Xoá lỗi cũng không sao
+    // (file thừa nằm lại), nên nuốt lỗi thay vì làm hỏng cả request upload.
+    // Dùng OUTPUT deleted.* chứ KHÔNG dùng req.user.avatar_url: req.user là ảnh chụp lúc
+    // BẮT ĐẦU request, nên nhiều upload song song sẽ cùng thấy một giá trị cũ và bỏ sót
+    // các file trung gian. OUTPUT trả đúng giá trị mà chính câu UPDATE này vừa thay thế,
+    // nên mỗi file đều có đúng một request chịu trách nhiệm xoá.
+    const oldUrl = result.recordsets[0][0] && result.recordsets[0][0].old_url;
+    removeOldAvatar(oldUrl, fileName);
+
+    // recordsets[0] = dòng OUTPUT (avatar cũ), recordsets[1] = hồ sơ trả cho client.
+    res.json(toDto(result.recordsets[1][0]));
   } catch (err) {
     // sharp ném lỗi khi buffer không phải ảnh giải mã được (vd file .png giả).
     console.error('[me] xử lý avatar lỗi:', err.message);

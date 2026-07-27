@@ -93,11 +93,15 @@ app.use('/api/admin', adminRouter);
 
 // --- Static: ảnh đại diện -----------------------------------------------------
 // Chỉ phục vụ ĐÚNG folder uploads/avatars (không phải cả uploads/), express.static
-// không bật directory listing nên không liệt kê được file. Mount TRƯỚC client/ vì
-// client/ không có thư mục 'avatars' — giữ đường dẫn này tách bạch với site tĩnh.
-// Ảnh ghi đè cùng tên khi user đổi avatar; express.static gửi ETag + max-age=0 nên
-// trình duyệt revalidate mỗi lần, đổi ảnh là thấy ngay, không kẹt cache.
-app.use('/avatars', express.static(path.join(__dirname, 'uploads', 'avatars')));
+// không bật directory listing nên không liệt kê được file.
+// Tên file mang phiên bản ('{uid}-{version}.webp') nên nội dung mỗi URL là BẤT BIẾN:
+// đổi avatar = sinh URL mới, không bao giờ sửa file cũ. Nhờ vậy cache được thoải mái
+// 1 năm + immutable — trình duyệt khỏi revalidate, mà đổi ảnh vẫn thấy ngay lập tức
+// vì URL đã khác. Đây cũng là lý do client KHÔNG cần thêm '?t=' để phá cache.
+app.use('/avatars', express.static(path.join(__dirname, 'uploads', 'avatars'), {
+  maxAge: '1y',
+  immutable: true,
+}));
 
 // --- Static frontend ---------------------------------------------------------
 // Tiện dev: phục vụ client/ ngay trên cùng origin => mở http://localhost:3000/sanpham-ao.html
