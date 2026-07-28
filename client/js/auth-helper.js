@@ -47,7 +47,13 @@
         var headers = {};
         if (opts.headers) for (var k in opts.headers) headers[k] = opts.headers[k];
         if (token) headers['Authorization'] = 'Bearer ' + token;
-        if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+        // FormData (upload file): TUYỆT ĐỐI không tự set Content-Type — trình duyệt phải
+        // tự sinh 'multipart/form-data; boundary=...'. Set tay là mất boundary, server
+        // không parse được file. Các body khác vẫn mặc định JSON như cũ.
+        var isFormData = (typeof FormData !== 'undefined') && (opts.body instanceof FormData);
+        if (opts.body && !isFormData && !headers['Content-Type']) {
+          headers['Content-Type'] = 'application/json';
+        }
         var final = {};
         for (var p in opts) final[p] = opts[p];
         final.headers = headers;
