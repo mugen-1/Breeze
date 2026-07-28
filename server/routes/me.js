@@ -13,6 +13,7 @@ const multer = require('multer');
 const sharp = require('sharp');
 const router = express.Router();
 const { verifyFirebaseToken } = require('../middleware/auth');
+const { buildUserActionLimiter } = require('../middleware/security');
 const { getPool, sql } = require('../db');
 
 // Cột trả về cho client — dùng chung mọi nơi SELECT lại user sau khi ghi.
@@ -157,6 +158,18 @@ const upload = multer({
   limits: { fileSize: AVATAR_MAX_BYTES, files: 1 },
 });
 
+/* Rate limit RIÊNG cho upload avatar — KHÔNG đụng tới limiter chung của /api (300/15 phút).
+   Vì sao cần chặt hơn: mỗi lần upload bắt server giải mã + re-encode ảnh bằng sharp, tốn CPU
+   hơn hẳn một request đọc dữ liệu. Người dùng bình thường không đổi ảnh đại diện liên tục,
+   nên 10 lần / 15 phút là thoải mái mà vẫn chặn được kiểu gọi dồn để đốt CPU.
+   Khoá theo req.user.id (buildUserActionLimiter), KHÔNG theo IP — nhiều user chung một IP
+   (NAT/wifi công cộng) sẽ khoá nhầm người vô can. */
+const avatarLimiter = buildUserActionLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  message: 'Bạn đã đổi ảnh đại diện quá nhiều lần, vui lòng thử lại sau ít phút',
+});
+
 /* Ghi file NGUYÊN TỬ: ghi ra file tạm rồi rename đè lên file thật.
    Vì sao không writeFile thẳng: mọi user dùng CHUNG một tên file ({uid}.webp) và file
    này đang được express.static phục vụ. writeFile mở với flag 'w' => TRUNCATE file cũ
@@ -207,7 +220,9 @@ function uploadAvatar(req, res, next) {
   });
 }
 
-router.post('/avatar', verifyFirebaseToken, uploadAvatar, async (req, res) => {
+// Thứ tự middleware: verify token TRƯỚC (limiter cần req.user.id để khoá theo user),
+// rồi limiter, RỒI MỚI tới multer — request bị chặn thì khỏi phải đọc/đệm 2MB body.
+router.post('/avatar', verifyFirebaseToken, avatarLimiter, uploadAvatar, async (req, res) => {
   if (!req.file || !req.file.buffer || req.file.buffer.length === 0) {
     return res.status(400).json({ status: 'error', message: 'Thiếu file ảnh (field "avatar")' });
   }
