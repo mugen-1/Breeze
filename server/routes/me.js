@@ -137,7 +137,10 @@ const AVATAR_DIR = path.join(__dirname, '..', 'uploads', 'avatars');
 
 /* Xoá ảnh avatar cũ (best-effort). Chỉ nhận đúng dạng '/avatars/<tên an toàn>.webp'
    rồi ghép lại từ basename — không bao giờ dùng thẳng chuỗi trong DB để tạo đường dẫn,
-   phòng trường hợp giá trị đó bị can thiệp. */
+   phòng trường hợp giá trị đó bị can thiệp.
+   ⚠️ Quy tắc resolve path này còn được viết LẠI ở routes/account.js (xoá file khi xoá
+   tài khoản). Hai bên phải dùng CÙNG AVATAR_DIR và CÙNG cách ghép tên file —
+   đổi chỗ lưu ảnh thì SỬA CẢ HAI. */
 function removeOldAvatar(oldUrl, keepFileName) {
   if (!oldUrl || typeof oldUrl !== 'string') return;
   const m = /^\/avatars\/([A-Za-z0-9_-]+\.webp)$/.exec(oldUrl);
