@@ -38,6 +38,17 @@
     trigger.appendChild(badge);
   }
 
+  // Ảnh đại diện: thay CHỖ HÌNH của icon người khi đã đăng nhập và có avatar.
+  // Chỉ đổi hình — hành vi click giữ nguyên (vẫn mở popover như trước).
+  var avatarImg = trigger.querySelector('.user-avatar');
+  if (!avatarImg) {
+    avatarImg = document.createElement('img');
+    avatarImg.className = 'user-avatar';
+    avatarImg.alt = 'Ảnh đại diện';
+    avatarImg.hidden = true;
+    trigger.insertBefore(avatarImg, trigger.firstChild);
+  }
+
   // Lời chào "Xin chào, <tên>" chèn cạnh icon, chỉ hiện khi đã đăng nhập.
   var greet = document.createElement('span');
   greet.className = 'acct-greet';
@@ -135,11 +146,68 @@
     if (!n && user.email) n = user.email.split('@')[0];   // không có tên -> lấy phần trước @
     return n || 'bạn';
   }
+  /* ---- Ảnh đại diện trên header ----
+     Nguồn: GET /api/me (trường avatar_url) qua AuthHelper.apiFetch.
+     Chưa đăng nhập / chưa có ảnh / ảnh lỗi -> giữ nguyên icon người mặc định.
+     Tên file avatar do server sinh kèm phiên bản nên URL tự đổi khi user đổi ảnh —
+     KHÔNG cần thêm '?t=' phá cache ở đây. */
+  var _avatarUrl = null;    // URL đang hiển thị trên header
+  var _avatarUid = null;    // đã nạp avatar cho uid nào -> tránh gọi /api/me lặp
+
+  // Có avatar thì header chỉ hiện ẢNH, không kèm tên (theo yêu cầu Phase 4).
+  function applyGreet(user) {
+    greet.hidden = !user || hideGreeting || !!_avatarUrl;
+  }
+
+  function setAvatar(url) {
+    _avatarUrl = url || null;
+    if (_avatarUrl) {
+      avatarImg.src = _avatarUrl;
+      avatarImg.hidden = false;
+      trigger.classList.add('has-avatar');   // CSS ẩn <i class="fa"> bên trong
+    } else {
+      avatarImg.hidden = true;
+      avatarImg.removeAttribute('src');
+      trigger.classList.remove('has-avatar');
+    }
+    applyGreet(window.AuthHelper && typeof window.AuthHelper.getUser === 'function'
+      ? window.AuthHelper.getUser() : null);
+  }
+
+  // Ảnh 404/hỏng (vd vừa đổi avatar, file cũ đã được dọn) -> rơi về icon mặc định.
+  avatarImg.addEventListener('error', function () {
+    if (!avatarImg.hidden) setAvatar(null);
+  });
+
+  function loadAvatar(user) {
+    var uid = user ? user.uid : null;
+    if (uid === _avatarUid) return;        // cùng người -> khỏi gọi lại
+    _avatarUid = uid;
+    if (!uid) { setAvatar(null); return; } // đăng xuất -> về icon ngay
+    if (!(window.AuthHelper && typeof window.AuthHelper.apiFetch === 'function')) return;
+
+    window.AuthHelper.apiFetch('/api/me')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (me) {
+        // Đổi tài khoản trong lúc chờ -> BỎ kết quả cũ, không hiện avatar người khác.
+        var cur = window.AuthHelper.getUser();
+        if (!cur || cur.uid !== uid) return;
+        setAvatar(me && me.avatar_url);
+      })
+      .catch(function () { /* không lấy được -> giữ icon mặc định, không phá header */ });
+  }
+
+  // Đổi ảnh ở trang Quyền riêng tư -> header đổi ngay, không cần tải lại trang.
+  document.addEventListener('avatarchange', function (e) {
+    setAvatar(e && e.detail && e.detail.avatar_url);
+  });
+
   function render(user) {
+    loadAvatar(user);
     if (user) {
       var nm = nameOf(user);
       greet.textContent = 'Xin chào, ' + nm;
-      greet.hidden = hideGreeting;   // index + search: ẩn lời chào, các trang khác vẫn hiện
+      applyGreet(user);   // ẩn ở index/search/chính sách, hoặc khi đã có avatar
       pop.innerHTML =
         '<div class="acct-pop-name">' + escapeHtml(nm) + '</div>' +
         '<button type="button" class="acct-pop-btn" data-act="profile" role="menuitem">Thông tin tài khoản</button>' +
@@ -215,6 +283,13 @@
         'box-shadow:0 10px 30px rgba(14,14,14,.15);padding:6px;' +
         'font-family:var(--font-ui,\'Jost\',sans-serif);}' +
       '.acct-pop[hidden]{display:none;}' +
+      // Ảnh đại diện tròn thay chỗ icon người. Kích thước cố định để header không nhảy
+      // layout lúc ảnh vừa tải xong.
+      '.user-avatar{display:block;width:26px;height:26px;border-radius:50%;object-fit:cover;' +
+        'border:1px solid var(--c-line,#e6e3dd);background:var(--c-surface,#f6f4ef);}' +
+      '.user-avatar[hidden]{display:none;}' +
+      // Có ảnh -> giấu icon người, header chỉ còn ảnh tròn.
+      '[aria-label="Tài khoản"].has-avatar .fa{display:none;}' +
       '.acct-greet{font-family:var(--font-ui,\'Jost\',sans-serif);font-size:13px;' +
         'color:var(--c-muted,#6b6b6b);margin-right:12px;white-space:nowrap;}' +
       '.acct-greet[hidden]{display:none;}' +
