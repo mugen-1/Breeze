@@ -1797,6 +1797,14 @@
                 }
             }
 
+            // Đọc cho screen reader qua #privacy-live — vùng aria-live CÓ SẴN trong DOM.
+            // Tin cậy hơn role="alert" của toast (toast là element mới chèn vào, một số
+            // screen reader bỏ qua). Bắn cho CẢ thành công lẫn thất bại để không lệch kênh.
+            function announce(msg) {
+                var live = document.getElementById('privacy-live');
+                if (live) live.textContent = msg;
+            }
+
             function setAvatarBusy(busy) {
                 var btn = document.getElementById('avatar-pick');
                 var block = document.querySelector('.avatar-block');
@@ -1813,10 +1821,12 @@
                 // Kiểm tra phía client CHỈ để phản hồi nhanh cho người dùng —
                 // KHÔNG thay thế validate của server (server đọc magic bytes + chặn 2MB).
                 if (AVATAR_TYPES.indexOf(file.type) < 0) {
+                    announce('Ảnh không hợp lệ: chỉ nhận PNG, JPEG hoặc WEBP');
                     toast('Chỉ nhận ảnh PNG, JPEG hoặc WEBP', false);
                     return;
                 }
                 if (file.size > AVATAR_MAX_BYTES) {
+                    announce('Ảnh vượt quá 2MB, chưa tải lên');
                     toast('Ảnh vượt quá 2MB', false);
                     return;
                 }
@@ -1841,14 +1851,15 @@
                         if (!out.ok) {
                             _releaseObjUrl();
                             showAvatar(prevUrl);    // trả về ảnh cũ, không để preview sai sự thật
-                            toast((out.data && out.data.message) || 'Không tải được ảnh lên', false);
+                            var msg = (out.data && out.data.message) || 'Không tải được ảnh lên';
+                            announce(msg);
+                            toast(msg, false);
                             return;
                         }
                         _avatarUrl = out.data.avatar_url || null;
                         showAvatar(_avatarUrl);
                         _releaseObjUrl();           // revoke SAU khi đã đổi sang URL thật
-                        var live = document.getElementById('privacy-live');
-                        if (live) live.textContent = 'Đã cập nhật ảnh đại diện';
+                        announce('Đã cập nhật ảnh đại diện');
                         toast('Đã cập nhật ảnh đại diện');
                         // Báo cho header đổi avatar ngay, không cần tải lại trang.
                         // Phần header dựng ở Phase 4 sẽ lắng nghe sự kiện này.
@@ -1860,6 +1871,7 @@
                         _releaseObjUrl();
                         showAvatar(prevUrl);
                         console.error('[profile] upload avatar lỗi:', err);
+                        announce('Không tải được ảnh lên');
                         toast('Không tải được ảnh lên', false);
                     })
                     .then(function () { setAvatarBusy(false); });
