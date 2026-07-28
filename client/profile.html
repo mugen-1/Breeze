@@ -530,6 +530,42 @@
         }
 
         /* ===== Mục "Quyền riêng tư": 3 toggle tự lưu + vùng xoá tài khoản ===== */
+        /* ---- Ảnh đại diện (đặt trên nhóm toggle) ---- */
+        .avatar-block {
+            display: flex; align-items: center; gap: 20px;
+            padding: 4px 0 22px; border-bottom: 1px solid var(--c-line);
+        }
+        .avatar-preview-wrap { position: relative; flex: 0 0 auto; width: 84px; height: 84px; }
+        /* Ảnh và icon chồng đúng một ô -> đổi qua lại không làm nhảy layout */
+        .avatar-preview, .avatar-fallback {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            border-radius: 50%; border: 1px solid var(--c-line); box-sizing: border-box;
+        }
+        .avatar-preview { object-fit: cover; display: block; background: var(--c-surface); }
+        .avatar-fallback {
+            display: flex; align-items: center; justify-content: center;
+            background: var(--c-surface); color: var(--c-muted); font-size: 32px;
+        }
+        .avatar-preview[hidden], .avatar-fallback[hidden] { display: none; }
+        .avatar-block-main { flex: 1; min-width: 0; }
+        .avatar-pick-btn {
+            margin-top: 10px; appearance: none; -webkit-appearance: none;
+            font-family: var(--font-ui); font-size: 13px; letter-spacing: .04em;
+            color: var(--c-ink); background: transparent;
+            border: 1px solid var(--c-ink); border-radius: 999px;
+            padding: 8px 18px; cursor: pointer;
+            transition: background-color .2s var(--ease, ease), color .2s var(--ease, ease);
+        }
+        .avatar-pick-btn:hover { background: var(--c-ink); color: var(--c-bg); }
+        .avatar-pick-btn:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 3px; }
+        .avatar-pick-btn[disabled] { opacity: .55; cursor: progress; }
+        .avatar-block.is-busy .avatar-preview { opacity: .55; }
+        @media (max-width: 560px) {
+            .avatar-block { gap: 14px; }
+            .avatar-preview-wrap { width: 64px; height: 64px; }
+            .avatar-fallback { font-size: 24px; }
+        }
+
         .privacy-row {
             display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
             padding: 18px 0; border-bottom: 1px solid var(--c-line);
@@ -953,8 +989,33 @@
 
                 <section class="settings-section" id="section-privacy" aria-labelledby="title-privacy">
                     <h2 class="settings-section-title" id="title-privacy">Quyền riêng tư</h2>
-                    <p class="settings-desc">Kiểm soát cách Breeze sử dụng thông tin của bạn. Thay đổi được lưu ngay.</p>
+                    <p class="settings-desc"></p>
                     <p class="sr-only" id="privacy-live" role="status" aria-live="polite"></p>
+
+                    <div class="avatar-block">
+                        <span class="avatar-preview-wrap">
+                            <!-- Chưa có ảnh -> ẩn img, hiện icon người mặc định.
+                                 onerror cũng rơi về icon: ảnh có thể 404 trong khoảnh khắc
+                                 vừa đổi avatar (file cũ đã bị dọn). -->
+                            <img id="avatar-preview" class="avatar-preview" alt="Ảnh đại diện của bạn" hidden>
+                            <span id="avatar-fallback" class="avatar-fallback">
+                                <i class="fa fa-user" aria-hidden="true"></i>
+                            </span>
+                        </span>
+                        <div class="avatar-block-main">
+                            <p class="privacy-row-title" id="pv-lbl-avatar">Ảnh đại diện</p>
+                            <p class="privacy-row-desc">
+                                Ảnh hiện cạnh biểu tượng tài khoản trên mọi trang.
+                                Định dạng PNG, JPEG hoặc WEBP, tối đa 2MB.
+                            </p>
+                            <button type="button" class="avatar-pick-btn" id="avatar-pick"
+                                    aria-describedby="pv-lbl-avatar">Chọn ảnh</button>
+                            <!-- Bấm "Chọn ảnh" mở luôn trình chọn file của máy -->
+                            <input type="file" id="avatar-input" hidden
+                                   accept="image/png,image/jpeg,image/webp"
+                                   aria-label="Chọn ảnh đại diện từ máy của bạn">
+                        </div>
+                    </div>
 
                     <div id="privacy-rows">
                         <div class="privacy-row">
@@ -981,17 +1042,6 @@
                             </span>
                         </div>
 
-                        <div class="privacy-row">
-                            <div class="privacy-row-main">
-                                <p class="privacy-row-title" id="pv-lbl-perso">Cá nhân hoá</p>
-                                <p class="privacy-row-desc">Dùng lịch sử mua hàng để gợi ý sản phẩm phù hợp hơn với bạn.</p>
-                            </div>
-                            <span class="privacy-switch">
-                                <input type="checkbox" id="pv-allow_data_personalization" data-privacy="allow_data_personalization"
-                                       aria-labelledby="pv-lbl-perso">
-                                <span class="privacy-track" aria-hidden="true"></span>
-                            </span>
-                        </div>
                     </div>
 
                     <div class="danger-zone">
@@ -1270,6 +1320,10 @@
                 setVal('ad-dob', u.dob ? String(u.dob).slice(0, 10) : '');   // ISO -> YYYY-MM-DD
                 setVal('ad-gender', u.gender || '');
                 setVal('ad-country', u.country || '');
+                // Dùng luôn dữ liệu /api/me, không gọi thêm API. Nhớ giữ lại URL hiện tại
+                // để khi upload lỗi còn trả preview về đúng ảnh cũ.
+                _avatarUrl = u.avatar_url || null;
+                showAvatar(_avatarUrl);
             }
 
             // Nạp hồ sơ từ server.
@@ -1713,7 +1767,124 @@
                 if (sec === 'privacy') loadPrivacy();
             }
 
-            /* ===== Quyền riêng tư: 3 toggle tự lưu (PATCH từng field) ===== */
+            /* ===== Ảnh đại diện =====
+               Upload: POST /api/me/avatar (multipart, field "avatar").
+               Đọc lại: GET /api/me -> trường avatar_url (đã có sẵn trong fillProfile).
+               Server sinh tên file kèm phiên bản nên URL đổi theo ảnh — KHÔNG cần
+               thêm '?t=' phá cache ở đây. */
+            var AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+            var AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+            var _avatarUrl = null;      // URL đang hiển thị (để rollback khi upload lỗi)
+            var _avatarObjUrl = null;   // object URL của preview tạm, phải revoke kẻo rò bộ nhớ
+
+            function _releaseObjUrl() {
+                if (_avatarObjUrl) { URL.revokeObjectURL(_avatarObjUrl); _avatarObjUrl = null; }
+            }
+
+            // Không có ảnh -> hiện icon người mặc định.
+            function showAvatar(url) {
+                var img = document.getElementById('avatar-preview');
+                var fb = document.getElementById('avatar-fallback');
+                if (!img || !fb) return;
+                if (url) {
+                    img.src = url;
+                    img.hidden = false;
+                    fb.hidden = true;
+                } else {
+                    img.hidden = true;
+                    img.removeAttribute('src');
+                    fb.hidden = false;
+                }
+            }
+
+            function setAvatarBusy(busy) {
+                var btn = document.getElementById('avatar-pick');
+                var block = document.querySelector('.avatar-block');
+                if (btn) btn.disabled = !!busy;
+                if (block) block.classList.toggle('is-busy', !!busy);
+            }
+
+            function onAvatarPicked(e) {
+                var input = e.target;
+                var file = input.files && input.files[0];
+                input.value = '';   // reset để chọn LẠI đúng file đó vẫn kích hoạt change
+                if (!file) return;
+
+                // Kiểm tra phía client CHỈ để phản hồi nhanh cho người dùng —
+                // KHÔNG thay thế validate của server (server đọc magic bytes + chặn 2MB).
+                if (AVATAR_TYPES.indexOf(file.type) < 0) {
+                    toast('Chỉ nhận ảnh PNG, JPEG hoặc WEBP', false);
+                    return;
+                }
+                if (file.size > AVATAR_MAX_BYTES) {
+                    toast('Ảnh vượt quá 2MB', false);
+                    return;
+                }
+
+                var prevUrl = _avatarUrl;
+                _releaseObjUrl();
+                _avatarObjUrl = URL.createObjectURL(file);
+                showAvatar(_avatarObjUrl);          // preview tạm ngay, chưa chờ server
+                setAvatarBusy(true);
+
+                // apiFetch tự đính Bearer token; body là FormData nên nó KHÔNG set
+                // Content-Type (để trình duyệt tự sinh boundary).
+                var fd = new FormData();
+                fd.append('avatar', file);
+
+                window.AuthHelper.apiFetch('/api/me/avatar', { method: 'POST', body: fd })
+                    .then(function (r) {
+                        return r.json().catch(function () { return {}; })
+                            .then(function (j) { return { ok: r.ok, data: j }; });
+                    })
+                    .then(function (out) {
+                        if (!out.ok) {
+                            _releaseObjUrl();
+                            showAvatar(prevUrl);    // trả về ảnh cũ, không để preview sai sự thật
+                            toast((out.data && out.data.message) || 'Không tải được ảnh lên', false);
+                            return;
+                        }
+                        _avatarUrl = out.data.avatar_url || null;
+                        showAvatar(_avatarUrl);
+                        _releaseObjUrl();           // revoke SAU khi đã đổi sang URL thật
+                        var live = document.getElementById('privacy-live');
+                        if (live) live.textContent = 'Đã cập nhật ảnh đại diện';
+                        toast('Đã cập nhật ảnh đại diện');
+                        // Báo cho header đổi avatar ngay, không cần tải lại trang.
+                        // Phần header dựng ở Phase 4 sẽ lắng nghe sự kiện này.
+                        document.dispatchEvent(new CustomEvent('avatarchange', {
+                            detail: { avatar_url: _avatarUrl },
+                        }));
+                    })
+                    .catch(function (err) {
+                        _releaseObjUrl();
+                        showAvatar(prevUrl);
+                        console.error('[profile] upload avatar lỗi:', err);
+                        toast('Không tải được ảnh lên', false);
+                    })
+                    .then(function () { setAvatarBusy(false); });
+            }
+
+            function initAvatar() {
+                var btn = document.getElementById('avatar-pick');
+                var input = document.getElementById('avatar-input');
+                var img = document.getElementById('avatar-preview');
+                if (btn && input) {
+                    btn.addEventListener('click', function () { input.click(); });
+                    input.addEventListener('change', onAvatarPicked);
+                }
+                // Ảnh hỏng/404 (vd vừa đổi avatar, file cũ đã bị dọn) -> về icon mặc định.
+                if (img) {
+                    img.addEventListener('error', function () {
+                        if (img.hidden) return;
+                        var fb = document.getElementById('avatar-fallback');
+                        img.hidden = true;
+                        if (fb) fb.hidden = false;
+                    });
+                }
+            }
+
+            /* ===== Quyền riêng tư: 2 toggle tự lưu (PATCH từng field) ===== */
             var _privacyLoaded = false;
 
             function privacyInputs() {
@@ -1856,6 +2027,8 @@
             function bindPrivacy() {
                 var rows = byId('privacy-rows');
                 if (rows) rows.addEventListener('change', onPrivacyToggle);
+
+                initAvatar();   // nút "Chọn ảnh" + input file + fallback khi ảnh lỗi
 
                 var btn = byId('btn-delete-account');
                 if (btn) btn.addEventListener('click', openDelModal);
