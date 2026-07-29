@@ -531,11 +531,15 @@
 
         /* ===== Mục "Quyền riêng tư": 3 toggle tự lưu + vùng xoá tài khoản ===== */
         /* ---- Ảnh đại diện (đặt trên nhóm toggle) ---- */
+        /* padding-bottom 18px = đúng nhịp dọc của .privacy-row bên dưới, để khối avatar
+           và các hàng toggle trông như cùng một danh sách chứ không rời rạc. */
         .avatar-block {
             display: flex; align-items: center; gap: 20px;
-            padding: 4px 0 22px; border-bottom: 1px solid var(--c-line);
+            padding: 0 0 18px; border-bottom: 1px solid var(--c-line);
         }
-        .avatar-preview-wrap { position: relative; flex: 0 0 auto; width: 84px; height: 84px; }
+        /* 96px: cột chữ bên phải cao 108px, ảnh 84px để lại 12px hụt trên/dưới trông lỏng;
+           96px lấp gần kín mà KHÔNG làm khối cao thêm (chiều cao vẫn do cột chữ quyết định). */
+        .avatar-preview-wrap { position: relative; flex: 0 0 auto; width: 96px; height: 96px; }
         /* Ảnh và icon chồng đúng một ô -> đổi qua lại không làm nhảy layout */
         .avatar-preview, .avatar-fallback {
             position: absolute; inset: 0; width: 100%; height: 100%;
@@ -544,7 +548,7 @@
         .avatar-preview { object-fit: cover; display: block; background: var(--c-surface); }
         .avatar-fallback {
             display: flex; align-items: center; justify-content: center;
-            background: var(--c-surface); color: var(--c-muted); font-size: 32px;
+            background: var(--c-surface); color: var(--c-muted); font-size: 36px;
         }
         .avatar-preview[hidden], .avatar-fallback[hidden] { display: none; }
         .avatar-block-main { flex: 1; min-width: 0; }
@@ -597,7 +601,8 @@
 
         /* Vùng nguy hiểm: viền đỏ nhạt để tách hẳn khỏi các thao tác thường */
         .danger-zone {
-            margin-top: 34px; padding: 20px; border: 1px solid #e0c2c2;
+            /* 34px + padding-bottom 18px của hàng toggle cuối = khoảng trống ~52px, nhìn hụt hẫng */
+            margin-top: 22px; padding: 20px; border: 1px solid #e0c2c2;
             border-radius: 10px; background: rgba(160, 40, 40, .04);
         }
         .danger-zone-title {
@@ -989,7 +994,6 @@
 
                 <section class="settings-section" id="section-privacy" aria-labelledby="title-privacy">
                     <h2 class="settings-section-title" id="title-privacy">Quyền riêng tư</h2>
-                    <p class="settings-desc"></p>
                     <p class="sr-only" id="privacy-live" role="status" aria-live="polite"></p>
 
                     <div class="avatar-block">
