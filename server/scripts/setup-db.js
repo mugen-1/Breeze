@@ -1,8 +1,8 @@
 /*
  * setup-db.js — dựng lại TOÀN BỘ database BreezeShopDB đúng thứ tự.
  *
- * Chạy:  node setup-db.js
- * (đặt ở thư mục gốc project, cạnh thư mục server/. Cần server/.env đã cấu hình.)
+ * Chạy (từ thư mục gốc project):  node server/scripts/setup-db.js
+ * (Cần server/.env đã cấu hình.)
  *
  * VÌ SAO CẦN FILE NÀY:
  *   Thư mục server/db/migrations/ hiện có 17 file, trong đó 6 file đã đánh số
@@ -25,7 +25,8 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = __dirname;
+// File nằm ở server/scripts/ nên phải lùi 2 cấp mới ra thư mục gốc project.
+const ROOT = path.join(__dirname, '..', '..');
 const SERVER = path.join(ROOT, 'server');
 // MẶC ĐỊNH = AN TOÀN: chỉ chạy migration, KHÔNG đụng dữ liệu.
 // Muốn dựng lại từ đầu (XOÁ SẠCH) phải khai báo rõ --fresh.
@@ -159,7 +160,7 @@ cleanupTmp();
 console.log('='.repeat(70));
 console.log(`[setup] XONG: ${done} bước chạy, ${skipped} bước bỏ qua.`);
 if (!FRESH) {
-  console.log('[setup] (Đã chạy ở chế độ an toàn. Muốn dựng lại từ đầu: node setup-db.js --fresh)');
+  console.log('[setup] (Đã chạy ở chế độ an toàn. Muốn dựng lại từ đầu: node server/scripts/setup-db.js --fresh)');
 }
 console.log('[setup] Kiểm tra lại:  cd server && node db/verify.js');
 console.log('[setup] Cấp quyền admin: cd server && node db/set-role.js <email> admin');
