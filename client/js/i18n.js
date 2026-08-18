@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
     var STORAGE_KEY = 'ql_lang';
     var DEFAULT = 'en';
 
