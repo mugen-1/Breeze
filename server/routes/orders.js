@@ -12,7 +12,9 @@ const express = require('express');
 const router = express.Router();
 const { getPool, sql } = require('../db');
 const { verifyFirebaseToken } = require('../middleware/auth');
-const { getVoucher, calcDiscount, isFirstTimeCustomer } = require('../config/vouchers');
+const {
+  getVoucher, calcDiscount, isFirstTimeCustomer, needsCustomerHistory, checkEligibility,
+} = require('../config/vouchers');
 
 const EFFECTIVE_PRICE =
   '(CASE WHEN p.sale_price IS NOT NULL THEN p.sale_price ELSE p.price END)';
@@ -109,20 +111,23 @@ router.post('/', async (req, res) => {
     let voucherDropped = false;
     if (rawVoucher != null && String(rawVoucher).trim() !== '') {
       const voucher = getVoucher(rawVoucher);
-      let ok = !!voucher;
       // KIỂM TRA LẠI điều kiện tại thời điểm đặt — KHÔNG tin kết quả validate trước đó.
       // Giữa lúc khách bấm "Áp dụng" và lúc bấm "Đặt hàng" có thể trôi qua vài phút,
       // trong khoảng đó điều kiện có thể đã đổi (vd: khách vừa hoàn tất 1 đơn ở tab khác
-      // -> không còn là khách mua lần đầu). Dùng cùng logic với routes/vouchers.js.
-      if (ok && voucher.firstOrderOnly) {
-        ok = await isFirstTimeCustomer(req.user.id, pool);
-      }
-      if (ok && totalAmount < voucher.minSubtotal) ok = false;
-      if (ok) {
+      // -> không còn là khách mua lần đầu; hoặc giỏ đổi số lượng -> lệch khoảng mã).
+      // Dùng CHUNG checkEligibility với routes/vouchers.js để 2 nơi không lệch luật.
+      const itemCount = rows.reduce((s, r) => s + r.quantity, 0);
+      const isFirstTime = needsCustomerHistory(voucher)
+        ? await isFirstTimeCustomer(req.user.id, pool)
+        : false;
+      const check = checkEligibility(voucher, { subtotal: totalAmount, itemCount, isFirstTime });
+      if (check.ok) {
         voucherCode = voucher.code;
         discountAmount = calcDiscount(voucher, totalAmount);
       } else {
         voucherDropped = true; // mã sai / điều kiện không thoả lúc đặt -> bỏ voucher, báo frontend
+        console.warn('[orders] voucher DROPPED %s uid=%s code=%j items=%s',
+          check.reason, req.user.id, rawVoucher, itemCount);
       }
     }
     const finalTotal = Math.max(0, totalAmount - discountAmount); // shippingFee = 0 (Miễn phí)

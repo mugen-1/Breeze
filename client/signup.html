@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title></title>
+    <title>Tạo Tài Khoản - BREEZE</title>
     <script>(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" type="text/css" href="css/global.css">
@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
 </head>
-<body class="sitehdr">
+<body class="sitehdr" data-i18n-doctitle="au.signupDocTitle">
     <div class="policy-header">
         <button type="button" class="ph-menu" data-drawer-open aria-controls="drawer-menu" aria-expanded="false">
             <i class="fa fa-bars" aria-hidden="true"></i> <span class="ph-menu-label">Danh Mục</span>
@@ -91,8 +91,8 @@
 
             <!-- TABS: Sign in | Create Account -->
             <div class="auth-tabs">
-                <a href="login.html" class="auth-tab">Sign in</a>
-                <span class="auth-tab active">Create Account</span>
+                <a href="login.html" class="auth-tab" data-i18n="au.tabSignin">Sign in</a>
+                <span class="auth-tab active" data-i18n="au.tabSignup">Create Account</span>
             </div>
 
             <!-- FORM DANG KY -->
@@ -103,7 +103,7 @@
                     <input id="reg-name"
                            class="auth-input"
                            type="text"
-                           placeholder="* FULL NAME"
+                           placeholder="* FULL NAME" data-i18n-ph="au.phFullname"
                            required/>
                 </div>
 
@@ -112,7 +112,7 @@
                     <input id="reg-email"
                            class="auth-input"
                            type="email"
-                           placeholder="* EMAIL ADDRESS"
+                           placeholder="* EMAIL ADDRESS" data-i18n-ph="au.phEmail"
                            required/>
                 </div>
 
@@ -121,7 +121,7 @@
                     <input id="reg-password"
                            class="auth-input"
                            type="password"
-                           placeholder="* PASSWORD (At least 6 characters)"
+                           placeholder="* PASSWORD (At least 6 characters)" data-i18n-ph="au.phPassword6"
                            required/>
                 </div>
 
@@ -130,27 +130,27 @@
                     <input id="reg-confirm"
                            class="auth-input"
                            type="password"
-                           placeholder="* CONFIRM PASSWORD"
+                           placeholder="* CONFIRM PASSWORD" data-i18n-ph="au.phConfirm"
                            required/>
                 </div>
 
                 <!-- REQUIRED NOTE -->
                 <div class="auth-meta-row">
                     <span></span>
-                    <span class="auth-required">* Required</span>
+                    <span class="auth-required" data-i18n="au.required">* Required</span>
                 </div>
 
                 <!-- THONG BAO LOI / THANH CONG -->
                 <p id="signup-msg" class="auth-msg"></p>
 
                 <!-- NUT CREATE ACCOUNT -->
-                <button type="submit" class="auth-btn">CREATE ACCOUNT</button>
+                <button type="submit" class="auth-btn" data-i18n="au.btnSignup">CREATE ACCOUNT</button>
 
             </form>
 
             <!-- OR DIVIDER -->
             <div class="auth-divider">
-                <hr><span>OR</span><hr>
+                <hr><span data-i18n="au.or">OR</span><hr>
             </div>
 
             <!-- SOCIAL BUTTONS (trang tri) -->
@@ -210,6 +210,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="js/firebase-config.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api-config.js"></script>
     <script src="js/auth-helper.js"></script>
@@ -217,7 +218,6 @@
     <script src="js/cart.js"></script>
     <script src="js/cart-drawer.js"></script>
     <script src="js/drawer-menu.js"></script>
-    <script src="js/i18n.js"></script>
     <script src="js/reveal.js"></script>
 </body>
 </html>

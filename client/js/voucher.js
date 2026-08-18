@@ -10,6 +10,9 @@
     if (!block) return; // không phải trang checkout -> bỏ qua (file dùng chung)
 
     function id(x) { return document.getElementById(x); }
+    function t(key, params) {
+        return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
+    }
     var lineBtn = id('voucher-line');   // dòng "Giảm giá" — vừa hiển thị số vừa là nút mở/đóng panel
     var input = id('voucher-code');
     var applyBtn = id('voucher-apply');
@@ -63,10 +66,10 @@
             signal: signal
         }).then(function (res) {
             if (res.status === 429) {
-                return { valid: false, reason: 'RATE', message: 'Bạn thử mã quá nhiều lần, vui lòng đợi một phút.' };
+                return { valid: false, reason: 'RATE', message: t('co.vcRate') };
             }
             return res.json().catch(function () {
-                return { valid: false, reason: 'ERR', message: 'Không kiểm tra được mã.' };
+                return { valid: false, reason: 'ERR', message: t('co.vcCheckErr') };
             });
         });
     }
@@ -106,17 +109,17 @@
             if (normalize(input.value) !== code) return;   // input đã đổi -> bỏ
             if (data && data.valid) {
                 setWrapClass('is-valid');
-                setMsg('Mã hợp lệ · giảm ' + money(data.discountAmount) + '. Nhấn Áp dụng.', 'ok');
+                setMsg(t('co.vcOk', { amount: money(data.discountAmount) }), 'ok');
             } else {
                 setWrapClass('is-invalid');
-                setMsg((data && data.message) || 'Mã giảm giá không hợp lệ', 'err');
+                setMsg((data && data.message) || t('co.vcInvalid'), 'err');
             }
         }).catch(function (err) {
             if (err && err.name === 'AbortError') return;  // huỷ có chủ đích -> im lặng
             if (liveCtrl !== ctrl) return;
             liveCtrl = null;
             setWrapClass('');
-            setMsg('Không kiểm tra được mã, vui lòng thử lại.', 'err');
+            setMsg(t('co.vcCheckRetry'), 'err');
         });
     }
 
@@ -140,13 +143,13 @@
                 try { removeBtn.focus(); } catch (e) {}
             } else {
                 setWrapClass('is-invalid');
-                setMsg((data && data.message) || 'Mã giảm giá không hợp lệ', 'err');
+                setMsg((data && data.message) || t('co.vcInvalid'), 'err');
                 updateApplyDisabled();
             }
         }).catch(function () {
             busy = false;
             setWrapClass('');
-            setMsg('Không áp dụng được mã, vui lòng thử lại.', 'err');
+            setMsg(t('co.vcApplyErr'), 'err');
             updateApplyDisabled();
         });
     }
@@ -157,7 +160,7 @@
         };
         if (data.subtotal != null) curSubtotal = Math.round(data.subtotal);
         chipCode.textContent = applied.code;
-        removeBtn.setAttribute('aria-label', 'Xoá mã giảm giá ' + applied.code);
+        removeBtn.setAttribute('aria-label', t('co.voucherRemove') + ' ' + applied.code);
         try { sessionStorage.setItem(SS_KEY, applied.code); } catch (e) {}  // LƯU DUY NHẤT mã
     }
 

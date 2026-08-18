@@ -7,6 +7,7 @@
     <!-- Hoá đơn LUÔN nền sáng (in ra giấy), bỏ qua breeze-theme của user. -->
     <script>document.documentElement.setAttribute('data-theme','light');</script>
     <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
@@ -125,41 +126,42 @@
         }
     </style>
 </head>
-<body>
+<body data-i18n-doctitle="inv.docTitle">
     <div class="inv-actions" id="inv-actions" hidden>
-        <button type="button" class="inv-btn ghost" onclick="window.close()">Đóng</button>
-        <button type="button" class="inv-btn" onclick="window.print()">In hoá đơn</button>
+        <div id="lang-switcher-host"></div>
+        <button type="button" class="inv-btn ghost" onclick="window.close()" data-i18n="com.close">Đóng</button>
+        <button type="button" class="inv-btn" onclick="window.print()" data-i18n="inv.print">In hoá đơn</button>
     </div>
 
     <div class="inv-sheet">
-        <div class="inv-state" id="inv-state">Đang tải hoá đơn…</div>
+        <div class="inv-state" id="inv-state" data-i18n="inv.loading">Đang tải hoá đơn…</div>
 
         <div id="inv-content" hidden>
             <div class="inv-shop">
                 <h1 class="inv-shop-name">BREEZE</h1>
-                <p>Địa chỉ: 1 Nguyễn Huệ, Quận 1, TP.HCM</p>
-                <p>ĐT: 0123456789</p>
+                <p data-i18n="inv.shopAddr">Địa chỉ: 1 Nguyễn Huệ, Quận 1, TP.HCM</p>
+                <p data-i18n="inv.shopTel">ĐT: 0123456789</p>
             </div>
 
             <hr class="inv-rule">
 
-            <h2 class="inv-title">Hoá đơn thanh toán</h2>
+            <h2 class="inv-title" data-i18n="inv.title">Hoá đơn thanh toán</h2>
 
             <div class="inv-meta">
-                <p><span class="lbl">Khách hàng:</span> <span id="inv-customer"></span></p>
-                <p><span class="lbl">Số điện thoại:</span> <span id="inv-phone"></span></p>
-                <p><span class="lbl">Địa chỉ:</span> <span id="inv-address"></span></p>
-                <p><span class="lbl">Ngày lập HĐ:</span> <span id="inv-date" class="num"></span></p>
-                <p><span class="lbl">Mã đơn:</span> <span id="inv-id" class="num"></span></p>
+                <p><span class="lbl" data-i18n="inv.customer">Khách hàng:</span> <span id="inv-customer"></span></p>
+                <p><span class="lbl" data-i18n="inv.phone">Số điện thoại:</span> <span id="inv-phone"></span></p>
+                <p><span class="lbl" data-i18n="inv.address">Địa chỉ:</span> <span id="inv-address"></span></p>
+                <p><span class="lbl" data-i18n="inv.date">Ngày lập HĐ:</span> <span id="inv-date" class="num"></span></p>
+                <p><span class="lbl" data-i18n="inv.orderNo">Mã đơn:</span> <span id="inv-id" class="num"></span></p>
             </div>
 
             <table class="inv-items">
                 <thead>
                     <tr>
-                        <th scope="col">Sản phẩm</th>
-                        <th scope="col" class="col-qty">SL</th>
-                        <th scope="col" class="col-price">Đơn giá</th>
-                        <th scope="col" class="col-total">Thành tiền</th>
+                        <th scope="col" data-i18n="inv.colProduct">Sản phẩm</th>
+                        <th scope="col" class="col-qty" data-i18n="inv.colQty">SL</th>
+                        <th scope="col" class="col-price" data-i18n="inv.colPrice">Đơn giá</th>
+                        <th scope="col" class="col-total" data-i18n="inv.colTotal">Thành tiền</th>
                     </tr>
                 </thead>
                 <tbody id="inv-items"></tbody>
@@ -167,43 +169,38 @@
 
             <div class="inv-sum">
                 <div class="inv-sum-row">
-                    <span class="lbl">Tạm tính:</span>
+                    <span class="lbl" data-i18n="inv.subtotal">Tạm tính:</span>
                     <span class="num" id="inv-subtotal"></span>
                 </div>
                 <!-- Dòng giảm giá chỉ hiện khi đơn có áp voucher -->
                 <div class="inv-sum-row" id="inv-discount-row" hidden>
-                    <span class="lbl" id="inv-discount-label">Giảm giá:</span>
+                    <span class="lbl" id="inv-discount-label" data-i18n="inv.discount">Giảm giá:</span>
                     <span class="num" id="inv-discount"></span>
                 </div>
                 <div class="inv-sum-row total">
-                    <span>Tổng tiền:</span>
+                    <span data-i18n="inv.total">Tổng tiền:</span>
                     <span class="num" id="inv-total"></span>
                 </div>
             </div>
 
-            <p class="inv-pay"><span class="lbl">Hình thức thanh toán:</span> <span id="inv-payment"></span></p>
+            <p class="inv-pay"><span class="lbl" data-i18n="inv.payMethod">Hình thức thanh toán:</span> <span id="inv-payment"></span></p>
 
-            <p class="inv-thanks">Cảm ơn quý khách, hẹn gặp lại!</p>
+            <p class="inv-thanks" data-i18n="inv.thanks">Cảm ơn quý khách, hẹn gặp lại!</p>
         </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="js/firebase-config.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/api-config.js"></script>
     <script src="js/auth-helper.js"></script>
-    <script>
-    /* invoice.html — trang in hoá đơn 1 đơn hàng (HTML thuần, in bằng trình duyệt).
-       - Dữ liệu lấy từ API admin THẬT, KHÔNG hardcode: dùng lại GET /api/admin/orders?q=<id>
-         (search theo mã đơn khớp CHÍNH XÁC) — đã trả đủ khách/địa chỉ/items/voucher/thanh toán,
-         nên không cần thêm route mới.
-       - Route đó nằm trong router bọc verifyFirebaseToken + requireAdmin => trang này phải
-         đăng nhập admin mới xem được (token đính qua AuthHelper.apiFetch, KHÔNG để lộ trên URL). */
+    <script> 
     (function () {
         'use strict';
         var $ = function (id) { return document.getElementById(id); };
         // Đồng bộ đúng nhãn với admin.js / UI checkout.
-        var PAYMENT_LABEL = { visa: 'Thẻ Visa', mastercard: 'Thẻ Mastercard', cod: 'Tiền mặt (COD)', momo: 'Ví MoMo' };
+        function t(k, p) { return (window.__i18n && window.__i18n.t) ? window.__i18n.t(k, p) : k; }
 
         function money(n) { return Number(n || 0).toLocaleString('vi-VN') + 'đ'; }
         function pad2(n) { return String(n).padStart(2, '0'); }
@@ -227,9 +224,12 @@
             return raw;
         }
 
+        var _order = null;                  // đơn đang hiển thị -> dựng lại khi đổi VI/EN
         function render(o) {
-            document.title = 'Hoá đơn #' + o.id + ' - BREEZE';
-            $('inv-customer').textContent = o.shipping_name || o.user_name || o.user_email || ('Khách #' + o.user_id);
+            _order = o;
+            document.title = t('inv.docTitleN', { id: o.id });
+            $('inv-customer').textContent = o.shipping_name || o.user_name || o.user_email
+                || t('inv.guest', { id: o.user_id });
             $('inv-phone').textContent = o.shipping_phone || '—';
             $('inv-address').textContent = o.shipping_address || '—';
             $('inv-date').textContent = fmtDateVN(o.created_at);
@@ -245,7 +245,7 @@
                         '<td class="col-total num">' + money(it.line_total) + '</td>' +
                     '</tr>';
                 }).join('')
-                : '<tr><td colspan="4" style="text-align:center;color:#6b6b6b;">(không có dòng hàng)</td></tr>';
+                : '<tr><td colspan="4" style="text-align:center;color:#6b6b6b;">' + t('inv.noLines') + '</td></tr>';
 
             // Tạm tính = tổng line_total của items; Tổng tiền lấy total_amount THẬT từ DB (đã trừ giảm).
             var subtotal = items.reduce(function (s, it) { return s + Number(it.line_total || 0); }, 0);
@@ -254,12 +254,12 @@
             if (discount > 0 || o.voucher_code) {
                 $('inv-discount-row').hidden = false;
                 $('inv-discount-label').textContent = o.voucher_code
-                    ? 'Giảm giá (' + o.voucher_code + '):'
-                    : 'Giảm giá:';
+                    ? t('inv.discountCode', { code: o.voucher_code })
+                    : t('inv.discount');
                 $('inv-discount').textContent = '−' + money(discount);
             }
             $('inv-total').textContent = money(o.total_amount);
-            $('inv-payment').textContent = PAYMENT_LABEL[o.payment_method] || '—';
+            $('inv-payment').textContent = o.payment_method ? t('pay.' + o.payment_method) : '—';
 
             $('inv-state').hidden = true;
             $('inv-content').hidden = false;
@@ -274,11 +274,11 @@
 
         function load(user) {
             if (!user) {
-                showState('Bạn cần đăng nhập tài khoản quản trị để xem hoá đơn.<br><a href="login.html">Đăng nhập</a>');
+                showState(t('inv.needLogin') + '<br><a href="login.html">' + t('com.signin') + '</a>');
                 return;
             }
             var id = getOrderId();
-            if (!id) { showState('Thiếu hoặc sai mã đơn trên đường dẫn (?orderId=...).'); return; }
+            if (!id) { showState(t('inv.badId')); return; }
 
             window.AuthHelper.apiFetch('/api/admin/orders?q=' + encodeURIComponent(id) + '&limit=1')
                 .then(function (r) {
@@ -288,14 +288,14 @@
                 })
                 .then(function (data) {
                     var o = (data.orders || [])[0];
-                    if (!o) { showState('Không tìm thấy đơn hàng #' + id + '.'); return; }
+                    if (!o) { showState(t('inv.notFound', { id: id })); return; }
                     render(o);
                 })
                 .catch(function (e) {
                     console.error('[invoice] lỗi:', e);
                     showState(e.message === 'FORBIDDEN'
-                        ? 'Tài khoản của bạn không có quyền xem hoá đơn.'
-                        : 'Không tải được hoá đơn. Vui lòng thử lại.');
+                        ? t('inv.forbidden')
+                        : t('inv.loadErr'));
                 });
         }
 
@@ -303,9 +303,12 @@
             if (window.AuthHelper && typeof window.AuthHelper.onChange === 'function') {
                 window.AuthHelper.onChange(load);
             } else {
-                showState('Không khởi tạo được xác thực. Vui lòng tải lại trang.');
+                showState(t('inv.authErr'));
             }
         });
+
+        // Đổi VI/EN: các nhãn tĩnh do i18n.js lo, phần do JS sinh dựng lại ở đây.
+        document.addEventListener('langchange', function () { if (_order) render(_order); });
     })();
     </script>
 </body>

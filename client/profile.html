@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="css/profile.css">
     <script src="js/theme.js" defer></script>
 </head>
-<body class="sitehdr">
+<body class="sitehdr" data-i18n-doctitle="pf.docTitle">
     <div class="policy-header">
         <button type="button" class="ph-menu" data-drawer-open aria-controls="drawer-menu" aria-expanded="false">
             <i class="fa fa-bars" aria-hidden="true"></i> <span class="ph-menu-label">Danh Mục</span>
@@ -79,7 +79,7 @@
     </aside>
 
     <div id="settings-wrapper">
-        <h1 class="settings-title">Cài Đặt Tài Khoản</h1>
+        <h1 class="settings-title" data-i18n="pf.title">Cài Đặt Tài Khoản</h1>
 
         <!-- Chưa đăng nhập -->
         <div class="settings-notice" id="profile-login" style="display:none;">
@@ -87,9 +87,9 @@
                 <circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/>
                 <path d="M6.5 18.5c1-2.6 3-3.8 5.5-3.8s4.5 1.2 5.5 3.8"/>
             </svg>
-            <span>Vui lòng đăng nhập để xem cài đặt tài khoản.</span>
+            <span data-i18n="pf.needLogin">Vui lòng đăng nhập để xem cài đặt tài khoản.</span>
             <br><br>
-            <a href="login.html?redirect=profile.html">Đăng nhập</a>
+            <a href="login.html?redirect=profile.html" data-i18n="com.signin">Đăng nhập</a>
         </div>
 
         <!-- Lỗi tải -->
@@ -97,52 +97,52 @@
 
         <!-- Shell 2 cột: sidebar trái + panel phải -->
         <div class="settings-grid" id="settings-body" style="display:none;">
-            <nav class="settings-nav" aria-label="Điều hướng cài đặt tài khoản">
+            <nav class="settings-nav" aria-label="Điều hướng cài đặt tài khoản" data-i18n-aria="pf.navAria">
                 <a class="settings-nav-item" href="#account" data-section="account">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"/>
                     </svg>
-                    <span>Chi tiết tài khoản</span>
+                    <span data-i18n="pf.navAccount">Chi tiết tài khoản</span>
                 </a>
                 <a class="settings-nav-item" href="#addresses" data-section="addresses">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>
                     </svg>
-                    <span>Địa chỉ giao hàng</span>
+                    <span data-i18n="pf.navAddresses">Địa chỉ giao hàng</span>
                 </a>
 
                 <a class="settings-nav-item" href="#payments" data-section="payments">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10.5h18"/>
                     </svg>
-                    <span>Phương thức thanh toán</span>
+                    <span data-i18n="pf.navPayments">Phương thức thanh toán</span>
                 </a>
 
                 <a class="settings-nav-item" href="#theme" data-section="theme">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M4 8h8M17 8h3M4 16h3M12 16h8"/><circle cx="14.5" cy="8" r="2.2"/><circle cx="9.5" cy="16" r="2.2"/>
                     </svg>
-                    <span>Giao diện</span>
+                    <span data-i18n="pf.navTheme">Giao diện</span>
                 </a>
 
                 <a class="settings-nav-item" href="#privacy" data-section="privacy">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M12 3l7 3v5c0 4.6-3 8.2-7 10-4-1.8-7-5.4-7-10V6l7-3z"/>
                     </svg>
-                    <span>Quyền riêng tư</span>
+                    <span data-i18n="pf.navPrivacy">Quyền riêng tư</span>
                 </a>
             </nav>
 
             <div class="settings-panel">
                 <section class="settings-section" id="section-account" aria-labelledby="title-account">
-                    <h2 class="settings-section-title" id="title-account">Chi tiết tài khoản</h2>
+                    <h2 class="settings-section-title" id="title-account" data-i18n="pf.navAccount">Chi tiết tài khoản</h2>
 
                     <!-- Khối 1: thông tin sẵn có (read-only, nguồn /api/me) -->
                     <div class="acct-block">
-                        <div class="acct-block-title">Thông tin tài khoản</div>
+                        <div class="acct-block-title" data-i18n="pf.acctInfo">Thông tin tài khoản</div>
                         <div class="acct-fields acct-fields--ro">
                             <div class="acct-field">
-                                <span class="acct-label">Họ tên</span>
+                                <span class="acct-label" data-i18n="pf.fullname">Họ tên</span>
                                 <span class="acct-value" id="ad-name">—</span>
                             </div>
                             <div class="acct-field">
@@ -150,18 +150,18 @@
                                 <span class="acct-value" id="ad-email">—</span>
                             </div>
                             <div class="acct-field">
-                                <span class="acct-label">Mật khẩu</span>
+                                <span class="acct-label" data-i18n="pf.password">Mật khẩu</span>
                                 <span class="acct-value">
                                     <span class="acct-dots" aria-hidden="true">••••••••••</span>
-                                    <a class="acct-edit" href="forgot-password.html">Đổi</a>
+                                    <a class="acct-edit" href="forgot-password.html" data-i18n="pf.change">Đổi</a>
                                 </span>
                             </div>
                             <div class="acct-field">
-                                <span class="acct-label">Ngày tạo tài khoản</span>
+                                <span class="acct-label" data-i18n="pf.createdAt">Ngày tạo tài khoản</span>
                                 <span class="acct-value" id="ad-created">—</span>
                             </div>
                             <div class="acct-field">
-                                <span class="acct-label">Đăng nhập gần nhất</span>
+                                <span class="acct-label" data-i18n="pf.lastLogin">Đăng nhập gần nhất</span>
                                 <span class="acct-value" id="ad-last">—</span>
                             </div>
                         </div>
@@ -169,40 +169,40 @@
 
                     <!-- Khối 2: field cá nhân MỚI — khung UI, để TRỐNG, CHƯA nối backend -->
                     <div class="acct-block">
-                        <div class="acct-block-title">Thông tin cá nhân</div>
+                        <div class="acct-block-title" data-i18n="pf.personalInfo">Thông tin cá nhân</div>
                         <div class="acct-fields">
                             <div class="acct-field">
-                                <label class="acct-label" for="ad-phone">Số điện thoại</label>
+                                <label class="acct-label" for="ad-phone" data-i18n="pf.phone">Số điện thoại</label>
                                 <input class="acct-input" id="ad-phone" type="tel" inputmode="tel"
-                                       placeholder="Chưa cập nhật" autocomplete="tel">
+                                       placeholder="Chưa cập nhật" data-i18n-ph="pf.notSet" autocomplete="tel">
                             </div>
                             <div class="acct-field">
-                                <label class="acct-label" for="ad-dob">Ngày sinh</label>
+                                <label class="acct-label" for="ad-dob" data-i18n="pf.dob">Ngày sinh</label>
                                 <input class="acct-input" id="ad-dob" type="date"
-                                       aria-label="Ngày sinh" max="2025-12-31">
+                                       aria-label="Ngày sinh" data-i18n-aria="pf.dob" max="2025-12-31">
                             </div>
                             <div class="acct-field">
-                                <label class="acct-label" for="ad-gender">Giới tính</label>
+                                <label class="acct-label" for="ad-gender" data-i18n="pf.gender">Giới tính</label>
                                 <select class="acct-input acct-select" id="ad-gender">
-                                    <option value="">Chưa chọn</option>
-                                    <option value="male">Nam</option>
-                                    <option value="female">Nữ</option>
+                                    <option value="" data-i18n="pf.genderNone">Chưa chọn</option>
+                                    <option value="male" data-i18n="pf.genderMale">Nam</option>
+                                    <option value="female" data-i18n="pf.genderFemale">Nữ</option>
                                 </select>
                             </div>
                             <div class="acct-field">
-                                <label class="acct-label" for="ad-country">Quốc gia / Khu vực</label>
+                                <label class="acct-label" for="ad-country" data-i18n="pf.country">Quốc gia / Khu vực</label>
                                 <select class="acct-input acct-select" id="ad-country">
-                                    <option value="">— Chọn quốc gia —</option>
-                                    <option value="VN">Việt Nam</option>
-                                    <option value="US">Hoa Kỳ</option>
-                                    <option value="JP">Nhật Bản</option>
-                                    <option value="KR">Hàn Quốc</option>
-                                    <option value="SG">Singapore</option>
+                                    <option value="" data-i18n="pf.countryNone">— Chọn quốc gia —</option>
+                                    <option value="VN" data-i18n="pf.cVN">Việt Nam</option>
+                                    <option value="US" data-i18n="pf.cUS">Hoa Kỳ</option>
+                                    <option value="JP" data-i18n="pf.cJP">Nhật Bản</option>
+                                    <option value="KR" data-i18n="pf.cKR">Hàn Quốc</option>
+                                    <option value="SG" data-i18n="pf.cSG">Singapore</option>
                                 </select>
                             </div>
                         </div>
                         <div class="acct-save-row">
-                            <button type="button" class="acct-save" id="ad-save">Lưu thay đổi</button>
+                            <button type="button" class="acct-save" id="ad-save" data-i18n="pf.saveChanges">Lưu thay đổi</button>
                         </div>
                     </div>
 
@@ -212,29 +212,29 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M6 8h12l1 12H5L6 8z"/><path d="M9 8a3 3 0 0 1 6 0"/>
                             </svg>
-                            <span>Giỏ hàng của tôi</span>
+                            <span data-i18n="pf.myCart">Giỏ hàng của tôi</span>
                         </a>
                         <a class="acct-action" href="orders.html">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/>
                             </svg>
-                            <span>Đơn hàng của tôi</span>
+                            <span data-i18n="pf.myOrders">Đơn hàng của tôi</span>
                         </a>
                     </div>
-                    <a class="acct-continue" href="index.html">← Tiếp tục mua sắm</a>
+                    <a class="acct-continue" href="index.html" data-i18n="pf.continueShopping">← Tiếp tục mua sắm</a>
                 </section>
 
                 <section class="settings-section" id="section-addresses" aria-labelledby="title-addresses">
-                    <h2 class="settings-section-title" id="title-addresses">Địa chỉ giao hàng</h2>
+                    <h2 class="settings-section-title" id="title-addresses" data-i18n="pf.navAddresses">Địa chỉ giao hàng</h2>
 
                     <!-- Live region: báo trạng thái tải cho screen reader (skeleton bị aria-hidden). -->
                     <p class="sr-only" id="addr-live" role="status" aria-live="polite"></p>
 
                     <div class="addr-head">
-                        <p class="addr-head-desc">Quản lý các địa chỉ giao hàng đã lưu. Địa chỉ mặc định sẽ được điền sẵn khi thanh toán.</p>
+                        <p class="addr-head-desc" data-i18n="pf.addrDesc">Quản lý các địa chỉ giao hàng đã lưu. Địa chỉ mặc định sẽ được điền sẵn khi thanh toán.</p>
                         <button type="button" class="addr-add-btn" id="addr-add" hidden>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                            Thêm địa chỉ
+                            <span data-i18n="pf.addAddress">Thêm địa chỉ</span>
                         </button>
                     </div>
 
@@ -246,8 +246,8 @@
 
                     <!-- Lỗi tải -->
                     <div class="addr-error" id="addr-error" hidden role="alert">
-                        <p>Không tải được danh sách địa chỉ. Vui lòng thử lại.</p>
-                        <button type="button" class="addr-btn addr-btn-ghost" id="addr-retry">Thử lại</button>
+                        <p data-i18n="pf.addrLoadErr">Không tải được danh sách địa chỉ. Vui lòng thử lại.</p>
+                        <button type="button" class="addr-btn addr-btn-ghost" id="addr-retry" data-i18n="pf.retry">Thử lại</button>
                     </div>
 
                     <!-- Empty state -->
@@ -255,29 +255,29 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>
                         </svg>
-                        <p class="addr-empty-title">Bạn chưa lưu địa chỉ giao hàng nào</p>
-                        <p class="addr-empty-desc">Thêm địa chỉ để việc thanh toán ở lần mua kế tiếp nhanh hơn.</p>
+                        <p class="addr-empty-title" data-i18n="pf.addrEmptyTitle">Bạn chưa lưu địa chỉ giao hàng nào</p>
+                        <p class="addr-empty-desc" data-i18n="pf.addrEmptyDesc">Thêm địa chỉ để việc thanh toán ở lần mua kế tiếp nhanh hơn.</p>
                         <button type="button" class="addr-add-btn" id="addr-add-empty">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                            Thêm địa chỉ
+                            <span data-i18n="pf.addAddress">Thêm địa chỉ</span>
                         </button>
                     </div>
 
                     <!-- Danh sách địa chỉ -->
-                    <div class="addr-list" id="addr-list" role="list" aria-label="Địa chỉ đã lưu" hidden></div>
+                    <div class="addr-list" id="addr-list" role="list" aria-label="Địa chỉ đã lưu" data-i18n-aria="pf.addrListAria" hidden></div>
                 </section>
 
                 <section class="settings-section" id="section-payments" aria-labelledby="title-payments">
-                    <h2 class="settings-section-title" id="title-payments">Phương thức thanh toán</h2>
+                    <h2 class="settings-section-title" id="title-payments" data-i18n="pf.navPayments">Phương thức thanh toán</h2>
 
                     <!-- Live region: báo trạng thái tải cho screen reader -->
                     <p class="sr-only" id="pm-live" role="status" aria-live="polite"></p>
 
                     <div class="addr-head">
-                        <p class="addr-head-desc">Quản lý các thẻ đã lưu. Thẻ mặc định sẽ được chọn sẵn khi thanh toán.</p>
+                        <p class="addr-head-desc" data-i18n="pf.payDesc">Quản lý các thẻ đã lưu. Thẻ mặc định sẽ được chọn sẵn khi thanh toán.</p>
                         <button type="button" class="addr-add-btn" id="pm-add" hidden>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                            Thêm thẻ
+                            <span data-i18n="pf.addCard">Thêm thẻ</span>
                         </button>
                     </div>
 
@@ -289,8 +289,8 @@
 
                     <!-- Lỗi tải -->
                     <div class="addr-error" id="pm-error" hidden role="alert">
-                        <p>Không tải được danh sách thẻ. Vui lòng thử lại.</p>
-                        <button type="button" class="addr-btn addr-btn-ghost" id="pm-retry">Thử lại</button>
+                        <p data-i18n="pf.payLoadErr">Không tải được danh sách thẻ. Vui lòng thử lại.</p>
+                        <button type="button" class="addr-btn addr-btn-ghost" id="pm-retry" data-i18n="pf.retry">Thử lại</button>
                     </div>
 
                     <!-- Empty state -->
@@ -298,25 +298,25 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10.5h18"/>
                         </svg>
-                        <p class="addr-empty-title">Bạn chưa lưu thẻ nào</p>
-                        <p class="addr-empty-desc">Thêm thẻ để việc thanh toán ở lần mua kế tiếp nhanh hơn.</p>
+                        <p class="addr-empty-title" data-i18n="pf.payEmptyTitle">Bạn chưa lưu thẻ nào</p>
+                        <p class="addr-empty-desc" data-i18n="pf.payEmptyDesc">Thêm thẻ để việc thanh toán ở lần mua kế tiếp nhanh hơn.</p>
                         <button type="button" class="addr-add-btn" id="pm-add-empty">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                            Thêm thẻ
+                            <span data-i18n="pf.addCard">Thêm thẻ</span>
                         </button>
                     </div>
 
                     <!-- Danh sách thẻ -->
-                    <div class="addr-list" id="pm-list" role="list" aria-label="Thẻ đã lưu" hidden></div>
+                    <div class="addr-list" id="pm-list" role="list" aria-label="Thẻ đã lưu" data-i18n-aria="pf.payListAria" hidden></div>
                 </section>
 
                 <section class="settings-section" id="section-theme" aria-labelledby="title-theme">
-                    <h2 class="settings-section-title" id="title-theme">Giao diện</h2>
+                    <h2 class="settings-section-title" id="title-theme" data-i18n="pf.navTheme">Giao diện</h2>
                     <p class="sr-only" id="theme-live" role="status" aria-live="polite"></p>
-                    <p class="settings-desc">Chọn giao diện cho Breeze. Lựa chọn được áp dụng trên tất cả các trang.</p>
+                    <p class="settings-desc" data-i18n="pf.themeDesc">Chọn giao diện cho Breeze. Lựa chọn được áp dụng trên tất cả các trang.</p>
 
                     <!-- Xem trước: CHỈ phản ánh trạng thái hiện tại, không bấm để chọn -->
-                    <p class="theme-lbl">Xem trước</p>
+                    <p class="theme-lbl" data-i18n="pf.preview">Xem trước</p>
                     <div class="theme-cards">
                         <div class="theme-card" data-theme-preview="light">
                             <div class="frame frame-light">
@@ -329,7 +329,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="theme-card-foot"><span>Sáng</span></div>
+                            <div class="theme-card-foot"><span data-i18n="pf.light">Sáng</span></div>
                         </div>
                         <div class="theme-card" data-theme-preview="dark">
                             <div class="frame frame-dark">
@@ -342,20 +342,20 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="theme-card-foot"><span>Tối</span></div>
+                            <div class="theme-card-foot"><span data-i18n="pf.dark">Tối</span></div>
                         </div>
                     </div>
 
                     <!-- Thanh chọn thật: chỉ 2 nút Sáng/Tối -->
-                    <p class="theme-lbl">Chế độ</p>
-                    <div class="theme-seg" role="group" aria-label="Chọn giao diện">
-                        <button type="button" class="theme-seg-btn" data-theme-choice="light">Sáng</button>
-                        <button type="button" class="theme-seg-btn" data-theme-choice="dark">Tối</button>
+                    <p class="theme-lbl" data-i18n="pf.mode">Chế độ</p>
+                    <div class="theme-seg" role="group" aria-label="Chọn giao diện" data-i18n-aria="pf.themeAria">
+                        <button type="button" class="theme-seg-btn" data-theme-choice="light" data-i18n="pf.light">Sáng</button>
+                        <button type="button" class="theme-seg-btn" data-theme-choice="dark" data-i18n="pf.dark">Tối</button>
                     </div>
                 </section>
 
                 <section class="settings-section" id="section-privacy" aria-labelledby="title-privacy">
-                    <h2 class="settings-section-title" id="title-privacy">Quyền riêng tư</h2>
+                    <h2 class="settings-section-title" id="title-privacy" data-i18n="pf.navPrivacy">Quyền riêng tư</h2>
                     <p class="sr-only" id="privacy-live" role="status" aria-live="polite"></p>
 
                     <div class="avatar-block">
@@ -363,30 +363,30 @@
                             <!-- Chưa có ảnh -> ẩn img, hiện icon người mặc định.
                                  onerror cũng rơi về icon: ảnh có thể 404 trong khoảnh khắc
                                  vừa đổi avatar (file cũ đã bị dọn). -->
-                            <img id="avatar-preview" class="avatar-preview" alt="Ảnh đại diện của bạn" hidden>
+                            <img id="avatar-preview" class="avatar-preview" alt="Ảnh đại diện của bạn" data-i18n-alt="pf.avatarAlt" hidden>
                             <span id="avatar-fallback" class="avatar-fallback">
                                 <i class="fa fa-user" aria-hidden="true"></i>
                             </span>
                         </span>
                         <div class="avatar-block-main">
-                            <p class="privacy-row-title" id="pv-lbl-avatar">Ảnh đại diện</p>
+                            <p class="privacy-row-title" id="pv-lbl-avatar" data-i18n="pf.avatar">Ảnh đại diện</p>
                             <p class="privacy-row-desc">
-                                Ảnh hiện cạnh biểu tượng tài khoản trên mọi trang.
+                                <span data-i18n="pf.avatarDesc">Ảnh hiện cạnh biểu tượng tài khoản trên mọi trang.</span>
                             </p>
                             <button type="button" class="avatar-pick-btn" id="avatar-pick"
-                                    aria-describedby="pv-lbl-avatar">Chọn ảnh</button>
+                                    aria-describedby="pv-lbl-avatar" data-i18n="pf.pickImage">Chọn ảnh</button>
                             <!-- Bấm "Chọn ảnh" mở luôn trình chọn file của máy -->
                             <input type="file" id="avatar-input" hidden
                                    accept="image/png,image/jpeg,image/webp"
-                                   aria-label="Chọn ảnh đại diện từ máy của bạn">
+                                   aria-label="Chọn ảnh đại diện từ máy của bạn" data-i18n-aria="pf.pickImageAria">
                         </div>
                     </div>
 
                     <div id="privacy-rows">
                         <div class="privacy-row">
                             <div class="privacy-row-main">
-                                <p class="privacy-row-title" id="pv-lbl-profile">Hồ sơ công khai</p>
-                                <p class="privacy-row-desc">Cho phép người dùng khác xem tên hiển thị và đánh giá của bạn.</p>
+                                <p class="privacy-row-title" id="pv-lbl-profile" data-i18n="pf.publicProfile">Hồ sơ công khai</p>
+                                <p class="privacy-row-desc" data-i18n="pf.publicProfileDesc">Cho phép người dùng khác xem tên hiển thị và đánh giá của bạn.</p>
                             </div>
                             <span class="privacy-switch">
                                 <input type="checkbox" id="pv-show_profile_public" data-privacy="show_profile_public"
@@ -397,8 +397,8 @@
 
                         <div class="privacy-row">
                             <div class="privacy-row-main">
-                                <p class="privacy-row-title" id="pv-lbl-mkt">Email tiếp thị</p>
-                                <p class="privacy-row-desc">Nhận email về bộ sưu tập mới, khuyến mãi và ưu đãi riêng.</p>
+                                <p class="privacy-row-title" id="pv-lbl-mkt" data-i18n="pf.marketing">Email tiếp thị</p>
+                                <p class="privacy-row-desc" data-i18n="pf.marketingDesc">Nhận email về bộ sưu tập mới, khuyến mãi và ưu đãi riêng.</p>
                             </div>
                             <span class="privacy-switch">
                                 <input type="checkbox" id="pv-allow_marketing_email" data-privacy="allow_marketing_email"
@@ -410,11 +410,11 @@
                     </div>
 
                     <div class="danger-zone">
-                        <p class="danger-zone-title">Xoá tài khoản</p>
+                        <p class="danger-zone-title" data-i18n="pf.deleteAccount">Xoá tài khoản</p>
                         <p class="danger-zone-desc">
-                            Xoá vĩnh viễn tài khoản và dữ liệu cá nhân của bạn. Hành động này không thể hoàn tác.
+                            <span data-i18n="pf.deleteDesc">Xoá vĩnh viễn tài khoản và dữ liệu cá nhân của bạn. Hành động này không thể hoàn tác.</span>
                         </p>
-                        <button type="button" class="btn-danger" id="btn-delete-account">Xoá tài khoản</button>
+                        <button type="button" class="btn-danger" id="btn-delete-account" data-i18n="pf.deleteAccount">Xoá tài khoản</button>
                     </div>
                 </section>
             </div>
@@ -425,69 +425,69 @@
     <div class="addr-modal-overlay" id="addr-modal-overlay" hidden>
         <div class="addr-modal" role="dialog" aria-modal="true" aria-labelledby="addr-modal-title" id="addr-modal">
             <div class="addr-modal-head">
-                <h2 class="addr-modal-title" id="addr-modal-title">Thêm địa chỉ</h2>
-                <button type="button" class="addr-modal-close" id="addr-modal-close" aria-label="Đóng">&times;</button>
+                <h2 class="addr-modal-title" id="addr-modal-title" data-i18n="pf.addAddress">Thêm địa chỉ</h2>
+                <button type="button" class="addr-modal-close" id="addr-modal-close" aria-label="Đóng" data-i18n-aria="pf.closeAria">&times;</button>
             </div>
             <form id="addr-form" novalidate>
                 <div class="addr-modal-body">
                     <div class="addr-form-grid">
                         <div class="addr-form-field col-2">
-                            <label class="acct-label" for="af-recipient">Tên người nhận <span class="addr-req" aria-hidden="true">*</span></label>
+                            <label class="acct-label" for="af-recipient"><span data-i18n="pf.recipient">Tên người nhận</span> <span class="addr-req" aria-hidden="true">*</span></label>
                             <input class="acct-input" id="af-recipient" type="text" autocomplete="name" maxlength="150" aria-describedby="af-recipient-msg" required>
                             <span class="addr-field-msg" id="af-recipient-msg"></span>
                         </div>
                         <div class="addr-form-field col-2">
-                            <label class="acct-label" for="af-phone">Số điện thoại <span class="addr-req" aria-hidden="true">*</span></label>
+                            <label class="acct-label" for="af-phone"><span data-i18n="pf.phone">Số điện thoại</span> <span class="addr-req" aria-hidden="true">*</span></label>
                             <input class="acct-input" id="af-phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="30" aria-describedby="af-phone-msg" required>
                             <span class="addr-field-msg" id="af-phone-msg"></span>
                         </div>
                         <div class="addr-form-field col-2">
-                            <label class="acct-label" for="af-line1">Địa chỉ (số nhà, tên đường) <span class="addr-req" aria-hidden="true">*</span></label>
+                            <label class="acct-label" for="af-line1"><span data-i18n="pf.line1">Địa chỉ (số nhà, tên đường)</span> <span class="addr-req" aria-hidden="true">*</span></label>
                             <input class="acct-input" id="af-line1" type="text" autocomplete="address-line1" maxlength="200" aria-describedby="af-line1-msg" required>
                             <span class="addr-field-msg" id="af-line1-msg"></span>
                         </div>
                         <div class="addr-form-field col-2">
-                            <label class="acct-label" for="af-line2">Căn hộ, toà nhà <span class="addr-opt">(tuỳ chọn)</span></label>
+                            <label class="acct-label" for="af-line2"><span data-i18n="pf.line2">Căn hộ, toà nhà</span> <span class="addr-opt" data-i18n="pf.optional">(tuỳ chọn)</span></label>
                             <input class="acct-input" id="af-line2" type="text" autocomplete="address-line2" maxlength="200">
                         </div>
                         <div class="addr-form-field">
-                            <label class="acct-label" for="af-ward">Phường / Xã</label>
+                            <label class="acct-label" for="af-ward" data-i18n="pf.ward">Phường / Xã</label>
                             <input class="acct-input" id="af-ward" type="text" maxlength="120">
                         </div>
                         <div class="addr-form-field">
-                            <label class="acct-label" for="af-district">Quận / Huyện</label>
+                            <label class="acct-label" for="af-district" data-i18n="pf.district">Quận / Huyện</label>
                             <input class="acct-input" id="af-district" type="text" maxlength="120">
                         </div>
                         <div class="addr-form-field">
-                            <label class="acct-label" for="af-city">Tỉnh / Thành phố <span class="addr-req" aria-hidden="true">*</span></label>
+                            <label class="acct-label" for="af-city"><span data-i18n="pf.city">Tỉnh / Thành phố</span> <span class="addr-req" aria-hidden="true">*</span></label>
                             <input class="acct-input" id="af-city" type="text" autocomplete="address-level1" maxlength="120" aria-describedby="af-city-msg" required>
                             <span class="addr-field-msg" id="af-city-msg"></span>
                         </div>
                         <div class="addr-form-field">
-                            <label class="acct-label" for="af-postal">Mã bưu chính</label>
+                            <label class="acct-label" for="af-postal" data-i18n="pf.postal">Mã bưu chính</label>
                             <input class="acct-input" id="af-postal" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="20" aria-describedby="af-postal-msg">
                             <span class="addr-field-msg" id="af-postal-msg"></span>
                         </div>
                         <div class="addr-form-field col-2">
-                            <label class="acct-label" for="af-country">Quốc gia / Khu vực</label>
+                            <label class="acct-label" for="af-country" data-i18n="pf.country">Quốc gia / Khu vực</label>
                             <select class="acct-input acct-select" id="af-country">
-                                <option value="VN">Việt Nam</option>
-                                <option value="US">Hoa Kỳ</option>
-                                <option value="JP">Nhật Bản</option>
-                                <option value="KR">Hàn Quốc</option>
-                                <option value="SG">Singapore</option>
+                                <option value="VN" data-i18n="pf.cVN">Việt Nam</option>
+                                <option value="US" data-i18n="pf.cUS">Hoa Kỳ</option>
+                                <option value="JP" data-i18n="pf.cJP">Nhật Bản</option>
+                                <option value="KR" data-i18n="pf.cKR">Hàn Quốc</option>
+                                <option value="SG" data-i18n="pf.cSG">Singapore</option>
                             </select>
                         </div>
                         <div class="addr-check-row">
                             <input type="checkbox" id="af-default">
-                            <label for="af-default">Đặt làm địa chỉ mặc định</label>
+                            <label for="af-default" data-i18n="pf.setDefaultAddr">Đặt làm địa chỉ mặc định</label>
                         </div>
-                        <p class="addr-check-hint" id="af-default-hint" hidden>Đây đang là địa chỉ mặc định của bạn.</p>
+                        <p class="addr-check-hint" id="af-default-hint" hidden data-i18n="pf.isDefaultHint">Đây đang là địa chỉ mặc định của bạn.</p>
                     </div>
                 </div>
                 <div class="addr-modal-foot">
-                    <button type="button" class="addr-btn addr-btn-ghost" id="addr-cancel">Hủy</button>
-                    <button type="submit" class="addr-btn addr-btn-primary" id="addr-submit">Lưu địa chỉ</button>
+                    <button type="button" class="addr-btn addr-btn-ghost" id="addr-cancel" data-i18n="com.cancel">Hủy</button>
+                    <button type="submit" class="addr-btn addr-btn-primary" id="addr-submit" data-i18n="pf.saveAddress">Lưu địa chỉ</button>
                 </div>
             </form>
         </div>
@@ -497,40 +497,40 @@
     <div class="pm-modal-overlay" id="pm-modal-overlay" hidden>
         <div class="pm-modal" role="dialog" aria-modal="true" aria-labelledby="pm-modal-title">
             <div class="addr-modal-head">
-                <h2 class="addr-modal-title" id="pm-modal-title">Thêm thẻ</h2>
-                <button type="button" class="addr-modal-close" id="pm-modal-close" aria-label="Đóng">&times;</button>
+                <h2 class="addr-modal-title" id="pm-modal-title" data-i18n="pf.addCard">Thêm thẻ</h2>
+                <button type="button" class="addr-modal-close" id="pm-modal-close" aria-label="Đóng" data-i18n-aria="pf.closeAria">&times;</button>
             </div>
             <form id="pm-form" novalidate>
                 <div class="addr-modal-body">
                     <div class="addr-form-grid">
                         <div class="addr-form-field col-2">
-                            <label class="acct-label" for="pf-number">Số thẻ</label>
+                            <label class="acct-label" for="pf-number" data-i18n="pf.cardNumber">Số thẻ</label>
                             <input class="acct-input" id="pf-number" type="text" inputmode="numeric" autocomplete="cc-number" maxlength="23" placeholder="1234 5678 9012 3456" aria-describedby="pf-number-hint pf-number-msg">
-                            <span class="pm-hint" id="pf-number-hint">Chỉ 4 số cuối được lưu lại. Để trống khi sửa nếu không đổi số thẻ.</span>
+                            <span class="pm-hint" id="pf-number-hint" data-i18n="pf.cardNumberHint">Chỉ 4 số cuối được lưu lại. Để trống khi sửa nếu không đổi số thẻ.</span>
                             <span class="addr-field-msg" id="pf-number-msg"></span>
                         </div>
                         <div class="addr-form-field col-2">
-                            <label class="acct-label" for="pf-holder">Tên chủ thẻ</label>
+                            <label class="acct-label" for="pf-holder" data-i18n="pf.cardHolder">Tên chủ thẻ</label>
                             <input class="acct-input" id="pf-holder" type="text" autocomplete="cc-name" maxlength="150" aria-describedby="pf-holder-msg">
                             <span class="addr-field-msg" id="pf-holder-msg"></span>
                         </div>
                         <div class="addr-form-field col-2">
-                            <label class="acct-label" for="pf-month">Hết hạn</label>
+                            <label class="acct-label" for="pf-month" data-i18n="pf.cardExpiry">Hết hạn</label>
                             <div class="pm-two">
-                                <input class="acct-input" id="pf-month" type="text" inputmode="numeric" autocomplete="cc-exp-month" maxlength="2" placeholder="MM" aria-label="Tháng hết hạn (01–12)" aria-describedby="pf-exp-msg">
-                                <input class="acct-input" id="pf-year" type="text" inputmode="numeric" autocomplete="cc-exp-year" maxlength="4" placeholder="YYYY" aria-label="Năm hết hạn" aria-describedby="pf-exp-msg">
+                                <input class="acct-input" id="pf-month" type="text" inputmode="numeric" autocomplete="cc-exp-month" maxlength="2" placeholder="MM" aria-label="Tháng hết hạn (01–12)" data-i18n-aria="pf.expMonthAria" aria-describedby="pf-exp-msg">
+                                <input class="acct-input" id="pf-year" type="text" inputmode="numeric" autocomplete="cc-exp-year" maxlength="4" placeholder="YYYY" aria-label="Năm hết hạn" data-i18n-aria="pf.expYearAria" aria-describedby="pf-exp-msg">
                             </div>
                             <span class="addr-field-msg" id="pf-exp-msg"></span>
                         </div>
                         <div class="addr-check-row">
                             <input type="checkbox" id="pf-default">
-                            <label for="pf-default">Đặt làm phương thức mặc định</label>
+                            <label for="pf-default" data-i18n="pf.setDefaultPay">Đặt làm phương thức mặc định</label>
                         </div>
                     </div>
                 </div>
                 <div class="addr-modal-foot">
-                    <button type="button" class="addr-btn addr-btn-ghost" id="pm-cancel">Hủy</button>
-                    <button type="submit" class="addr-btn addr-btn-primary" id="pm-save">Lưu thẻ</button>
+                    <button type="button" class="addr-btn addr-btn-ghost" id="pm-cancel" data-i18n="com.cancel">Hủy</button>
+                    <button type="submit" class="addr-btn addr-btn-primary" id="pm-save" data-i18n="pf.saveCard">Lưu thẻ</button>
                 </div>
             </form>
         </div>
@@ -541,24 +541,24 @@
         <div class="addr-modal" role="dialog" aria-modal="true" aria-labelledby="del-modal-title" id="del-modal">
             <form id="del-form" novalidate>
                 <div class="addr-modal-head">
-                    <h2 class="addr-modal-title" id="del-modal-title">Xoá tài khoản</h2>
+                    <h2 class="addr-modal-title" id="del-modal-title" data-i18n="pf.deleteAccount">Xoá tài khoản</h2>
                 </div>
                 <div class="addr-modal-body">
-                    <p class="danger-zone-desc" style="margin-bottom:12px;">Khi xoá tài khoản:</p>
+                    <p class="danger-zone-desc" style="margin-bottom:12px;" data-i18n="pf.deleteIntro">Khi xoá tài khoản:</p>
                     <ul class="del-warn-list">
-                        <li>Thông tin cá nhân, địa chỉ và phương thức thanh toán sẽ bị xoá vĩnh viễn.</li>
-                        <li>Lịch sử đơn hàng được giữ lại nhưng ẩn danh (không còn gắn với bạn).</li>
-                        <li>Bạn không thể đăng nhập lại bằng tài khoản này.</li>
+                        <li data-i18n="pf.deleteLi1">Thông tin cá nhân, địa chỉ và phương thức thanh toán sẽ bị xoá vĩnh viễn.</li>
+                        <li data-i18n="pf.deleteLi2">Lịch sử đơn hàng được giữ lại nhưng ẩn danh (không còn gắn với bạn).</li>
+                        <li data-i18n="pf.deleteLi3">Bạn không thể đăng nhập lại bằng tài khoản này.</li>
                     </ul>
                     <div class="addr-form-field col-2">
-                        <label class="acct-label" for="del-password">Nhập mật khẩu để xác nhận</label>
+                        <label class="acct-label" for="del-password" data-i18n="pf.deletePwLabel">Nhập mật khẩu để xác nhận</label>
                         <input class="acct-input" id="del-password" type="password" autocomplete="current-password" required>
                     </div>
                     <p class="del-error" id="del-error" role="alert"></p>
                 </div>
                 <div class="addr-modal-foot">
-                    <button type="button" class="addr-btn addr-btn-ghost" id="del-cancel">Hủy</button>
-                    <button type="submit" class="btn-danger" id="del-confirm">Xoá vĩnh viễn</button>
+                    <button type="button" class="addr-btn addr-btn-ghost" id="del-cancel" data-i18n="com.cancel">Hủy</button>
+                    <button type="submit" class="btn-danger" id="del-confirm" data-i18n="pf.deleteConfirm">Xoá vĩnh viễn</button>
                 </div>
             </form>
         </div>
@@ -621,6 +621,14 @@
             var SECTIONS = ['account', 'addresses', 'payments', 'theme', 'privacy'];   // section có thể mở
             var _meLoaded = false;                     // tránh gọi /api/me lặp
 
+            // i18n — nhãn tĩnh do js/i18n.js áp qua data-i18n; t() dùng cho chuỗi JS sinh.
+            function t(key, params) {
+                return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
+            }
+            function locale() {
+                return (window.__i18n && window.__i18n.current === 'en') ? 'en-GB' : 'vi-VN';
+            }
+
             function show(id, mode) {
                 var el = document.getElementById(id);
                 if (el) el.style.display = mode || 'none';
@@ -655,14 +663,14 @@
                 if (!u) return '';
                 var n = u.display_name || u.displayName;
                 if (!n && u.email) n = u.email.split('@')[0];
-                return n || 'bạn';
+                return n || t('pf.you');
             }
 
             function fmtDate(s) {
                 if (!s) return '—';
                 var d = new Date(s);
                 if (isNaN(d.getTime())) return '—';
-                return d.toLocaleDateString('vi-VN', {
+                return d.toLocaleDateString(locale(), {
                     day: '2-digit', month: '2-digit', year: 'numeric',
                     hour: '2-digit', minute: '2-digit'
                 });
@@ -676,7 +684,9 @@
             }
 
             // Đổ toàn bộ hồ sơ (read-only + field cá nhân) từ dữ liệu server.
+            var _lastMe = null;        // hồ sơ vừa nạp — dựng lại khi đổi VI/EN
             function fillProfile(u) {
+                _lastMe = u;
                 setText('ad-name', nameOf(u));
                 setText('ad-email', u.email);
                 setText('ad-created', fmtDate(u.created_at));
@@ -719,11 +729,11 @@
 
             // Validate phía client (đồng bộ với server); trả thông báo lỗi hoặc null.
             function validate(v) {
-                if (v.phone && !PHONE_RE.test(v.phone)) return 'Số điện thoại không hợp lệ';
+                if (v.phone && !PHONE_RE.test(v.phone)) return t('pf.errPhone');
                 if (v.dob) {
-                    var t = new Date(v.dob + 'T00:00:00Z').getTime();
-                    if (isNaN(t)) return 'Ngày sinh không hợp lệ';
-                    if (t > Date.now()) return 'Ngày sinh không thể ở tương lai';
+                    var dobMs = new Date(v.dob + 'T00:00:00Z').getTime();
+                    if (isNaN(dobMs)) return t('pf.errDob');
+                    if (dobMs > Date.now()) return t('pf.errDobFuture');
                 }
                 return null;
             }
@@ -737,7 +747,7 @@
 
                 var label = btn.textContent;
                 btn.disabled = true;
-                btn.textContent = 'Đang lưu…';
+                btn.textContent = t('pf.saving');
                 window.AuthHelper.apiFetch('/api/me', { method: 'PUT', body: JSON.stringify(v) })
                     .then(function (r) {
                         return r.json().catch(function () { return {}; }).then(function (data) {
@@ -745,13 +755,13 @@
                         });
                     })
                     .then(function (out) {
-                        if (out.ok) { fillProfile(out.data); toast('Đã lưu thay đổi'); return; }
+                        if (out.ok) { fillProfile(out.data); toast(t('pf.savedChanges')); return; }
                         if (out.status === 401) return;   // phiên hết hạn -> 'authexpired' lo phần báo + đăng nhập lại
-                        toast((out.data && out.data.message) || 'Không lưu được thay đổi', false);
+                        toast((out.data && out.data.message) || t('pf.errSaveChanges'), false);
                     })
                     .catch(function (e) {
                         console.error('[profile] lưu lỗi:', e);
-                        toast('Không lưu được thay đổi', false);
+                        toast(t('pf.errSaveChanges'), false);
                     })
                     .then(function () { btn.disabled = false; btn.textContent = label; });
             }
@@ -768,7 +778,7 @@
 
             var ADDR_PHONE_RE = /^[0-9+\-\s()]{6,20}$/;
             var ADDR_POSTAL_RE = /^[A-Za-z0-9\s-]{2,20}$/;
-            var COUNTRY_NAME = { VN: 'Việt Nam', US: 'Hoa Kỳ', JP: 'Nhật Bản', KR: 'Hàn Quốc', SG: 'Singapore' };
+            function countryName(code) { return code ? t('pf.c' + code) : ''; }
             var MSG_FIELDS = ['af-recipient', 'af-phone', 'af-line1', 'af-city', 'af-postal'];
 
             function byId(id) { return document.getElementById(id); }
@@ -801,7 +811,7 @@
             function showAddrLoading() {
                 elHide(byId('addr-add')); elHide(byId('addr-list')); elHide(byId('addr-empty')); elHide(byId('addr-error'));
                 elShow(byId('addr-loading'));
-                setLive('Đang tải danh sách địa chỉ…');
+                setLive(t('pf.addrLoading'));
             }
             function showAddrError() {
                 elHide(byId('addr-add')); elHide(byId('addr-loading')); elHide(byId('addr-list')); elHide(byId('addr-empty'));
@@ -846,7 +856,7 @@
                 if (a.is_default) {
                     var badge = document.createElement('span');
                     badge.className = 'addr-card-badge';
-                    badge.textContent = 'Mặc định';
+                    badge.textContent = t('pf.default');
                     card.appendChild(badge);
                 }
                 card.appendChild(line('addr-card-name', a.recipient_name));
@@ -858,14 +868,14 @@
                 var rest = [a.line2, a.ward, a.district, a.city]
                     .filter(function (x) { return x && String(x).trim(); }).join(', ');
                 if (rest) lines.appendChild(line('', rest));
-                if (a.country && a.country !== 'VN') lines.appendChild(line('', COUNTRY_NAME[a.country] || a.country));
+                if (a.country && a.country !== 'VN') lines.appendChild(line('', countryName(a.country) || a.country));
                 card.appendChild(lines);
 
                 var actions = document.createElement('div');
                 actions.className = 'addr-card-actions';
-                if (!a.is_default) actions.appendChild(actionBtn('default', a.id, 'Đặt làm mặc định', false));
-                actions.appendChild(actionBtn('edit', a.id, 'Sửa', false));
-                actions.appendChild(actionBtn('delete', a.id, 'Xóa', true));
+                if (!a.is_default) actions.appendChild(actionBtn('default', a.id, t('pf.setDefault'), false));
+                actions.appendChild(actionBtn('edit', a.id, t('com.edit'), false));
+                actions.appendChild(actionBtn('delete', a.id, t('com.delete'), true));
                 card.appendChild(actions);
                 return card;
             }
@@ -876,8 +886,8 @@
             function openModal(address) {
                 _editing = address || null;
                 _modalTrigger = document.activeElement;
-                byId('addr-modal-title').textContent = _editing ? 'Sửa địa chỉ' : 'Thêm địa chỉ';
-                byId('addr-submit').textContent = 'Lưu địa chỉ';
+                byId('addr-modal-title').textContent = _editing ? t('pf.editAddress') : t('pf.addAddress');
+                byId('addr-submit').textContent = t('pf.saveAddress');
                 byId('addr-submit').disabled = false;
                 clearFormErrors();
                 fillForm(_editing);
@@ -941,16 +951,16 @@
                 function fail(id, msg) { markError(id, msg); if (!firstBad) firstBad = byId(id); }
 
                 var recipient = fVal('af-recipient');
-                if (!recipient) fail('af-recipient', 'Vui lòng nhập tên người nhận');
+                if (!recipient) fail('af-recipient', t('pf.errRecipient'));
                 var phone = fVal('af-phone');
-                if (!phone) fail('af-phone', 'Vui lòng nhập số điện thoại');
-                else if (!ADDR_PHONE_RE.test(phone)) fail('af-phone', 'Số điện thoại không hợp lệ');
+                if (!phone) fail('af-phone', t('pf.errPhoneEmpty'));
+                else if (!ADDR_PHONE_RE.test(phone)) fail('af-phone', t('pf.errPhone'));
                 var line1 = fVal('af-line1');
-                if (!line1) fail('af-line1', 'Vui lòng nhập địa chỉ');
+                if (!line1) fail('af-line1', t('pf.errLine1'));
                 var city = fVal('af-city');
-                if (!city) fail('af-city', 'Vui lòng nhập tỉnh/thành phố');
+                if (!city) fail('af-city', t('pf.errCity'));
                 var postal = fVal('af-postal');
-                if (postal && !ADDR_POSTAL_RE.test(postal)) fail('af-postal', 'Mã bưu chính không hợp lệ');
+                if (postal && !ADDR_POSTAL_RE.test(postal)) fail('af-postal', t('pf.errPostal'));
 
                 if (firstBad) { firstBad.focus(); return false; }
                 return true;
@@ -987,7 +997,7 @@
 
                 var submit = byId('addr-submit');
                 var label = submit.textContent;
-                submit.disabled = true; submit.textContent = 'Đang lưu…';
+                submit.disabled = true; submit.textContent = t('pf.saving');
 
                 var url = isEdit ? '/api/account/addresses/' + encodeURIComponent(_editing.id) : '/api/account/addresses';
                 var opts = { method: isEdit ? 'PUT' : 'POST', body: JSON.stringify(payload) };
@@ -996,7 +1006,7 @@
                     .then(function (out) {
                         if (!out.ok) {
                             if (out.status === 401) return null;   // 'authexpired' lo phần đăng nhập lại
-                            toast((out.data && out.data.message) || 'Không lưu được địa chỉ', false);
+                            toast((out.data && out.data.message) || t('pf.errSaveAddr'), false);
                             return null;
                         }
                         // Sửa + muốn đặt mặc định (trước đó chưa phải) -> PATCH tiếp rồi render kết quả cuối.
@@ -1014,34 +1024,34 @@
                         finishModalOk(isEdit);
                         return null;
                     })
-                    .catch(function (err) { console.error('[profile] lưu địa chỉ lỗi:', err); toast('Không lưu được địa chỉ', false); })
+                    .catch(function (err) { console.error('[profile] lưu địa chỉ lỗi:', err); toast(t('pf.errSaveAddr'), false); })
                     .then(function () { submit.disabled = false; submit.textContent = label; });
             }
-            function finishModalOk(isEdit) { closeModal(); toast(isEdit ? 'Đã cập nhật địa chỉ' : 'Đã thêm địa chỉ'); }
+            function finishModalOk(isEdit) { closeModal(); toast(isEdit ? t('pf.addrUpdated') : t('pf.addrAdded')); }
 
             function setDefaultAddr(id) {
                 window.AuthHelper.apiFetch('/api/account/addresses/' + encodeURIComponent(id) + '/default', { method: 'PATCH' })
                     .then(readResult)
                     .then(function (out) {
-                        if (out.ok) { if (out.data.addresses) renderAddresses(out.data.addresses); toast('Đã đặt làm mặc định'); return; }
+                        if (out.ok) { if (out.data.addresses) renderAddresses(out.data.addresses); toast(t('pf.defaultSet')); return; }
                         if (out.status === 401) return;
-                        toast((out.data && out.data.message) || 'Không đặt được mặc định', false);
+                        toast((out.data && out.data.message) || t('pf.errSetDefault'), false);
                     })
-                    .catch(function (e) { console.error('[profile] đặt mặc định lỗi:', e); toast('Không đặt được mặc định', false); });
+                    .catch(function (e) { console.error('[profile] đặt mặc định lỗi:', e); toast(t('pf.errSetDefault'), false); });
             }
 
             function deleteAddr(id) {
                 var a = findAddr(id);
-                var who = (a && a.recipient_name) ? a.recipient_name : 'này';
-                if (!window.confirm('Xóa địa chỉ của "' + who + '"? Hành động này không thể hoàn tác.')) return;
+                var who = (a && a.recipient_name) ? a.recipient_name : t('pf.thisOne');
+                if (!window.confirm(t('pf.confirmDelAddr', { who: who }))) return;
                 window.AuthHelper.apiFetch('/api/account/addresses/' + encodeURIComponent(id), { method: 'DELETE' })
                     .then(readResult)
                     .then(function (out) {
-                        if (out.ok) { if (out.data.addresses) renderAddresses(out.data.addresses); toast('Đã xóa địa chỉ'); return; }
+                        if (out.ok) { if (out.data.addresses) renderAddresses(out.data.addresses); toast(t('pf.addrDeleted')); return; }
                         if (out.status === 401) return;
-                        toast((out.data && out.data.message) || 'Không xóa được địa chỉ', false);
+                        toast((out.data && out.data.message) || t('pf.errDelAddr'), false);
                     })
-                    .catch(function (e) { console.error('[profile] xóa địa chỉ lỗi:', e); toast('Không xóa được địa chỉ', false); });
+                    .catch(function (e) { console.error('[profile] xóa địa chỉ lỗi:', e); toast(t('pf.errDelAddr'), false); });
             }
 
             // Focus trap + ESC cho modal.
@@ -1111,7 +1121,7 @@
                     btns[k].classList.toggle('on', btns[k].getAttribute('data-theme-choice') === cur);
                 }
                 var live = document.getElementById('theme-live');
-                if (live) live.textContent = 'Giao diện hiện tại: ' + (cur === 'dark' ? 'Tối' : 'Sáng');
+                if (live) live.textContent = t('pf.themeNow', { mode: t(cur === 'dark' ? 'pf.dark' : 'pf.light') });
             }
 
             function applySection(sec) {
@@ -1186,13 +1196,13 @@
                 // Kiểm tra phía client CHỈ để phản hồi nhanh cho người dùng —
                 // KHÔNG thay thế validate của server (server đọc magic bytes + chặn 2MB).
                 if (AVATAR_TYPES.indexOf(file.type) < 0) {
-                    announce('Ảnh không hợp lệ: chỉ nhận PNG, JPEG hoặc WEBP');
-                    toast('Chỉ nhận ảnh PNG, JPEG hoặc WEBP', false);
+                    announce(t('pf.avatarBadType'));
+                    toast(t('pf.avatarBadTypeShort'), false);
                     return;
                 }
                 if (file.size > AVATAR_MAX_BYTES) {
-                    announce('Ảnh vượt quá 2MB, chưa tải lên');
-                    toast('Ảnh vượt quá 2MB', false);
+                    announce(t('pf.avatarTooBig'));
+                    toast(t('pf.avatarTooBigShort'), false);
                     return;
                 }
 
@@ -1216,7 +1226,7 @@
                         if (!out.ok) {
                             _releaseObjUrl();
                             showAvatar(prevUrl);    // trả về ảnh cũ, không để preview sai sự thật
-                            var msg = (out.data && out.data.message) || 'Không tải được ảnh lên';
+                            var msg = (out.data && out.data.message) || t('pf.avatarUploadErr');
                             announce(msg);
                             toast(msg, false);
                             return;
@@ -1224,8 +1234,8 @@
                         _avatarUrl = out.data.avatar_url || null;
                         showAvatar(_avatarUrl);
                         _releaseObjUrl();           // revoke SAU khi đã đổi sang URL thật
-                        announce('Đã cập nhật ảnh đại diện');
-                        toast('Đã cập nhật ảnh đại diện');
+                        announce(t('pf.avatarUpdated'));
+                        toast(t('pf.avatarUpdated'));
                         // Báo cho header đổi avatar ngay, không cần tải lại trang.
                         // Phần header dựng ở Phase 4 sẽ lắng nghe sự kiện này.
                         document.dispatchEvent(new CustomEvent('avatarchange', {
@@ -1236,8 +1246,8 @@
                         _releaseObjUrl();
                         showAvatar(prevUrl);
                         console.error('[profile] upload avatar lỗi:', err);
-                        announce('Không tải được ảnh lên');
-                        toast('Không tải được ảnh lên', false);
+                        announce(t('pf.avatarUploadErr'));
+                        toast(t('pf.avatarUploadErr'), false);
                     })
                     .then(function () { setAvatarBusy(false); });
             }
@@ -1290,7 +1300,7 @@
                     .then(function (data) { applyPrivacy(data); _privacyLoaded = true; })
                     .catch(function (e) {
                         console.error('[profile] tải quyền riêng tư lỗi:', e);
-                        toast('Không tải được tuỳ chọn quyền riêng tư', false);
+                        toast(t('pf.privacyLoadErr'), false);
                     })
                     .then(function () { setPrivacyBusy(false); });
             }
@@ -1314,18 +1324,18 @@
                     .then(function (out) {
                         if (!out.ok) {
                             el.checked = !want;   // lưu hỏng -> trả switch về trạng thái cũ
-                            toast((out.data && out.data.message) || 'Không lưu được tuỳ chọn', false);
+                            toast((out.data && out.data.message) || t('pf.privacySaveErr'), false);
                             return;
                         }
                         applyPrivacy(out.data);   // dùng state server trả về làm nguồn sự thật
                         var live = document.getElementById('privacy-live');
-                        if (live) live.textContent = 'Đã lưu tuỳ chọn quyền riêng tư';
-                        toast('Đã lưu');
+                        if (live) live.textContent = t('pf.privacySavedLive');
+                        toast(t('pf.saved'));
                     })
                     .catch(function (err) {
                         el.checked = !want;
                         console.error('[profile] lưu quyền riêng tư lỗi:', err);
-                        toast('Không lưu được tuỳ chọn', false);
+                        toast(t('pf.privacySaveErr'), false);
                     })
                     .then(function () { setPrivacyBusy(false); });
             }
@@ -1364,11 +1374,11 @@
                 e.preventDefault();
                 var d = delEls();
                 var pw = d.pass.value;
-                if (!pw) { d.err.textContent = 'Vui lòng nhập mật khẩu'; d.pass.focus(); return; }
+                if (!pw) { d.err.textContent = t('pf.errPwEmpty'); d.pass.focus(); return; }
 
                 d.err.textContent = '';
                 d.confirm.disabled = true;
-                d.confirm.textContent = 'Đang xoá…';
+                d.confirm.textContent = t('pf.deleting');
 
                 window.AuthHelper.apiFetch('/api/account', {
                     method: 'DELETE',
@@ -1380,14 +1390,14 @@
                     })
                     .then(function (out) {
                         if (!out.ok) {
-                            d.err.textContent = (out.data && out.data.message) || 'Không xoá được tài khoản';
+                            d.err.textContent = (out.data && out.data.message) || t('pf.errDeleteAcct');
                             d.confirm.disabled = false;
-                            d.confirm.textContent = 'Xoá vĩnh viễn';
+                            d.confirm.textContent = t('pf.deleteConfirm');
                             return;
                         }
                         // Xoá xong: tài khoản Firebase đã bị huỷ -> dọn phiên rồi về trang chủ.
                         closeDelModal();
-                        toast('Tài khoản đã được xoá');
+                        toast(t('pf.acctDeleted'));
                         try { localStorage.removeItem('userName'); } catch (er) { /* bỏ qua */ }
                         var fb = (window.firebase && firebase.auth) ? firebase.auth() : null;
                         var done = function () { window.location.href = 'index.html'; };
@@ -1395,9 +1405,9 @@
                     })
                     .catch(function (err) {
                         console.error('[profile] xoá tài khoản lỗi:', err);
-                        d.err.textContent = 'Lỗi kết nối máy chủ, vui lòng thử lại';
+                        d.err.textContent = t('pf.netRetry');
                         d.confirm.disabled = false;
-                        d.confirm.textContent = 'Xoá vĩnh viễn';
+                        d.confirm.textContent = t('pf.deleteConfirm');
                     });
             }
 
@@ -1470,9 +1480,20 @@
             initAddresses();   // gắn sự kiện khối "Địa chỉ giao hàng"
             bindPrivacy();     // gắn sự kiện khối "Quyền riêng tư" + modal xoá tài khoản
 
+            // Đổi VI/EN: nhãn tĩnh đã do i18n.js áp lại qua data-i18n; ở đây vẽ lại
+            // phần do JS sinh (ngày tháng theo locale, danh sách địa chỉ, nhãn theme).
+            document.addEventListener('langchange', function () {
+                if (_lastMe) fillProfile(_lastMe);
+                if (_addrLoaded) renderAddresses(_addresses);
+                syncThemeUI();
+                if (window.PaymentMethods && window.PaymentMethods.rerender) {
+                    window.PaymentMethods.rerender();
+                }
+            });
+
             // Phiên hết hạn (đã tự refresh mà vẫn 401): báo lỗi + đưa về đăng nhập lại.
             document.addEventListener('authexpired', function () {
-                toast('Phiên đăng nhập đã hết hạn — vui lòng đăng nhập lại.', false);
+                toast(t('pf.sessionExpired'), false);
                 setTimeout(function () {
                     window.location.href = 'login.html?redirect=profile.html&notice=session-expired';
                 }, 1600);

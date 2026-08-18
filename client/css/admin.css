@@ -134,6 +134,10 @@ body { background:var(--c-bg); color:var(--c-ink); font-family:var(--font-ui); m
 }
 .adm-search input:focus { outline:2px solid var(--c-ink); outline-offset:-1px; background:var(--c-bg); }
 .adm-topbar-right { display:flex; align-items:center; gap:14px; margin-left:auto; font-size:13px; color:var(--c-muted); }
+/* Host của nút đổi VI/EN (js/i18n.js chèn #lang-switcher vào đây). Đẩy sát
+   cụm bên phải; luôn hiển thị kể cả khi #bar-right còn ẩn (chưa đăng nhập). */
+.adm-lang { display:flex; align-items:center; margin-left:auto; }
+.adm-lang + .adm-topbar-right { margin-left:14px; }
 .adm-bell { background:none; border:none; cursor:pointer; color:var(--c-ink); font-size:17px; padding:4px; line-height:1; }
 .adm-bell:hover { color:var(--c-muted); }
 

@@ -10,6 +10,11 @@
     // ---------- helpers ----------
     function $(id) { return document.getElementById(id); }
 
+    // i18n: js/i18n.js nạp trước file này. Fallback trả về khoá nếu chưa sẵn sàng.
+    function t(key, params) {
+        return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
+    }
+
     function getCartSafe() {
         return (typeof getCart === 'function' && Array.isArray(getCart())) ? getCart() : [];
     }
@@ -72,9 +77,9 @@
     // ---------- PHASE 4: render 1 hàng sản phẩm (layout Adidas) ----------
     function itemRowHTML(it) {
         var meta = [];
-        if (it.size) meta.push('Size: ' + esc(it.size));
-        if (it.color) meta.push('Màu: ' + esc(it.color));
-        meta.push('SL: ' + it.quantity);
+        if (it.size) meta.push(t('co.metaSize') + ': ' + esc(it.size));
+        if (it.color) meta.push(t('co.metaColor') + ': ' + esc(it.color));
+        meta.push(t('co.metaQty') + ': ' + it.quantity);
         return '' +
             '<div class="co-oi-item">' +
                 '<img class="co-oi-thumb" src="' + esc(it.image) + '" alt="" ' +
@@ -104,7 +109,7 @@
         if (listEl) {
             listEl.innerHTML = items.length
                 ? items.map(itemRowHTML).join('')
-                : '<p class="co-oi-empty">Chưa có sản phẩm.</p>';
+                : '<p class="co-oi-empty">' + t('co.emptyItems') + '</p>';
         }
 
         // Khối tổng kết
@@ -112,7 +117,7 @@
             oiCountEl = $('co-oi-count'), oiTotalEl = $('co-oi-total');
         if (oiCountEl) oiCountEl.textContent = count;                 // = tổng quantity, không phải số dòng
         if (subEl) subEl.textContent = money(subtotal);
-        if (shipEl) shipEl.textContent = ship > 0 ? money(ship) : 'Miễn phí';
+        if (shipEl) shipEl.textContent = ship > 0 ? money(ship) : t('com.free');
         if (oiTotalEl) oiTotalEl.textContent = money(total);
 
         // Hero (đang ẩn) + nút "Đặt hàng": HTML đã có sẵn ký hiệu ₫ -> chỉ set phần số.
@@ -136,15 +141,17 @@
     }
 
     // ---------- 1 & 3. User greeting + email ----------
+    var _lastUser = null;
     function renderUser(user) {
+        _lastUser = user;
         var greetEl = $('co-greeting'), emailEl = $('co-email');
         if (user) {
             var name = user.displayName ||
-                (user.email ? user.email.split('@')[0] : '') || 'bạn';
-            if (greetEl) greetEl.textContent = 'Xin chào, ' + name + '!';
+                (user.email ? user.email.split('@')[0] : '') || t('co.you');
+            if (greetEl) greetEl.textContent = t('co.helloName', { name: name });
             if (emailEl) emailEl.textContent = user.email || '—';
         } else {
-            if (greetEl) greetEl.textContent = 'Xin chào!';
+            if (greetEl) greetEl.textContent = t('co.hello');
             if (emailEl) emailEl.textContent = '—';
         }
     }
@@ -160,7 +167,7 @@
             .then(function (me) {
                 if (me && me.role === 'admin') {
                     adminGuarded = true;
-                    window.alert('Tài Khoản Không Đúng — tài khoản admin không thể thanh toán đơn hàng.');
+                    window.alert(t('co.adminBlocked'));
                     window.location.replace('index.html');
                 }
             })
@@ -221,31 +228,31 @@
             wardSel = $('f-ward'), postalSel = $('f-postal');
         if (!citySel) return;
 
-        fillOptions(citySel, Object.keys(VN_ADDRESS), '-- Chọn --');
-        resetSelect(distSel, '-- Chọn --');
-        resetSelect(wardSel, '-- Chọn --');
-        resetSelect(postalSel, '-- Chọn --');
+        fillOptions(citySel, Object.keys(VN_ADDRESS), t('com.select'));
+        resetSelect(distSel, t('com.select'));
+        resetSelect(wardSel, t('com.select'));
+        resetSelect(postalSel, t('com.select'));
 
         citySel.addEventListener('change', function () {
             var city = citySel.value;
-            resetSelect(distSel, '-- Chọn --');
-            resetSelect(wardSel, '-- Chọn --');
-            resetSelect(postalSel, '-- Chọn --');
+            resetSelect(distSel, t('com.select'));
+            resetSelect(wardSel, t('com.select'));
+            resetSelect(postalSel, t('com.select'));
             if (city && VN_ADDRESS[city]) {
-                fillOptions(distSel, Object.keys(VN_ADDRESS[city]), '-- Chọn --');
+                fillOptions(distSel, Object.keys(VN_ADDRESS[city]), t('com.select'));
                 distSel.disabled = false;
             }
         });
 
         distSel.addEventListener('change', function () {
             var city = citySel.value, dist = distSel.value;
-            resetSelect(wardSel, '-- Chọn --');
-            resetSelect(postalSel, '-- Chọn --');
+            resetSelect(wardSel, t('com.select'));
+            resetSelect(postalSel, t('com.select'));
             var node = city && dist && VN_ADDRESS[city] && VN_ADDRESS[city][dist];
             if (node) {
-                fillOptions(wardSel, node.wards, '-- Chọn --');
+                fillOptions(wardSel, node.wards, t('com.select'));
                 wardSel.disabled = false;
-                fillOptions(postalSel, node.postal, '-- Chọn --');
+                fillOptions(postalSel, node.postal, t('com.select'));
                 postalSel.disabled = false;
             }
         });
@@ -275,17 +282,17 @@
 
     // [inputId, errId, validatorFn(value) -> errorMessage|null]
     var REQUIRED_FIELDS = [
-        ['f-firstname', 'f-firstname-err', function (v) { return v ? null : 'Vui lòng nhập Tên'; }],
-        ['f-lastname', 'f-lastname-err', function (v) { return v ? null : 'Vui lòng nhập Họ'; }],
+        ['f-firstname', 'f-firstname-err', function (v) { return v ? null : t('co.errFirstname'); }],
+        ['f-lastname', 'f-lastname-err', function (v) { return v ? null : t('co.errLastname'); }],
         ['f-phone', 'f-phone-err', function (v) {
-            if (!v) return 'Vui lòng nhập số điện thoại';
-            return isValidVNPhone(v) ? null : 'Số điện thoại không hợp lệ (VD: 0901234567)';
+            if (!v) return t('co.errPhoneEmpty');
+            return isValidVNPhone(v) ? null : t('co.errPhoneBad');
         }],
-        ['f-street', 'f-street-err', function (v) { return v ? null : 'Vui lòng nhập số nhà / tên đường'; }],
-        ['f-city', 'f-city-err', function (v) { return v ? null : 'Vui lòng chọn Thành phố / Tỉnh'; }],
-        ['f-district', 'f-district-err', function (v) { return v ? null : 'Vui lòng chọn Quận / Huyện'; }],
-        ['f-ward', 'f-ward-err', function (v) { return v ? null : 'Vui lòng chọn Phường / Xã'; }],
-        ['f-postal', 'f-postal-err', function (v) { return v ? null : 'Vui lòng chọn Mã bưu chính'; }]
+        ['f-street', 'f-street-err', function (v) { return v ? null : t('co.errStreet'); }],
+        ['f-city', 'f-city-err', function (v) { return v ? null : t('co.errCity'); }],
+        ['f-district', 'f-district-err', function (v) { return v ? null : t('co.errDistrict'); }],
+        ['f-ward', 'f-ward-err', function (v) { return v ? null : t('co.errWard'); }],
+        ['f-postal', 'f-postal-err', function (v) { return v ? null : t('co.errPostal'); }]
     ];
 
     function validateForm() {
@@ -303,7 +310,7 @@
         var payErr = $('f-pay-err');
         var payChecked = document.querySelector('input[name="payment"]:checked');
         if (!payChecked) {
-            if (payErr) { payErr.textContent = 'Vui lòng chọn phương thức thanh toán'; payErr.hidden = false; }
+            if (payErr) { payErr.textContent = t('co.errPay'); payErr.hidden = false; }
             if (!firstInvalid) firstInvalid = document.querySelector('input[name="payment"]');
         } else if (payErr) {
             payErr.textContent = ''; payErr.hidden = true;
@@ -356,13 +363,13 @@
             e.preventDefault();
 
             if (getCartSafe().length === 0) {
-                showFormMsg('Giỏ hàng của bạn đang trống.', 'err');
+                showFormMsg(t('acc.cartEmpty'), 'err');
                 return;
             }
 
             var firstInvalid = validateForm();
             if (firstInvalid) {
-                showFormMsg('Vui lòng kiểm tra lại các trường được đánh dấu.', 'err');
+                showFormMsg(t('co.msgFixFields'), 'err');
                 firstInvalid.focus();
                 return;
             }
@@ -397,7 +404,7 @@
             if (_vCode) payload.voucherCode = _vCode;
 
             if (!(window.AuthHelper && typeof window.AuthHelper.apiFetch === 'function')) {
-                showFormMsg('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.', 'err');
+                showFormMsg(t('co.msgSessionExpired'), 'err');
                 window.location.href = 'login.html?redirect=checkout.html';
                 return;
             }
@@ -419,25 +426,24 @@
                     if (window.BreezeVoucher && window.BreezeVoucher.clear) window.BreezeVoucher.clear();
                     var order = data.order || {};
                     var okMsg = data.voucherDropped
-                        ? 'Mã giảm giá đã hết hiệu lực, đơn hàng được tính theo giá gốc. Mã đơn #' + order.id +
-                          '. Đang chuyển tới trang đơn hàng...'
-                        : 'Đặt hàng thành công! Mã đơn #' + order.id + '. Đang chuyển tới trang đơn hàng...';
+                        ? t('co.msgOkVoucherDropped', { id: order.id })
+                        : t('co.msgOk', { id: order.id });
                     showFormMsg(okMsg, 'ok');
                     setTimeout(function () { window.location.href = 'orders.html'; }, data.voucherDropped ? 2200 : 1200);
                     return; // giữ nút disabled vì đang rời trang
                 }
 
                 if (r.status === 400) {
-                    showFormMsg(data.message || 'Giỏ hàng trống, không thể đặt đơn', 'err');
+                    showFormMsg(data.message || t('co.msgEmptyCart'), 'err');
                     enableBtn();
                     return;
                 }
 
                 if (r.status === 409) {
                     var lines = (data.items || []).map(function (it) {
-                        return it.name + ' (còn ' + it.stock + ', cần ' + it.requested + ')';
+                        return t('co.msgStockLine', { name: it.name, stock: it.stock, want: it.requested });
                     });
-                    showFormMsg((data.message || 'Một số sản phẩm không đủ tồn kho') +
+                    showFormMsg((data.message || t('co.msgStock')) +
                         (lines.length ? ': ' + lines.join('; ') : ''), 'err');
                     if (typeof window.refreshCart === 'function') window.refreshCart();
                     enableBtn();
@@ -445,21 +451,21 @@
                 }
 
                 if (r.status === 401) {
-                    showFormMsg('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.', 'err');
+                    showFormMsg(t('co.msgSessionExpired'), 'err');
                     window.location.href = 'login.html?redirect=checkout.html';
                     return;
                 }
 
                 if (r.status === 403 && data.error === 'BLACKLISTED') {
-                    showFormMsg('Không Thể Thực Hiện Hành Động', 'err');
+                    showFormMsg(t('acc.blocked'), 'err');
                     enableBtn();
                     return;
                 }
 
-                showFormMsg(data.message || 'Không tạo được đơn hàng, vui lòng thử lại.', 'err');
+                showFormMsg(data.message || t('co.msgFailed'), 'err');
                 enableBtn();
             }).catch(function () {
-                showFormMsg('Lỗi kết nối, vui lòng thử lại.', 'err');
+                showFormMsg(t('co.msgNetErr'), 'err');
                 enableBtn();
             });
         });
@@ -475,6 +481,19 @@
         document.addEventListener('cartchange', function () {
             renderSummary();
             scheduleEmptyCheck(400);
+        });
+
+        // Đổi VI/EN: dựng lại phần do JS sinh (tóm tắt, lời chào) + nhãn "-- Chọn --"
+        // của 4 select địa chỉ (giữ nguyên lựa chọn hiện tại).
+        document.addEventListener('langchange', function () {
+            renderSummary();
+            renderUser(_lastUser);
+            ['f-city', 'f-district', 'f-ward', 'f-postal'].forEach(function (id) {
+                var sel = $(id);
+                if (sel && sel.options.length && sel.options[0].value === '') {
+                    sel.options[0].textContent = t('com.select');
+                }
+            });
         });
 
         // Trạng thái đăng nhập: cập nhật greeting/email; sau khi auth sẵn sàng thì

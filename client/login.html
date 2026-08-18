@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dang Nhap - BookStore</title>
+    <title>Đăng Nhập - BREEZE</title>
     <script>(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" type="text/css" href="css/global.css">
@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
 </head>
-<body class="sitehdr">
+<body class="sitehdr" data-i18n-doctitle="au.loginDocTitle">
     <div class="policy-header">
         <button type="button" class="ph-menu" data-drawer-open aria-controls="drawer-menu" aria-expanded="false">
             <i class="fa fa-bars" aria-hidden="true"></i> <span class="ph-menu-label">Danh Mục</span>
@@ -91,8 +91,8 @@
 
             <!-- TABS: Sign in | Create Account -->
             <div class="auth-tabs">
-                <span class="auth-tab active">Sign in</span>
-                <a href="signup.html" class="auth-tab">Create Account</a>
+                <span class="auth-tab active" data-i18n="au.tabSignin">Sign in</span>
+                <a href="signup.html" class="auth-tab" data-i18n="au.tabSignup">Create Account</a>
             </div>
 
             <!-- FORM DANG NHAP -->
@@ -103,7 +103,7 @@
                     <input id="login-email"
                            class="auth-input"
                            type="email"
-                           placeholder="* EMAIL ADDRESS"
+                           placeholder="* EMAIL ADDRESS" data-i18n-ph="au.phEmail"
                            required/>
                 </div>
 
@@ -112,35 +112,35 @@
                     <input id="login-password"
                            class="auth-input"
                            type="password"
-                           placeholder="* PASSWORD"
+                           placeholder="* PASSWORD" data-i18n-ph="au.phPassword"
                            required/>
                 </div>
 
                 <!-- FORGOT PASSWORD + REQUIRED -->
                 <div class="auth-meta-row">
-                    <a href="forgot-password.html" class="auth-forgot">Forgot Password?</a>
-                    <span class="auth-required">* Required</span>
+                    <a href="forgot-password.html" class="auth-forgot" data-i18n="au.forgot">Forgot Password?</a>
+                    <span class="auth-required" data-i18n="au.required">* Required</span>
                 </div>
 
                 <!-- REMEMBER ME + DETAILS -->
                 <div class="auth-remember-row">
                     <label class="auth-remember">
-                        <input type="checkbox" checked> Remember Me
+                        <input type="checkbox" checked> <span data-i18n="au.remember">Remember Me</span>
                     </label>
-                    <a href="#" class="auth-details">Details</a>
+                    <a href="#" class="auth-details" data-i18n="au.details">Details</a>
                 </div>
 
                 <!-- THONG BAO LOI / THANH CONG -->
                 <p id="login-msg" class="auth-msg"></p>
 
                 <!-- NUT SIGN IN -->
-                <button type="submit" class="auth-btn">SIGN IN</button>
+                <button type="submit" class="auth-btn" data-i18n="au.btnSignin">SIGN IN</button>
 
             </form>
 
             <!-- OR DIVIDER -->
             <div class="auth-divider">
-                <hr><span>OR</span><hr>
+                <hr><span data-i18n="au.or">OR</span><hr>
             </div>
 
             <!-- SOCIAL BUTTONS (trang tri) -->
@@ -207,6 +207,7 @@
     <script src="js/cart.js"></script>
     <script src="js/cart-drawer.js"></script>
     <script src="js/drawer-menu.js"></script>
+    <script src="js/i18n.js"></script>
 
     <script>
         function showMsg(id, text, type) {
@@ -216,14 +217,19 @@
         }
 
         // Bị chuyển hướng từ nút "Đăng xuất" (account-menu) lúc CHƯA đăng nhập.
+        // Chờ 'langchange' (i18n.js phát khi áp ngôn ngữ) để lấy đúng bản dịch,
+        // và đổi lại text mỗi lần người dùng chuyển VI/EN.
         (function () {
             var notice = new URLSearchParams(window.location.search).get('notice');
-            if (notice === 'need-login' && typeof showMessage === 'function') {
-                showMessage('login-msg', 'Bạn chưa đăng nhập tài khoản', true);
+            if (notice !== 'need-login') return;
+            function paint() {
+                if (typeof showMessage !== 'function' || !window.__i18n) return;
+                showMessage('login-msg', window.__i18n.t('au.notLoggedIn'), true);
             }
+            document.addEventListener('langchange', paint);
+            document.addEventListener('DOMContentLoaded', paint);
         })();
     </script>
-    <script src="js/i18n.js"></script>
     <script src="js/reveal.js"></script>
 </body>
 </html>

@@ -19,6 +19,10 @@ var _authResolved = false; // đã biết chắc đang là khách hay tài kho�
 function _lang() {
     return (window.__i18n && window.__i18n.current) || localStorage.getItem('ql_lang') || 'vi';
 }
+// Tra từ điển UI (js/i18n.js). Trả về khoá nếu i18n chưa nạp -> không bao giờ throw.
+function _t(key, params) {
+    return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
+}
 
 function getCart() { return _cart; }
 
@@ -211,7 +215,7 @@ function addToCart(btn) {
     const priceEl = salePriceEl || item.querySelector('.product-price');
     const imgEl = item.querySelector('img');
 
-    const name = nameEl ? nameEl.textContent.trim() : 'Sản phẩm';
+    const name = nameEl ? nameEl.textContent.trim() : _t('acc.product');
     const priceText = priceEl ? priceEl.textContent.trim() : '0';
     const price = parseInt(priceText.replace(/[^\d]/g, '')) || 0;
     const img = imgEl ? imgEl.getAttribute('src') : '';
@@ -241,7 +245,7 @@ function addToCart(btn) {
                     if (prevQty !== null) { srvItem.qty = prevQty; }
                     else { _cart = _cart.filter(function (p) { return p.id !== id; }); }
                     _notify();
-                    _cartToast(data.error === 'BLACKLISTED' ? 'Không Thể Thực Hiện Hành Động' : (data.message || 'Không thêm được vào giỏ'));
+                    _cartToast(data.error === 'BLACKLISTED' ? _t('acc.blocked') : (data.message || _t('acc.errAddCart')));
                     return null;
                 });
             }
@@ -295,7 +299,7 @@ function updateQty(id, delta) {
                 return r.json().catch(function () { return {}; }).then(function (data) {
                     item.qty = prevQty;         // rollback thay đổi lạc quan
                     _notify();
-                    _cartToast(data.error === 'BLACKLISTED' ? 'Không Thể Thực Hiện Hành Động' : (data.message || 'Không cập nhật được giỏ'));
+                    _cartToast(data.error === 'BLACKLISTED' ? _t('acc.blocked') : (data.message || _t('acc.errUpdCart')));
                     return null;
                 });
             }
@@ -323,12 +327,12 @@ function _injectAddToCartButtons() {
         if (_isSoldOut(item)) {
             // Hết hàng: nút "Hết hàng" bị vô hiệu (KHÔNG class btn-add-cart để i18n không đổi nhãn).
             btn.className = 'btn-soldout';
-            btn.textContent = 'Hết hàng';
+            btn.textContent = _t('sr.soldOut');
             btn.disabled = true;
             btn.setAttribute('aria-disabled', 'true');
         } else {
             btn.className = 'btn-add-cart';
-            btn.textContent = 'Thêm vào giỏ';
+            btn.textContent = _t('pd.addToCart');
             btn.onclick = function () { addToCart(this); };
         }
         info.appendChild(btn);
@@ -376,7 +380,7 @@ function startCheckout(opts) {
         : function (m) { window.alert(m); };
 
     if (getCart().length === 0) {
-        onError('Giỏ hàng của bạn đang trống.');
+        onError(_t('acc.cartEmpty'));
         return;
     }
 
@@ -390,7 +394,7 @@ function startCheckout(opts) {
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (me) {
             if (me && me.role === 'admin') {
-                onError('Tài Khoản Không Đúng — tài khoản admin không thể thanh toán đơn hàng.');
+                onError(_t('acc.adminBlocked'));
                 return;
             }
             window.location.href = 'checkout.html';
