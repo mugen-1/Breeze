@@ -1,0 +1,30 @@
+# ============================================================================
+# Chuẩn hoá line ending cho Breeze.
+# Dự án làm trên Windows nhưng repo phải thống nhất LF, nếu không mỗi lần
+# checkout/commit sẽ sinh diff toàn file mà không có thay đổi thật nào.
+# ============================================================================
+
+# Mặc định: git tự nhận diện file text, lưu LF trong repo VÀ để LF trên đĩa.
+# Đặt eol=lf (không dựa vào core.autocrlf) để mọi máy cho kết quả giống nhau.
+* text=auto eol=lf
+
+# --- Ngoại lệ: script Windows ------------------------------------------------
+# .bat/.cmd phải là CRLF TRÊN ĐĨA. cmd.exe đọc file LF có thể nuốt dòng cuối
+# hoặc chạy sai nhãn goto. Trong repo vẫn lưu LF, chỉ đổi lúc checkout.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# --- File nhị phân: git không được đụng vào ----------------------------------
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.avif binary
+*.webp binary
+*.ico  binary
+*.pdf  binary
+*.woff binary
+*.woff2 binary
+
+# Ảnh WebP nhưng KHÔNG có phần mở rộng — phải khai báo tay, đừng để git đoán.
+client/img/denim binary
