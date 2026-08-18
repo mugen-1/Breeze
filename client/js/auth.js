@@ -1,12 +1,20 @@
-const ERROR_MESSAGES = {
-    'auth/email-already-in-use': 'Email nay da duoc su dung.',
-    'auth/invalid-email': 'Email khong hop le.',
-    'auth/weak-password': 'Mat khau phai it nhat 6 ky tu.',
-    'auth/user-not-found': 'Tai khoan khong ton tai.',
-    'auth/wrong-password': 'Mat khau khong dung.',
-    'auth/invalid-credential': 'Email hoac mat khau khong chinh xac.',
-    'auth/too-many-requests': 'Qua nhieu lan thu. Vui long thu lai sau.'
+// Thông báo lỗi Firebase -> khoá i18n (js/i18n.js). Nhãn tĩnh trên form do data-i18n lo.
+const ERROR_KEYS = {
+    'auth/email-already-in-use': 'au.eInUse',
+    'auth/invalid-email': 'au.eBadEmail',
+    'auth/weak-password': 'au.eWeakPw',
+    'auth/user-not-found': 'au.eNoUser',
+    'auth/wrong-password': 'au.eWrongPw',
+    'auth/invalid-credential': 'au.eBadCred',
+    'auth/too-many-requests': 'au.eTooMany'
 };
+
+function t(key, params) {
+    return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
+}
+function authError(error) {
+    return ERROR_KEYS[error.code] ? t(ERROR_KEYS[error.code]) : error.message;
+}
 
 function showMessage(elementId, message, isError) {
     const el = document.getElementById(elementId);
@@ -23,15 +31,15 @@ function dangKy() {
     const xacNhan = document.getElementById('reg-confirm').value;
 
     if (!ten || !email || !matKhau || !xacNhan) {
-        showMessage('signup-msg', 'Vui lòng nhập đầy đủ thông tin.', true);
+        showMessage('signup-msg', t('au.errFillAll'), true);
         return;
     }
     if (matKhau !== xacNhan) {
-        showMessage('signup-msg', 'Mật khẩu xác nhận không khớp.', true);
+        showMessage('signup-msg', t('au.errConfirm'), true);
         return;
     }
     if (matKhau.length < 6) {
-        showMessage('signup-msg', 'Mật khẩu phải ít nhất 6 ký tự.', true);
+        showMessage('signup-msg', t('au.errShortPw'), true);
         return;
     }
 
@@ -40,11 +48,11 @@ function dangKy() {
             return userCredential.user.updateProfile({ displayName: ten });
         })
         .then(() => {
-            showMessage('signup-msg', 'Đăng ký thành công! Đang chuyển trang...', false);
+            showMessage('signup-msg', t('au.signupOk'), false);
             setTimeout(() => { window.location.href = 'login.html'; }, 1500);
         })
         .catch((error) => {
-            showMessage('signup-msg', ERROR_MESSAGES[error.code] || error.message, true);
+            showMessage('signup-msg', authError(error), true);
         });
 }
 
@@ -53,7 +61,7 @@ function dangNhap() {
     const matKhau = document.getElementById('login-password').value;
 
     if (!email || !matKhau) {
-        showMessage('login-msg', 'Vui long nhap email va mat khau.', true);
+        showMessage('login-msg', t('au.errNeedEmailPw'), true);
         return;
     }
 
@@ -78,7 +86,7 @@ function dangNhap() {
             if (redirect === 'checkout.html') {
                 if (isAdmin) {
                     // Admin không được đặt đơn -> báo lỗi, ở lại trang login.
-                    showMessage('login-msg', 'Tài khoản không hợp lệ.', true);
+                    showMessage('login-msg', t('au.errBadAccount'), true);
                     return;
                 }
                 window.location.href = 'checkout.html';
@@ -87,7 +95,7 @@ function dangNhap() {
             window.location.href = isAdmin ? 'admin.html' : 'index.html';
         })
         .catch((error) => {
-            showMessage('login-msg', ERROR_MESSAGES[error.code] || error.message, true);
+            showMessage('login-msg', authError(error), true);
         });
 }
 

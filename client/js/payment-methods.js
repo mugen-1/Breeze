@@ -17,6 +17,10 @@
   var _modalTrigger = null; // element trả focus khi đóng modal
 
   function byId(id) { return document.getElementById(id); }
+  // i18n — nhãn tĩnh do js/i18n.js áp qua data-i18n; t() cho chuỗi JS sinh.
+  function t(key, params) {
+    return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
+  }
   function elHide(el) { if (el) el.hidden = true; }
   function elShow(el) { if (el) el.hidden = false; }
   function fVal(id) { var el = byId(id); return el ? (el.value || '').trim() : ''; }
@@ -80,7 +84,7 @@
       .then(function (r) { if (!r.ok) throw new Error('GET payment-methods ' + r.status); return r.json(); })
       .then(function (d) {
         renderCards(d.payment_methods || []);
-        setLive(_cards.length ? ('Đã tải ' + _cards.length + ' thẻ.') : 'Bạn chưa lưu thẻ nào.');
+        setLive(_cards.length ? t('pf.payLoaded', { n: _cards.length }) : t('pf.noCards'));
       })
       .catch(function (e) { _loaded = false; console.error('[payments] tải thẻ lỗi:', e.message); showError(); });
   }
@@ -88,7 +92,7 @@
   function showLoading() {
     elHide(byId('pm-add')); elHide(byId('pm-list')); elHide(byId('pm-empty')); elHide(byId('pm-error'));
     elShow(byId('pm-loading'));
-    setLive('Đang tải danh sách thẻ…');
+    setLive(t('pf.payLoading'));
   }
   function showError() {
     elHide(byId('pm-add')); elHide(byId('pm-loading')); elHide(byId('pm-list')); elHide(byId('pm-empty'));
@@ -141,22 +145,22 @@
     var exp = document.createElement('div');
     exp.className = 'pm-exp' + (expired ? ' is-expired' : '');
     var mmyy = pad2(c.exp_month) + '/' + String(c.exp_year).slice(-2);
-    exp.textContent = expired ? ('Đã hết hạn ' + mmyy) : mmyy;
+    exp.textContent = expired ? t('pf.expiredOn', { mmyy: mmyy }) : mmyy;
     info.appendChild(exp);
     card.appendChild(info);
 
     if (c.is_default) {
       var badge = document.createElement('span');
       badge.className = 'pm-badge';
-      badge.textContent = 'Mặc định';
+      badge.textContent = t('pf.default');
       card.appendChild(badge);
     }
 
     var actions = document.createElement('div');
     actions.className = 'pm-actions';
-    if (!c.is_default && !expired) actions.appendChild(actionBtn('default', c.id, 'Đặt mặc định', false));
-    actions.appendChild(actionBtn('edit', c.id, 'Sửa', false));
-    actions.appendChild(actionBtn('delete', c.id, 'Xóa', true));
+    if (!c.is_default && !expired) actions.appendChild(actionBtn('default', c.id, t('pf.setDefault'), false));
+    actions.appendChild(actionBtn('edit', c.id, t('com.edit'), false));
+    actions.appendChild(actionBtn('delete', c.id, t('com.delete'), true));
     card.appendChild(actions);
     return card;
   }
@@ -165,8 +169,8 @@
   function openModal(card) {
     _editing = card || null;
     _modalTrigger = document.activeElement;
-    byId('pm-modal-title').textContent = _editing ? 'Sửa thẻ' : 'Thêm thẻ';
-    var save = byId('pm-save'); save.textContent = 'Lưu thẻ'; save.disabled = false;
+    byId('pm-modal-title').textContent = _editing ? t('pf.editCard') : t('pf.addCard');
+    var save = byId('pm-save'); save.textContent = t('pf.saveCard'); save.disabled = false;
     clearErrors();
     fillForm(_editing);
     var overlay = byId('pm-modal-overlay');
@@ -223,13 +227,13 @@
 
   function validateExp(mRaw, yRaw) {
     var m = Number(mRaw);
-    if (!mRaw || !isInt(m) || m < 1 || m > 12) return 'Tháng hết hạn không hợp lệ (01–12)';
+    if (!mRaw || !isInt(m) || m < 1 || m > 12) return t('pf.errExpMonth');
     var y = Number(yRaw);
-    if (!yRaw || !isInt(y)) return 'Năm hết hạn không hợp lệ';
+    if (!yRaw || !isInt(y)) return t('pf.errExpYear');
     if (y >= 0 && y < 100) y += 2000;
-    if (y < 2000 || y > 2099) return 'Năm hết hạn không hợp lệ';
+    if (y < 2000 || y > 2099) return t('pf.errExpYear');
     var now = new Date(); var cy = now.getFullYear(), cm = now.getMonth() + 1;
-    if (y < cy || (y === cy && m < cm)) return 'Thẻ đã hết hạn';
+    if (y < cy || (y === cy && m < cm)) return t('pf.errCardExpired');
     return null;
   }
   function isInt(n) { return typeof n === 'number' && isFinite(n) && Math.floor(n) === n; }
@@ -241,12 +245,12 @@
 
     var isEdit = !!_editing;
     var num = fVal('pf-number');
-    if (!isEdit && !num) fail('pf-number', 'pf-number-msg', 'Vui lòng nhập số thẻ');
+    if (!isEdit && !num) fail('pf-number', 'pf-number-msg', t('pf.errCardNumber'));
     else if (num) {
       var digits = num.replace(/[\s-]/g, '');
-      if (!/^\d{13,19}$/.test(digits) || !luhn(digits)) fail('pf-number', 'pf-number-msg', 'Số thẻ không hợp lệ');
+      if (!/^\d{13,19}$/.test(digits) || !luhn(digits)) fail('pf-number', 'pf-number-msg', t('pf.errCardNumberBad'));
     }
-    if (!fVal('pf-holder')) fail('pf-holder', 'pf-holder-msg', 'Vui lòng nhập tên chủ thẻ');
+    if (!fVal('pf-holder')) fail('pf-holder', 'pf-holder-msg', t('pf.errCardHolder'));
     var expMsg = validateExp(fVal('pf-month'), fVal('pf-year'));
     if (expMsg) fail(['pf-month', 'pf-year'], 'pf-exp-msg', expMsg);
 
@@ -276,7 +280,7 @@
     var wantDefault = byId('pf-default').checked;
 
     var save = byId('pm-save'); var label = save.textContent;
-    save.disabled = true; save.textContent = 'Đang lưu…';
+    save.disabled = true; save.textContent = t('pf.saving');
 
     var url = isEdit ? (BASE + '/' + encodeURIComponent(_editing.id)) : BASE;
     var opts = { method: isEdit ? 'PUT' : 'POST', body: JSON.stringify(payload) };
@@ -285,7 +289,7 @@
       .then(function (out) {
         if (!out.ok) {
           if (out.status === 401) return null;
-          toast((out.data && out.data.message) || 'Không lưu được thẻ', false);
+          toast((out.data && out.data.message) || t('pf.errSaveCard'), false);
           return null;
         }
         // Sửa + muốn đặt mặc định (trước đó chưa phải) -> PATCH tiếp, render kết quả cuối.
@@ -301,33 +305,33 @@
         finishOk(isEdit);
         return null;
       })
-      .catch(function (err) { console.error('[payments] lưu thẻ lỗi:', err.message); toast('Không lưu được thẻ', false); })
+      .catch(function (err) { console.error('[payments] lưu thẻ lỗi:', err.message); toast(t('pf.errSaveCard'), false); })
       .then(function () { save.disabled = false; save.textContent = label; });
   }
-  function finishOk(isEdit) { closeModal(); toast(isEdit ? 'Đã cập nhật thẻ' : 'Đã thêm thẻ'); }
+  function finishOk(isEdit) { closeModal(); toast(isEdit ? t('pf.cardUpdated') : t('pf.cardAdded')); }
 
   // ---- Đặt mặc định / Xoá ----
   function setDefault(id) {
     window.AuthHelper.apiFetch(BASE + '/' + encodeURIComponent(id) + '/default', { method: 'PATCH' })
       .then(readResult).then(function (out) {
-        if (out.ok) { if (out.data.payment_methods) renderCards(out.data.payment_methods); toast('Đã đặt thẻ mặc định'); return; }
+        if (out.ok) { if (out.data.payment_methods) renderCards(out.data.payment_methods); toast(t('pf.cardDefaultSet')); return; }
         if (out.status === 401) return;
-        toast((out.data && out.data.message) || 'Không đặt được mặc định', false);
+        toast((out.data && out.data.message) || t('pf.errCardDefault'), false);
       })
-      .catch(function (e) { console.error('[payments] đặt mặc định lỗi:', e.message); toast('Không đặt được mặc định', false); });
+      .catch(function (e) { console.error('[payments] đặt mặc định lỗi:', e.message); toast(t('pf.errCardDefault'), false); });
   }
 
   function del(id) {
     var c = findCard(id);
-    var label = c ? (c.brand + ' •••• ' + c.last4) : 'này';
-    if (!window.confirm('Xóa thẻ ' + label + '? Hành động này không thể hoàn tác.')) return;
+    var label = c ? (c.brand + ' •••• ' + c.last4) : t('pf.thisOne');
+    if (!window.confirm(t('pf.confirmDelCard', { label: label }))) return;
     window.AuthHelper.apiFetch(BASE + '/' + encodeURIComponent(id), { method: 'DELETE' })
       .then(readResult).then(function (out) {
-        if (out.ok) { if (out.data.payment_methods) renderCards(out.data.payment_methods); toast('Đã xóa thẻ'); return; }
+        if (out.ok) { if (out.data.payment_methods) renderCards(out.data.payment_methods); toast(t('pf.cardDeleted')); return; }
         if (out.status === 401) return;
-        toast((out.data && out.data.message) || 'Không xóa được thẻ', false);
+        toast((out.data && out.data.message) || t('pf.errDelCard'), false);
       })
-      .catch(function (e) { console.error('[payments] xóa thẻ lỗi:', e.message); toast('Không xóa được thẻ', false); });
+      .catch(function (e) { console.error('[payments] xóa thẻ lỗi:', e.message); toast(t('pf.errDelCard'), false); });
   }
 
   // ---- Uỷ quyền click trên list + focus trap modal ----
@@ -376,7 +380,11 @@
   }
 
   // Public: profile.html gọi window.PaymentMethods.load() từ applySection (lazy theo tab).
-  window.PaymentMethods = { load: load };
+  // rerender: profile.html gọi lại khi đổi VI/EN (dựng lại card từ cache, không gọi API).
+  window.PaymentMethods = {
+    load: load,
+    rerender: function () { if (_loaded) renderCards(_cards); }
+  };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

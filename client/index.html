@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="utf-8">
+    <title>BREEZE - Thời trang</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script>(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
     <link rel="stylesheet" href="css/tokens.css">
@@ -14,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
 </head>
 
-<body class="home">
+<body class="home" data-i18n-doctitle="title.index">
     <header>
         <div class="logo">
             <a href="index.html" class="brand">BREEZE</a>
@@ -102,9 +103,9 @@
         <div class="hero-scrim"></div>
 
         <div class="hero-content">
-            <p class="hero-eyebrow">Bộ sưu tập 2026</p>
+            <p class="hero-eyebrow" data-i18n="ix.eyebrow">Bộ sưu tập 2026</p>
             <h1 class="hero-title"></h1>
-            <a href="sanpham-ao.html" class="hero-btn">Shop Now</a>
+            <a href="sanpham-ao.html" class="hero-btn" data-i18n="ix.shopNow">Shop Now</a>
         </div>
 
         <div class="hero-dots">
@@ -114,7 +115,7 @@
         </div>
 
         <div class="hero-scroll" aria-hidden="true">
-            <span class="hero-scroll-label">Scroll</span>
+            <span class="hero-scroll-label" data-i18n="ix.scroll">Scroll</span>
             <span class="hero-scroll-line"></span>
         </div>
     </section>
@@ -179,7 +180,7 @@
     <!-- Main content -->
     <div class="main-content">
         <div class="headline reveal">
-            <h4>New Arrivals</h4>
+            <h4 data-i18n="ix.newArrivals">New Arrivals</h4>
         </div>
         <ul class="products" data-no-cart>
             <li>

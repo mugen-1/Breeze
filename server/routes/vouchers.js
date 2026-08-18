@@ -10,35 +10,48 @@ const router = express.Router();
 const { getPool, sql } = require('../db');
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { buildUserActionLimiter } = require('../middleware/security');
-const { getVoucher, calcDiscount, isFirstTimeCustomer } = require('../config/vouchers');
+const {
+  getVoucher, calcDiscount, isFirstTimeCustomer, needsCustomerHistory, checkEligibility,
+} = require('../config/vouchers');
 
 const EFFECTIVE_PRICE =
   '(CASE WHEN p.sale_price IS NOT NULL THEN p.sale_price ELSE p.price END)';
 
-// Message tiếng Việt tương ứng từng lý do thất bại.
+// Message tiếng Việt tương ứng từng lý do thất bại. Giá trị có thể là hàm (nhận ngưỡng
+// bị vi phạm) để ghép số vào câu — vd "chỉ áp dụng cho đơn tối đa 5 sản phẩm".
 const FAIL_MESSAGE = {
   NOT_FOUND:       'Mã giảm giá không hợp lệ',
   EMPTY_CART:      'Giỏ hàng trống, không thể áp dụng mã',
   NOT_FIRST_ORDER: 'Mã này chỉ dành cho khách hàng mua lần đầu',
+  RETURNING_ONLY:  'Mã này chỉ dành cho khách đã từng đặt hàng',
+  TOO_FEW_ITEMS:   (n) => `Mã này chỉ áp dụng cho đơn từ ${n} sản phẩm trở lên`,
+  TOO_MANY_ITEMS:  (n) => `Mã này chỉ áp dụng cho đơn tối đa ${n} sản phẩm`,
   MIN_SUBTOTAL:    'Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã',
 };
 
-function fail(reason) {
-  return { valid: false, reason, message: FAIL_MESSAGE[reason] || 'Không thể áp dụng mã giảm giá' };
+function fail(reason, limit) {
+  const m = FAIL_MESSAGE[reason];
+  const message = (typeof m === 'function' ? m(limit) : m) || 'Không thể áp dụng mã giảm giá';
+  return { valid: false, reason, message };
 }
 
-// Tổng tiền hàng (số nguyên đồng) từ giỏ của user — GIÁ LẤY TỪ DB, không tin client.
-async function cartSubtotal(pool, userId) {
+// Tổng tiền hàng (số nguyên đồng) + TỔNG số lượng sản phẩm trong giỏ của user.
+// GIÁ VÀ SỐ LƯỢNG LẤY TỪ DB, không tin client.
+async function cartTotals(pool, userId) {
   const r = await pool
     .request()
     .input('uid', sql.Int, userId)
     .query(`
-      SELECT SUM(${EFFECTIVE_PRICE} * ci.quantity) AS subtotal
+      SELECT SUM(${EFFECTIVE_PRICE} * ci.quantity) AS subtotal,
+             SUM(ci.quantity) AS item_count
       FROM dbo.cart_items ci
       JOIN dbo.products p ON p.id = ci.product_id
       WHERE ci.user_id = @uid;`);
-  const raw = r.recordset[0] && r.recordset[0].subtotal;
-  return raw == null ? 0 : Math.round(Number(raw));
+  const row = r.recordset[0] || {};
+  return {
+    subtotal: row.subtotal == null ? 0 : Math.round(Number(row.subtotal)),
+    itemCount: row.item_count == null ? 0 : Math.round(Number(row.item_count)),
+  };
 }
 
 // Chống brute-force dò mã: tối đa 20 request / phút, key theo user (fallback IP).
@@ -66,34 +79,27 @@ router.post('/validate', validateLimiter, async (req, res) => {
   try {
     const voucher = getVoucher(rawCode);
 
-    // Subtotal luôn tính từ DB (dùng cho cả nhánh success lẫn kiểm tra minSubtotal).
-    const subtotal = await cartSubtotal(pool, req.user.id);
-
     // 1) Mã không tồn tại -> NOT_FOUND (message chung, không lộ mã nào có thật).
+    //    Trả sớm: khỏi tốn query giỏ hàng cho mã rác.
     if (!voucher) {
       console.warn('[vouchers] validate FAIL NOT_FOUND uid=%s code=%j', req.user.id, rawCode);
       return res.json(fail('NOT_FOUND'));
     }
 
-    // 2) Giỏ rỗng -> không có gì để giảm.
-    if (subtotal <= 0) {
-      console.warn('[vouchers] validate FAIL EMPTY_CART uid=%s code=%s', req.user.id, voucher.code);
-      return res.json(fail('EMPTY_CART'));
-    }
+    // Subtotal + số lượng luôn tính từ DB (dùng cho cả nhánh success lẫn các điều kiện).
+    const { subtotal, itemCount } = await cartTotals(pool, req.user.id);
 
-    // 3) Mã chỉ cho khách mua lần đầu.
-    if (voucher.firstOrderOnly) {
-      const firstTime = await isFirstTimeCustomer(req.user.id);
-      if (!firstTime) {
-        console.warn('[vouchers] validate FAIL NOT_FIRST_ORDER uid=%s code=%s', req.user.id, voucher.code);
-        return res.json(fail('NOT_FIRST_ORDER'));
-      }
-    }
+    // Chỉ query lịch sử mua khi mã thật sự ràng buộc theo nó.
+    const isFirstTime = needsCustomerHistory(voucher)
+      ? await isFirstTimeCustomer(req.user.id)
+      : false;
 
-    // 4) Chưa đạt giá trị tối thiểu.
-    if (subtotal < voucher.minSubtotal) {
-      console.warn('[vouchers] validate FAIL MIN_SUBTOTAL uid=%s code=%s', req.user.id, voucher.code);
-      return res.json(fail('MIN_SUBTOTAL'));
+    // 2) Toàn bộ điều kiện đi qua SEAM chung với lúc đặt đơn (config/vouchers.js).
+    const check = checkEligibility(voucher, { subtotal, itemCount, isFirstTime });
+    if (!check.ok) {
+      console.warn('[vouchers] validate FAIL %s uid=%s code=%s items=%s',
+        check.reason, req.user.id, voucher.code, itemCount);
+      return res.json(fail(check.reason, check.limit));
     }
 
     // Thành công.

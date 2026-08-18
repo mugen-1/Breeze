@@ -256,7 +256,8 @@
     }
 </style>
 
-<body class="category-page sitehdr">
+<title>Sản phẩm - BREEZE</title>
+<body class="category-page sitehdr" data-i18n-doctitle="pd.docTitle">
     <div class="policy-header">
         <button type="button" class="ph-menu" data-drawer-open aria-controls="drawer-menu" aria-expanded="false">
             <i class="fa fa-bars" aria-hidden="true"></i> <span class="ph-menu-label">Danh Mục</span>
@@ -342,8 +343,8 @@
                     <p class="pd-desc" id="pd-desc"></p>
 
                     <div class="pd-size-head">
-                        <span class="pd-size-label">Chọn size</span>
-                        <button type="button" class="pd-guide-link" id="sg-open">Bảng size</button>
+                        <span class="pd-size-label" data-i18n="pd.chooseSize">Chọn size</span>
+                        <button type="button" class="pd-guide-link" id="sg-open" data-i18n="pd.sizeGuide">Bảng size</button>
                     </div>
                     <div class="pd-sizes" id="pd-sizes">
                         <button type="button" class="pd-size" data-size="S">S</button>
@@ -362,7 +363,7 @@
     <div class="pd-wrap pd-related">
         <div class="main-content">
             <div class="headline reveal">
-                <h4>Có thể bạn thích</h4>
+                <h4 data-i18n="pd.youMayLike">Có thể bạn thích</h4>
             </div>
             <ul class="products" id="pd-related-list">
                 <li>
@@ -423,13 +424,13 @@
 
     <!-- ===== MODAL BẢNG SIZE ===== -->
     <div class="sg-overlay" id="sg-overlay">
-        <div class="sg-modal" role="dialog" aria-modal="true" aria-label="Bảng size">
-            <button type="button" class="sg-close" id="sg-close" aria-label="Đóng">&times;</button>
-            <h2 class="sg-title">Bảng size</h2>
-            <p class="sg-sub">Số đo tham khảo (cm). Chọn size lớn hơn nếu bạn thích form rộng.</p>
+        <div class="sg-modal" role="dialog" aria-modal="true" aria-label="Bảng size" data-i18n-aria="pd.sizeGuide">
+            <button type="button" class="sg-close" id="sg-close" aria-label="Đóng" data-i18n-aria="com.close">&times;</button>
+            <h2 class="sg-title" data-i18n="pd.sizeGuide">Bảng size</h2>
+            <p class="sg-sub" data-i18n="pd.sizeSub">Số đo tham khảo (cm). Chọn size lớn hơn nếu bạn thích form rộng.</p>
             <table class="sg-table">
                 <thead>
-                    <tr><th>Size</th><th>Ngực</th><th>Dài áo</th><th>Vai</th></tr>
+                    <tr><th data-i18n="pd.thSize">Size</th><th data-i18n="pd.thChest">Ngực</th><th data-i18n="pd.thLength">Dài áo</th><th data-i18n="pd.thShoulder">Vai</th></tr>
                 </thead>
                 <tbody>
                     <tr><td>S</td><td>92</td><td>67</td><td>43</td></tr>
@@ -495,6 +496,9 @@
 
         function currentLang() {
             return (window.__i18n && window.__i18n.current) || localStorage.getItem('ql_lang') || 'en';
+        }
+        function tr(key, params) {
+            return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
         }
         function pName(p) { return currentLang() === 'en' ? (p.name_en || p.name_vi) : (p.name_vi || p.name_en); }
         function pDesc(p) { return currentLang() === 'en' ? (p.description_en || p.description_vi || '') : (p.description_vi || p.description_en || ''); }
@@ -616,7 +620,7 @@
             root.setAttribute('data-stock', Number.isFinite(st) ? st : '');
             if (addBtn) {
                 addBtn.disabled = soldOut;
-                addBtn.textContent = soldOut ? 'Hết hàng' : 'Thêm vào giỏ';
+                addBtn.textContent = soldOut ? tr('sr.soldOut') : tr('pd.addToCart');
                 addBtn.classList.toggle('sold-out', soldOut);
                 var note = document.getElementById('pd-soldout-note');
                 if (soldOut) {
@@ -684,12 +688,17 @@
                 var el = document.querySelector('#pd-related-list .product-item[data-id="' + p.id + '"] .product-name');
                 if (el) el.textContent = pName(p);
             });
+            // Nút thêm giỏ: giữ đúng trạng thái Hết hàng / Thêm vào giỏ.
+            if (addBtn && !addBtn.classList.contains('added')) {
+                addBtn.textContent = addBtn.classList.contains('sold-out')
+                    ? tr('sr.soldOut') : tr('pd.addToCart');
+            }
         });
 
         // Fetch sản phẩm chính.
         var id = getId();
         if (id === null) {
-            showError('Không tìm thấy sản phẩm');
+            showError((window.__i18n ? window.__i18n.t('pd.notFound') : 'Không tìm thấy sản phẩm'));
         } else {
             if (addBtn) addBtn.disabled = true;
             fetch(API_BASE + '/api/products/' + id)

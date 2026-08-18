@@ -13,13 +13,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
 </head>
-<body class="co-page">
+<body class="co-page" data-i18n-doctitle="co.docTitle">
     <!-- Header trắng, giữa BREEZE, phải chỉ còn icon tài khoản (giỏ nằm trong menu của icon này) -->
     <div class="co-header">
         <div class="co-header-left"></div>
         <a href="index.html" class="co-header-logo">BREEZE</a>
         <div class="co-header-right">
-            <a href="login.html" class="co-header-icon" aria-label="Tài khoản">
+            <div id="lang-switcher-host"></div>
+            <a href="login.html" class="co-header-icon" aria-label="Tài khoản" data-i18n-aria="com.account">
                 <i class="fa fa-user" aria-hidden="true"></i>
             </a>
         </div>
@@ -29,13 +30,13 @@
         <div class="co-container">
 
             <!-- 1. Greeting -->
-            <p class="co-greeting" id="co-greeting">Xin chào!</p>
+            <p class="co-greeting" id="co-greeting" data-i18n="co.hello">Xin chào!</p>
 
             <!-- 2. Block THANH TOÁN + subtitle tóm tắt giỏ -->
             <header class="co-hero">
-                <h1 class="co-hero-title">THANH TOÁN</h1>
+                <h1 class="co-hero-title" data-i18n="co.heroTitle">THANH TOÁN</h1>
                 <p class="co-hero-sub" id="co-summary">
-                    (<span id="co-count">0</span> sản phẩm)&nbsp;&nbsp;<span id="co-total">0</span>₫
+                    (<span id="co-count">0</span> <span data-i18n="com.items">sản phẩm</span>)&nbsp;&nbsp;<span id="co-total">0</span>₫
                 </p>
             </header>
 
@@ -46,7 +47,7 @@
 
                 <!-- 3. Section LIÊN HỆ -->
                 <section class="co-section co-section--tight" aria-labelledby="co-contact-h">
-                    <h2 class="co-section-title" id="co-contact-h">Liên hệ</h2>
+                    <h2 class="co-section-title" id="co-contact-h" data-i18n="co.contact">Liên hệ</h2>
                     <p class="co-contact-email">
                         <i class="fa fa-envelope-o" aria-hidden="true"></i>
                         <span id="co-email">—</span>
@@ -55,60 +56,60 @@
 
                 <!-- 4. Section ĐỊA CHỈ -->
                 <section class="co-section" aria-labelledby="co-address-h">
-                    <h2 class="co-section-title" id="co-address-h">Địa chỉ</h2>
-                    <h3 class="co-subheading">Địa chỉ giao hàng</h3>
+                    <h2 class="co-section-title" id="co-address-h" data-i18n="co.address">Địa chỉ</h2>
+                    <h3 class="co-subheading" data-i18n="co.shipAddress">Địa chỉ giao hàng</h3>
 
                     <!-- Row: Tên | Họ -->
                     <div class="co-row co-row-2">
                         <div class="co-field">
-                            <label class="co-label" for="f-firstname">Tên <span class="co-req" aria-hidden="true">*</span></label>
+                            <label class="co-label" for="f-firstname"><span data-i18n="co.firstname">Tên</span> <span class="co-req" aria-hidden="true">*</span></label>
                             <input class="co-input" id="f-firstname" name="firstname" type="text"
                                    autocomplete="given-name" required aria-required="true"
                                    aria-describedby="f-name-help f-firstname-err">
                             <p class="co-err" id="f-firstname-err" role="alert" hidden></p>
                         </div>
                         <div class="co-field">
-                            <label class="co-label" for="f-lastname">Họ <span class="co-req" aria-hidden="true">*</span></label>
+                            <label class="co-label" for="f-lastname"><span data-i18n="co.lastname">Họ</span> <span class="co-req" aria-hidden="true">*</span></label>
                             <input class="co-input" id="f-lastname" name="lastname" type="text"
                                    autocomplete="family-name" required aria-required="true"
                                    aria-describedby="f-name-help f-lastname-err">
                             <p class="co-err" id="f-lastname-err" role="alert" hidden></p>
                         </div>
                     </div>
-                    <p class="co-help" id="f-name-help">Vui lòng điền đầy đủ Họ và Tên</p>
+                    <p class="co-help" id="f-name-help" data-i18n="co.nameHelp">Vui lòng điền đầy đủ Họ và Tên</p>
 
                     <!-- Số điện thoại -->
                     <div class="co-field">
-                        <label class="co-label" for="f-phone">Số điện thoại <span class="co-req" aria-hidden="true">*</span></label>
+                        <label class="co-label" for="f-phone"><span data-i18n="co.phone">Số điện thoại</span> <span class="co-req" aria-hidden="true">*</span></label>
                         <input class="co-input" id="f-phone" name="phone" type="tel"
                                inputmode="tel" autocomplete="tel" required aria-required="true"
-                               aria-describedby="f-phone-help f-phone-err" placeholder="VD: 0901234567">
-                        <p class="co-help" id="f-phone-help">Định dạng số điện thoại Việt Nam (10 số, bắt đầu 03/05/07/08/09)</p>
+                               aria-describedby="f-phone-help f-phone-err" placeholder="VD: 0901234567" data-i18n-ph="co.phonePh">
+                        <p class="co-help" id="f-phone-help" data-i18n="co.phoneHelp">Định dạng số điện thoại Việt Nam (10 số, bắt đầu 03/05/07/08/09)</p>
                         <p class="co-err" id="f-phone-err" role="alert" hidden></p>
                     </div>
 
                     <!-- Số nhà/Tên đường -->
                     <div class="co-field">
-                        <label class="co-label" for="f-street">Số nhà / Tên đường <span class="co-req" aria-hidden="true">*</span></label>
+                        <label class="co-label" for="f-street"><span data-i18n="co.street">Số nhà / Tên đường</span> <span class="co-req" aria-hidden="true">*</span></label>
                         <input class="co-input" id="f-street" name="street" type="text"
                                autocomplete="address-line1" required aria-required="true"
                                aria-describedby="f-street-help f-street-err">
-                        <p class="co-help" id="f-street-help">Ví dụ: 33 Lê Duẩn, ...</p>
+                        <p class="co-help" id="f-street-help" data-i18n="co.streetHelp">Ví dụ: 33 Lê Duẩn, ...</p>
                         <p class="co-err" id="f-street-err" role="alert" hidden></p>
                     </div>
 
                     <!-- Tên tòa nhà/Số tầng (optional) -->
                     <div class="co-field">
-                        <label class="co-label" for="f-building">Tên tòa nhà / Số tầng <span class="co-optional">(không bắt buộc)</span></label>
+                        <label class="co-label" for="f-building"><span data-i18n="co.building">Tên tòa nhà / Số tầng</span> <span class="co-optional" data-i18n="com.optional">(không bắt buộc)</span></label>
                         <input class="co-input" id="f-building" name="building" type="text"
                                autocomplete="address-line2" aria-describedby="f-building-help">
-                        <p class="co-help" id="f-building-help">Ví dụ: Tòa nhà chung cư ..., tầng 5</p>
+                        <p class="co-help" id="f-building-help" data-i18n="co.buildingHelp">Ví dụ: Tòa nhà chung cư ..., tầng 5</p>
                     </div>
 
                     <!-- Row: Thành phố | Quận -->
                     <div class="co-row co-row-2">
                         <div class="co-field">
-                            <label class="co-label" for="f-city">Thành phố / Tỉnh <span class="co-req" aria-hidden="true">*</span></label>
+                            <label class="co-label" for="f-city"><span data-i18n="co.city">Thành phố / Tỉnh</span> <span class="co-req" aria-hidden="true">*</span></label>
                             <select class="co-input co-select" id="f-city" name="city" required aria-required="true"
                                     aria-describedby="f-city-err">
                                 <option value="">-- Chọn --</option>
@@ -116,7 +117,7 @@
                             <p class="co-err" id="f-city-err" role="alert" hidden></p>
                         </div>
                         <div class="co-field">
-                            <label class="co-label" for="f-district">Quận / Huyện <span class="co-req" aria-hidden="true">*</span></label>
+                            <label class="co-label" for="f-district"><span data-i18n="co.district">Quận / Huyện</span> <span class="co-req" aria-hidden="true">*</span></label>
                             <select class="co-input co-select" id="f-district" name="district" required aria-required="true"
                                     aria-describedby="f-district-err" disabled>
                                 <option value="">-- Chọn --</option>
@@ -128,7 +129,7 @@
                     <!-- Row: Phường | Mã bưu chính -->
                     <div class="co-row co-row-2">
                         <div class="co-field">
-                            <label class="co-label" for="f-ward">Phường / Xã <span class="co-req" aria-hidden="true">*</span></label>
+                            <label class="co-label" for="f-ward"><span data-i18n="co.ward">Phường / Xã</span> <span class="co-req" aria-hidden="true">*</span></label>
                             <select class="co-input co-select" id="f-ward" name="ward" required aria-required="true"
                                     aria-describedby="f-ward-err" disabled>
                                 <option value="">-- Chọn --</option>
@@ -136,7 +137,7 @@
                             <p class="co-err" id="f-ward-err" role="alert" hidden></p>
                         </div>
                         <div class="co-field">
-                            <label class="co-label" for="f-postal">Mã bưu chính <span class="co-req" aria-hidden="true">*</span></label>
+                            <label class="co-label" for="f-postal"><span data-i18n="co.postal">Mã bưu chính</span> <span class="co-req" aria-hidden="true">*</span></label>
                             <select class="co-input co-select" id="f-postal" name="postal" required aria-required="true"
                                     aria-describedby="f-postal-err" disabled>
                                 <option value="">-- Chọn --</option>
@@ -147,18 +148,18 @@
 
                     <!-- Quốc gia (disabled) -->
                     <div class="co-field">
-                        <label class="co-label" for="f-country">Quốc gia</label>
+                        <label class="co-label" for="f-country" data-i18n="co.country">Quốc gia</label>
                         <input class="co-input" id="f-country" name="country" type="text"
-                               value="Việt Nam" disabled aria-disabled="true">
+                               value="Việt Nam" data-i18n-value="com.vietnam" disabled aria-disabled="true">
                     </div>
                 </section>
 
                 <!-- 5. Section THANH TOÁN (payment method) -->
                 <section class="co-section" aria-labelledby="co-pay-h">
-                    <h2 class="co-section-title co-section-title--muted" id="co-pay-h">Thanh toán</h2>
+                    <h2 class="co-section-title co-section-title--muted" id="co-pay-h" data-i18n="co.payment">Thanh toán</h2>
 
                     <fieldset class="co-pay" aria-describedby="f-pay-err">
-                        <legend class="co-visually-hidden">Phương thức thanh toán</legend>
+                        <legend class="co-visually-hidden" data-i18n="co.payMethod">Phương thức thanh toán</legend>
 
                         <label class="co-pay-card">
                             <input type="radio" name="payment" value="visa" class="co-pay-radio" required aria-required="true">
@@ -168,7 +169,7 @@
                                     <text x="24" y="21" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-weight="700" font-size="13" fill="#ffffff">VISA</text>
                                 </svg>
                             </span>
-                            <span class="co-pay-label">Thẻ Visa</span>
+                            <span class="co-pay-label" data-i18n="pay.visa">Thẻ Visa</span>
                             <span class="co-pay-check" aria-hidden="true"><i class="fa fa-check"></i></span>
                         </label>
 
@@ -181,7 +182,7 @@
                                     <circle cx="28" cy="16" r="9" fill="#f79e1b" fill-opacity="0.9"></circle>
                                 </svg>
                             </span>
-                            <span class="co-pay-label">Thẻ Mastercard</span>
+                            <span class="co-pay-label" data-i18n="pay.mastercard">Thẻ Mastercard</span>
                             <span class="co-pay-check" aria-hidden="true"><i class="fa fa-check"></i></span>
                         </label>
 
@@ -196,7 +197,7 @@
                                     <text x="32" y="18.4" text-anchor="middle" font-family="Jost, sans-serif" font-weight="700" font-size="6" fill="#1f7a4d">₫</text>
                                 </svg>
                             </span>
-                            <span class="co-pay-label">Tiền mặt (COD)</span>
+                            <span class="co-pay-label" data-i18n="pay.cod">Tiền mặt (COD)</span>
                             <span class="co-pay-check" aria-hidden="true"><i class="fa fa-check"></i></span>
                         </label>
 
@@ -209,7 +210,7 @@
                                     <circle cx="30" cy="16" r="5.4" fill="none" stroke="#ffffff" stroke-width="2.2"></circle>
                                 </svg>
                             </span>
-                            <span class="co-pay-label">Ví MoMo</span>
+                            <span class="co-pay-label" data-i18n="pay.momo">Ví MoMo</span>
                             <span class="co-pay-check" aria-hidden="true"><i class="fa fa-check"></i></span>
                         </label>
                     </fieldset>
@@ -219,14 +220,14 @@
                 <p class="co-form-msg" id="co-form-msg" role="status" hidden></p>
 
                 <button type="submit" class="co-submit" disabled aria-disabled="true">
-                    Đặt hàng &nbsp;·&nbsp; <span id="co-total-btn">0</span>₫
+                    <span data-i18n="co.submit">Đặt hàng</span> &nbsp;·&nbsp; <span id="co-total-btn">0</span>₫
                 </button>
             </form>
 
             <!-- Cột phải: order summary (sticky) -->
             <div class="co-summary-col">
-                <section class="co-orderinfo" aria-label="Thông tin đơn hàng">
-                    <p class="co-orderinfo-label">Thông tin đơn hàng</p>
+                <section class="co-orderinfo" aria-label="Thông tin đơn hàng" data-i18n-aria="co.orderInfo">
+                    <p class="co-orderinfo-label" data-i18n="co.orderInfo">Thông tin đơn hàng</p>
 
                     <!-- Danh sách sản phẩm (render bởi checkout.js) -->
                     <div class="co-oi-list" id="co-oi-list"></div>
@@ -234,32 +235,32 @@
                     <!-- Tổng kết -->
                     <div class="co-oi-summary">
                         <div class="co-oi-row">
-                            <span>Tạm tính (<span id="co-oi-count">0</span> sản phẩm)</span>
+                            <span><span data-i18n="co.subtotal">Tạm tính</span> (<span id="co-oi-count">0</span> <span data-i18n="com.items">sản phẩm</span>)</span>
                             <span id="co-oi-subtotal">0₫</span>
                         </div>
                         <div class="co-oi-row">
-                            <span>Giao hàng</span>
-                            <span id="co-oi-ship">Miễn phí</span>
+                            <span data-i18n="co.shipping">Giao hàng</span>
+                            <span id="co-oi-ship" data-i18n="com.free">Miễn phí</span>
                         </div>
 
                         <!-- Voucher / mã giảm giá — dòng "Giảm giá" vừa hiện số giảm vừa là NÚT mở/đóng panel. Hành vi ở js/voucher.js -->
                         <div class="co-oi-voucher" id="voucher-block" data-state="collapsed">
                             <button type="button" class="co-oi-row voucher-line" id="voucher-line"
                                     aria-expanded="false" aria-controls="voucher-panel">
-                                <span>Giảm giá</span>
+                                <span data-i18n="co.discount">Giảm giá</span>
                                 <span id="voucher-discount-amount" class="co-oi-discount-amt">−0₫</span>
                             </button>
 
                             <div class="voucher-panel" id="voucher-panel">
-                                <label class="voucher-label" for="voucher-code">Mã giảm giá</label>
+                                <label class="voucher-label" for="voucher-code" data-i18n="co.voucherLabel">Mã giảm giá</label>
                                 <div class="voucher-input-wrap">
                                     <input class="voucher-input" id="voucher-code" type="text"
                                            autocomplete="off" autocapitalize="characters" spellcheck="false"
-                                           maxlength="30" placeholder="Nhập mã" aria-describedby="voucher-msg">
+                                           maxlength="30" placeholder="Nhập mã" data-i18n-ph="co.voucherPh" aria-describedby="voucher-msg">
                                     <span class="voucher-status" id="voucher-status" aria-hidden="true"></span>
                                 </div>
                                 <div class="voucher-panel-actions">
-                                    <button type="button" class="voucher-apply" id="voucher-apply" disabled>Áp dụng</button>
+                                    <button type="button" class="voucher-apply" id="voucher-apply" data-i18n="co.voucherApply" disabled>Áp dụng</button>
                                 </div>
                                 <p class="voucher-msg" id="voucher-msg" role="status" aria-live="polite"></p>
                             </div>
@@ -268,13 +269,13 @@
                                 <span class="voucher-chip">
                                     <span class="voucher-chip-code" id="voucher-chip-code"></span>
                                     <button type="button" class="voucher-chip-remove" id="voucher-remove"
-                                            aria-label="Xoá mã giảm giá">✕</button>
+                                            aria-label="Xoá mã giảm giá" data-i18n-aria="co.voucherRemove">✕</button>
                                 </span>
                             </div>
                         </div>
 
                         <div class="co-oi-row co-oi-row--total">
-                            <span>Tổng</span>
+                            <span data-i18n="co.total">Tổng</span>
                             <span id="co-oi-total">0₫</span>
                         </div>
                     </div>
@@ -289,6 +290,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="js/firebase-config.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/api-config.js"></script>
     <script src="js/auth-helper.js"></script>
     <script src="js/account-menu.js"></script>

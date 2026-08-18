@@ -14,31 +14,34 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
 </head>
-<body>
+<body data-i18n-doctitle="adm.docTitle">
     <!-- Topbar cố định -->
     <header class="adm-topbar">
-        <button type="button" class="adm-menu-btn" id="adm-menu-btn" aria-label="Mở/đóng menu"
+        <button type="button" class="adm-menu-btn" id="adm-menu-btn" aria-label="Mở/đóng menu" data-i18n-aria="adm.menuToggle"
                 aria-controls="adm-sidebar" aria-expanded="false">
             <i class="fa fa-bars" aria-hidden="true"></i>
         </button>
         <a href="index.html" class="adm-logo">BREEZE <small>Admin</small></a>
+        <!-- Nút đổi VI/EN đặt NGOÀI #bar-right để dùng được ngay ở màn hình
+             đăng nhập / không đủ quyền (khi #bar-right còn ẩn). -->
+        <div id="lang-switcher-host" class="adm-lang"></div>
         <div class="adm-topbar-right" id="bar-right" style="visibility:hidden;">
             <div class="adm-search">
                 <i class="fa fa-search" aria-hidden="true"></i>
-                <input type="search" id="top-search" data-i18n-ph="search" placeholder="Tìm mã đơn / khách hàng…"
-                       aria-label="Tìm đơn theo mã hoặc khách hàng">
+                <input type="search" id="top-search" data-i18n-ph="adm.searchPh" placeholder="Tìm mã đơn / khách hàng…"
+                       aria-label="Tìm đơn theo mã hoặc khách hàng" data-i18n-aria="adm.searchAria">
             </div>
-            <button type="button" class="adm-bell" aria-label="Thông báo">
+            <button type="button" class="adm-bell" aria-label="Thông báo" data-i18n-aria="adm.notif">
                 <i class="fa fa-bell-o" aria-hidden="true"></i>
             </button>
             <div class="adm-account" id="adm-account">
                 <button type="button" class="adm-account-btn" id="adm-account-btn"
-                        aria-haspopup="true" aria-expanded="false" aria-label="Tài khoản">
+                        aria-haspopup="true" aria-expanded="false" aria-label="Tài khoản" data-i18n-aria="com.account">
                     <i class="fa fa-user" aria-hidden="true"></i>
                 </button>
                 <div class="adm-account-menu" id="adm-account-menu" role="menu" hidden>
                     <div class="adm-account-email" id="who"></div>
-                    <button type="button" class="adm-logout" id="btn-logout" data-i18n="logout" role="menuitem">Đăng xuất</button>
+                    <button type="button" class="adm-logout" id="btn-logout" data-i18n="com.signout" role="menuitem">Đăng xuất</button>
                 </div>
             </div>
         </div>
@@ -46,21 +49,21 @@
 
     <!-- Sidebar điều hướng -->
     <aside class="adm-sidebar" id="adm-sidebar">
-        <nav class="adm-nav" aria-label="Điều hướng quản trị">
+        <nav class="adm-nav" aria-label="Điều hướng quản trị" data-i18n-aria="adm.navAria">
             <button type="button" class="adm-nav-item active" data-nav="dashboard" aria-current="page">
-                <i class="fa fa-tachometer" aria-hidden="true"></i> <span data-i18n="dashboard">Dashboard</span>
+                <i class="fa fa-tachometer" aria-hidden="true"></i> <span data-i18n="adm.dashboard">Dashboard</span>
             </button>
             <button type="button" class="adm-nav-item" data-nav="products">
-                <i class="fa fa-shopping-bag" aria-hidden="true"></i> <span data-i18n="products">Sản phẩm</span>
+                <i class="fa fa-shopping-bag" aria-hidden="true"></i> <span data-i18n="adm.products">Sản phẩm</span>
             </button>
             <button type="button" class="adm-nav-item" data-nav="orders">
-                <i class="fa fa-file-text-o" aria-hidden="true"></i> <span data-i18n="orders">Hoá đơn</span>
+                <i class="fa fa-file-text-o" aria-hidden="true"></i> <span data-i18n="adm.orders">Hoá đơn</span>
             </button>
             <button type="button" class="adm-nav-item" data-nav="statistics">
-                <i class="fa fa-bar-chart" aria-hidden="true"></i> <span data-i18n="statistics">Thống kê</span>
+                <i class="fa fa-bar-chart" aria-hidden="true"></i> <span data-i18n="adm.statistics">Thống kê</span>
             </button>
             <button type="button" class="adm-nav-item" data-nav="users">
-                <i class="fa fa-users" aria-hidden="true"></i> <span data-i18n="users">Người dùng</span>
+                <i class="fa fa-users" aria-hidden="true"></i> <span data-i18n="adm.users">Người dùng</span>
             </button>
             <button type="button" class="adm-nav-item" data-nav="blacklist">
                 <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -69,7 +72,7 @@
                     <path d="M12 12 L18.8 16.4 A8.8 8.8 0 0 1 8.8 20.2 Z"/>
                     <path d="M12 12 L5.2 16.4 A8.8 8.8 0 0 1 5.2 7.6 Z"/>
                 </svg>
-                <span data-i18n="blacklist">Danh sách Đen</span>
+                <span data-i18n="adm.blacklist">Danh sách Đen</span>
             </button>
         </nav>
     </aside>
@@ -80,23 +83,23 @@
     <!-- Trạng thái: đang kiểm tra quyền -->
     <div class="adm-gate" id="state-loading">
         <i class="fa fa-spinner fa-spin"></i>
-        <p>Đang kiểm tra quyền truy cập…</p>
+        <p data-i18n="adm.gateChecking">Đang kiểm tra quyền truy cập…</p>
     </div>
 
     <!-- Trạng thái: chưa đăng nhập -->
     <div class="adm-gate" id="state-login" style="display:none;">
         <i class="fa fa-lock"></i>
-        <h2>Khu vực quản trị</h2>
-        <p>Bạn cần đăng nhập bằng tài khoản quản trị để tiếp tục.</p>
-        <a href="login.html" class="adm-btn">Đăng nhập</a>
+        <h2 data-i18n="adm.gateLoginTitle">Khu vực quản trị</h2>
+        <p data-i18n="adm.gateLoginMsg">Bạn cần đăng nhập bằng tài khoản quản trị để tiếp tục.</p>
+        <a href="login.html" class="adm-btn" data-i18n="com.signin">Đăng nhập</a>
     </div>
 
     <!-- Trạng thái: không phải admin -->
     <div class="adm-gate" id="state-forbidden" style="display:none;">
         <i class="fa fa-ban"></i>
-        <h2>Không có quyền truy cập</h2>
-        <p>Tài khoản của bạn không có quyền quản trị. Vui lòng liên hệ quản trị viên nếu đây là nhầm lẫn.</p>
-        <a href="index.html" class="adm-btn ghost">Về trang chủ</a>
+        <h2 data-i18n="adm.gateForbTitle">Không có quyền truy cập</h2>
+        <p data-i18n="adm.gateForbMsg">Tài khoản của bạn không có quyền quản trị. Vui lòng liên hệ quản trị viên nếu đây là nhầm lẫn.</p>
+        <a href="index.html" class="adm-btn ghost" data-i18n="adm.backHome">Về trang chủ</a>
     </div>
 
     <!-- Panel chính (các view, chuyển bằng sidebar) -->
@@ -105,19 +108,19 @@
         <section id="view-dashboard">
             <div class="dash-header">
                 <div class="dash-header-left">
-                    <h1 class="dash-title">Dashboard</h1>
+                    <h1 class="dash-title" data-i18n="adm.dashboard">Dashboard</h1>
                     <p class="dash-subtitle" id="dash-range">—</p>
                 </div>
                 <div class="dash-header-right">
-                    <select id="dash-preset" class="dash-preset" aria-label="Khoảng thời gian">
-                        <option value="7">7 ngày qua</option>
-                        <option value="30" selected>30 ngày qua</option>
-                        <option value="month">Tháng này</option>
-                        <option value="year">Năm nay</option>
+                    <select id="dash-preset" class="dash-preset" aria-label="Khoảng thời gian" data-i18n-aria="adm.rangeAria">
+                        <option value="7" data-i18n="adm.p7">7 ngày qua</option>
+                        <option value="30" selected data-i18n="adm.p30">30 ngày qua</option>
+                        <option value="month" data-i18n="adm.pMonth">Tháng này</option>
+                        <option value="year" data-i18n="adm.pYear">Năm nay</option>
                     </select>
                     <button type="button" class="dash-export" id="dash-export">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
-                        Xuất CSV
+                        <span data-i18n="adm.exportCsv">Xuất CSV</span>
                     </button>
                 </div>
             </div>
@@ -126,7 +129,7 @@
                 <article class="kpi-card" id="kpi-revenue" aria-label="Doanh thu">
                     <div class="kpi-head">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
-                        <span class="kpi-label">Doanh thu</span>
+                        <span class="kpi-label" data-i18n="adm.kpiRevenue">Doanh thu</span>
                     </div>
                     <div class="kpi-value skel" id="kpi-revenue-val">—</div>
                     <div class="kpi-trend" id="kpi-revenue-trend"></div>
@@ -134,7 +137,7 @@
                 <article class="kpi-card" id="kpi-orders" aria-label="Đơn hàng">
                     <div class="kpi-head">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                        <span class="kpi-label">Đơn hàng</span>
+                        <span class="kpi-label" data-i18n="adm.kpiOrders">Đơn hàng</span>
                     </div>
                     <div class="kpi-value skel" id="kpi-orders-val">—</div>
                     <div class="kpi-trend" id="kpi-orders-trend"></div>
@@ -142,7 +145,7 @@
                 <article class="kpi-card" id="kpi-customers" aria-label="Khách hàng">
                     <div class="kpi-head">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                        <span class="kpi-label">Khách hàng</span>
+                        <span class="kpi-label" data-i18n="adm.kpiCustomers">Khách hàng</span>
                     </div>
                     <div class="kpi-value skel" id="kpi-customers-val">—</div>
                     <div class="kpi-trend" id="kpi-customers-trend"></div>
@@ -150,7 +153,7 @@
                 <article class="kpi-card" id="kpi-aov" aria-label="Giá trị đơn trung bình">
                     <div class="kpi-head">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-5"/></svg>
-                        <span class="kpi-label">Giá trị đơn TB</span>
+                        <span class="kpi-label" data-i18n="adm.kpiAov">Giá trị đơn TB</span>
                     </div>
                     <div class="kpi-value skel" id="kpi-aov-val">—</div>
                     <div class="kpi-trend" id="kpi-aov-trend"></div>
@@ -162,25 +165,25 @@
                 <!-- Hàng 2: doanh thu theo ngày (8) + trạng thái đơn (4) -->
                 <div class="dash-card dash-card--chart">
                     <div class="dash-card-head">
-                        <h2>Doanh thu theo ngày</h2>
-                        <a href="#" class="dash-card-action" data-goto="orders">Xem báo cáo →</a>
+                        <h2 data-i18n="adm.cardRevenue">Doanh thu theo ngày</h2>
+                        <a href="#" class="dash-card-action" data-goto="orders" data-i18n="adm.viewReport">Xem báo cáo →</a>
                     </div>
                     <div class="dash-card-body">
                         <div class="chart-body">
-                            <div class="chart-state" id="chart-loading">Đang tải…</div>
-                            <div class="chart-state" id="chart-empty" style="display:none;">Chưa có dữ liệu doanh thu</div>
-                            <canvas id="revenue-chart" role="img" aria-label="Biểu đồ doanh thu theo ngày"></canvas>
+                            <div class="chart-state" id="chart-loading" data-i18n="com.loading">Đang tải…</div>
+                            <div class="chart-state" id="chart-empty" style="display:none;" data-i18n="adm.revEmpty">Chưa có dữ liệu doanh thu</div>
+                            <canvas id="revenue-chart" role="img" aria-label="Biểu đồ doanh thu theo ngày" data-i18n-aria="adm.chartAria"></canvas>
                         </div>
                     </div>
                 </div>
 
                 <div class="dash-card dash-card--status">
-                    <div class="dash-card-head"><h2>Trạng thái đơn hàng</h2></div>
+                    <div class="dash-card-head"><h2 data-i18n="adm.cardStatus">Trạng thái đơn hàng</h2></div>
                     <div class="dash-card-body">
                         <div class="donut-wrap">
-                            <div class="donut-state" id="status-loading">Đang tải…</div>
-                            <div class="donut-state" id="status-empty" style="display:none;">Chưa có đơn nào trong kỳ</div>
-                            <canvas id="status-chart" role="img" aria-label="Biểu đồ tròn phân bố trạng thái đơn hàng"></canvas>
+                            <div class="donut-state" id="status-loading" data-i18n="com.loading">Đang tải…</div>
+                            <div class="donut-state" id="status-empty" style="display:none;" data-i18n="adm.statusEmpty">Chưa có đơn nào trong kỳ</div>
+                            <canvas id="status-chart" role="img" aria-label="Biểu đồ tròn phân bố trạng thái đơn hàng" data-i18n-aria="adm.statusAria"></canvas>
                             <div class="donut-center" id="status-total" aria-hidden="true" style="display:none;"></div>
                         </div>
                         <ul class="donut-legend" id="status-legend"></ul>
@@ -189,29 +192,29 @@
 
                 <!-- Hàng 3: bán chạy nhất (5) + đơn hàng gần đây (7) -->
                 <div class="dash-card dash-card--top">
-                    <div class="dash-card-head"><h2>Sản phẩm bán chạy</h2></div>
+                    <div class="dash-card-head"><h2 data-i18n="adm.cardTop">Sản phẩm bán chạy</h2></div>
                     <div class="dash-card-body">
-                        <ul class="top-list" id="top-products"><li class="top-state">Đang tải…</li></ul>
+                        <ul class="top-list" id="top-products"><li class="top-state" data-i18n="com.loading">Đang tải…</li></ul>
                     </div>
                 </div>
 
                 <div class="dash-card dash-card--recent">
                     <div class="dash-card-head">
-                        <h2>Đơn hàng gần đây</h2>
-                        <a href="#" class="dash-card-action" data-goto="orders">Xem tất cả →</a>
+                        <h2 data-i18n="adm.cardRecent">Đơn hàng gần đây</h2>
+                        <a href="#" class="dash-card-action" data-goto="orders" data-i18n="adm.viewAll">Xem tất cả →</a>
                     </div>
                     <div class="dash-card-body">
                         <div class="adm-table-wrap">
                             <table class="adm-table dash-recent-table">
                                 <thead><tr>
-                                    <th scope="col" class="num">Mã đơn</th>
-                                    <th scope="col">Khách hàng</th>
-                                    <th scope="col">Ngày</th>
-                                    <th scope="col">Trạng thái</th>
-                                    <th scope="col" class="num">Tổng tiền</th>
+                                    <th scope="col" class="num" data-i18n="adm.thOrderId">Mã đơn</th>
+                                    <th scope="col" data-i18n="adm.thCustomer">Khách hàng</th>
+                                    <th scope="col" data-i18n="adm.thDate">Ngày</th>
+                                    <th scope="col" data-i18n="adm.thStatus">Trạng thái</th>
+                                    <th scope="col" class="num" data-i18n="adm.thTotal">Tổng tiền</th>
                                 </tr></thead>
                                 <tbody id="dash-orders-body">
-                                    <tr><td colspan="5" class="adm-loading">Đang tải…</td></tr>
+                                    <tr><td colspan="5" class="adm-loading" data-i18n="com.loading">Đang tải…</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -222,24 +225,24 @@
 
         <!-- Tab sản phẩm -->
         <section id="tab-products" style="display:none;">
-            <div class="prod-filters" role="group" aria-label="Lọc theo tồn kho">
-                <button type="button" class="prod-filter-btn active" data-stock-filter="all" aria-current="true">Tất cả</button>
-                <button type="button" class="prod-filter-btn" data-stock-filter="low">Sắp hết</button>
-                <button type="button" class="prod-filter-btn" data-stock-filter="out">Hết hàng</button>
+            <div class="prod-filters" role="group" aria-label="Lọc theo tồn kho" data-i18n-aria="adm.stockFilterAria">
+                <button type="button" class="prod-filter-btn active" data-stock-filter="all" aria-current="true" data-i18n="adm.fAll">Tất cả</button>
+                <button type="button" class="prod-filter-btn" data-stock-filter="low" data-i18n="adm.fLow">Sắp hết</button>
+                <button type="button" class="prod-filter-btn" data-stock-filter="out" data-i18n="adm.fOut">Hết hàng</button>
             </div>
             <div class="adm-section-head">
-                <h3>Sản phẩm <span class="adm-count" id="prod-count"></span></h3>
-                <button type="button" class="adm-btn small" id="btn-add-prod"><i class="fa fa-plus"></i> Thêm sản phẩm</button>
+                <h3><span data-i18n="adm.products">Sản phẩm</span> <span class="adm-count" id="prod-count"></span></h3>
+                <button type="button" class="adm-btn small" id="btn-add-prod"><i class="fa fa-plus"></i> <span data-i18n="adm.addProd">Thêm sản phẩm</span></button>
             </div>
             <div class="adm-table-wrap">
                 <table class="adm-table">
                     <thead><tr>
-                        <th class="num">ID</th><th>Ảnh</th><th>Tên (VI)</th><th>Danh mục</th>
-                        <th class="num">Giá</th><th class="num">Sale</th><th class="num">Kho</th>
-                        <th>Tồn kho</th><th>Trạng thái</th><th>Thao tác</th>
+                        <th class="num">ID</th><th data-i18n="adm.thImage">Ảnh</th><th data-i18n="adm.thNameVi">Tên (VI)</th><th data-i18n="adm.thCategory">Danh mục</th>
+                        <th class="num" data-i18n="adm.thPrice">Giá</th><th class="num" data-i18n="adm.thSale">Sale</th><th class="num" data-i18n="adm.thStock">Kho</th>
+                        <th data-i18n="adm.thStockState">Tồn kho</th><th data-i18n="adm.thStatus">Trạng thái</th><th data-i18n="adm.thActions">Thao tác</th>
                     </tr></thead>
                     <tbody id="prod-body">
-                        <tr><td colspan="10" class="adm-loading">Đang tải…</td></tr>
+                        <tr><td colspan="10" class="adm-loading" data-i18n="com.loading">Đang tải…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -248,32 +251,32 @@
         <!-- Tab đơn hàng -->
         <section id="tab-orders" style="display:none;">
             <div class="adm-section-head">
-                <h3>Hoá đơn <span class="adm-count" id="order-count"></span></h3>
+                <h3><span data-i18n="adm.orders">Hoá đơn</span> <span class="adm-count" id="order-count"></span></h3>
                 <div class="adm-toolbar">
                     <div class="adm-search-sm">
                         <i class="fa fa-search" aria-hidden="true"></i>
-                        <input type="search" id="order-search" placeholder="Tìm mã đơn / khách hàng…"
+                        <input type="search" id="order-search" placeholder="Tìm mã đơn / khách hàng…" data-i18n-ph="adm.searchPh" data-i18n-aria="adm.searchAria"
                                aria-label="Tìm đơn theo mã hoặc khách hàng">
                     </div>
-                    <select id="order-status-filter" class="status-sel" aria-label="Lọc theo trạng thái">
-                        <option value="">Tất cả trạng thái</option>
-                        <option value="pending">Chờ xử lý</option>
-                        <option value="paid">Đã thanh toán</option>
-                        <option value="shipped">Đang giao</option>
-                        <option value="completed">Hoàn tất</option>
-                        <option value="cancelled">Đã hủy</option>
+                    <select id="order-status-filter" class="status-sel" aria-label="Lọc theo trạng thái" data-i18n-aria="adm.statusFilterAria">
+                        <option value="" data-i18n="adm.allStatus">Tất cả trạng thái</option>
+                        <option value="pending" data-i18n="st.pending">Chờ xử lý</option>
+                        <option value="paid" data-i18n="st.paid">Đã thanh toán</option>
+                        <option value="shipped" data-i18n="st.shipped">Đang giao</option>
+                        <option value="completed" data-i18n="st.completed">Hoàn tất</option>
+                        <option value="cancelled" data-i18n="st.cancelled">Đã hủy</option>
                     </select>
                 </div>
             </div>
             <div class="adm-table-wrap">
                 <table class="adm-table">
                     <thead><tr>
-                        <th class="num">Mã đơn</th><th>Khách hàng</th><th>Ngày đặt</th>
-                        <th>Hình thức thanh toán</th>
-                        <th class="num">Tổng tiền</th><th>Trạng thái</th><th></th>
+                        <th class="num" data-i18n="adm.thOrderId">Mã đơn</th><th data-i18n="adm.thCustomer">Khách hàng</th><th data-i18n="adm.thOrderDate">Ngày đặt</th>
+                        <th data-i18n="adm.thPayMethod">Hình thức thanh toán</th>
+                        <th class="num" data-i18n="adm.thTotal">Tổng tiền</th><th data-i18n="adm.thStatus">Trạng thái</th><th></th>
                     </tr></thead>
                     <tbody id="order-body">
-                        <tr><td colspan="7" class="adm-loading">Đang tải…</td></tr>
+                        <tr><td colspan="7" class="adm-loading" data-i18n="com.loading">Đang tải…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -283,27 +286,27 @@
         <!-- Thống kê: sản phẩm bán được trong khoảng (gom theo SẢN PHẨM, không gộp theo đơn) -->
         <section id="view-statistics" style="display:none;">
             <div class="adm-section-head">
-                <h3><span data-i18n="statisticsTitle">Thống kê sản phẩm bán được</span></h3>
+                <h3><span data-i18n="adm.statTitle">Thống kê sản phẩm bán được</span></h3>
                 <div class="adm-toolbar">
-                    <select id="stat-preset" class="dash-preset" aria-label="Khoảng thời gian">
-                        <option value="7d" selected>7 ngày qua</option>
-                        <option value="30d">30 ngày qua</option>
-                        <option value="month">Tháng này</option>
-                        <option value="year">Năm nay</option>
+                    <select id="stat-preset" class="dash-preset" aria-label="Khoảng thời gian" data-i18n-aria="adm.rangeAria">
+                        <option value="7d" selected data-i18n="adm.p7">7 ngày qua</option>
+                        <option value="30d" data-i18n="adm.p30">30 ngày qua</option>
+                        <option value="month" data-i18n="adm.pMonth">Tháng này</option>
+                        <option value="year" data-i18n="adm.pYear">Năm nay</option>
                     </select>
                 </div>
             </div>
             <div class="adm-table-wrap">
                 <table class="adm-table">
                     <thead><tr>
-                        <th>Tên sản phẩm</th><th class="num">Số lượng</th><th class="num">Doanh thu</th>
+                        <th data-i18n="adm.thProdName">Tên sản phẩm</th><th class="num" data-i18n="adm.thQty">Số lượng</th><th class="num" data-i18n="adm.thRevenue">Doanh thu</th>
                     </tr></thead>
                     <tbody id="stat-body">
-                        <tr><td colspan="3" class="adm-loading">Đang tải…</td></tr>
+                        <tr><td colspan="3" class="adm-loading" data-i18n="com.loading">Đang tải…</td></tr>
                     </tbody>
                     <tfoot id="stat-foot" hidden>
                         <tr>
-                            <th scope="row" colspan="2">Tổng doanh thu</th>
+                            <th scope="row" colspan="2" data-i18n="adm.totalRevenue">Tổng doanh thu</th>
                             <td class="num" id="stat-total">—</td>
                         </tr>
                     </tfoot>
@@ -314,15 +317,15 @@
         <!-- Người dùng (chỉ xem) -->
         <section id="view-users" style="display:none;">
             <div class="adm-section-head">
-                <h3><span data-i18n="users">Người dùng</span> <span class="adm-count" id="user-count"></span></h3>
+                <h3><span data-i18n="adm.users">Người dùng</span> <span class="adm-count" id="user-count"></span></h3>
             </div>
             <div class="adm-table-wrap">
                 <table class="adm-table">
                     <thead><tr>
-                        <th>Email</th><th>Tên</th><th>Vai trò</th><th>Ngày tạo</th><th>Đăng nhập gần nhất</th><th>Blacklist</th>
+                        <th data-i18n="adm.thEmail">Email</th><th data-i18n="adm.thName">Tên</th><th data-i18n="adm.thRole">Vai trò</th><th data-i18n="adm.thCreated">Ngày tạo</th><th data-i18n="adm.thLastLogin">Đăng nhập gần nhất</th><th data-i18n="adm.thBl">Blacklist</th>
                     </tr></thead>
                     <tbody id="user-body">
-                        <tr><td colspan="6" class="adm-loading">Đang tải…</td></tr>
+                        <tr><td colspan="6" class="adm-loading" data-i18n="com.loading">Đang tải…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -332,11 +335,11 @@
         <!-- Danh sách Đen: đơn ĐÃ HUỶ của user đang bị blacklist (theo ĐƠN, không gộp) -->
         <section id="view-blacklist" style="display:none;">
             <div class="adm-section-head">
-                <h3><span data-i18n="blacklist">Danh sách Đen</span> <span class="adm-count" id="blacklist-count"></span></h3>
+                <h3><span data-i18n="adm.blacklist">Danh sách Đen</span> <span class="adm-count" id="blacklist-count"></span></h3>
                 <div class="adm-toolbar">
                     <div class="adm-search-sm">
                         <i class="fa fa-search" aria-hidden="true"></i>
-                        <input type="search" id="blacklist-search" placeholder="Tìm mã đơn / khách hàng…"
+                        <input type="search" id="blacklist-search" placeholder="Tìm mã đơn / khách hàng…" data-i18n-ph="adm.searchPh" data-i18n-aria="adm.searchAria"
                                aria-label="Tìm đơn theo mã hoặc khách hàng">
                     </div>
                 </div>
@@ -344,12 +347,12 @@
             <div class="adm-table-wrap">
                 <table class="adm-table">
                     <thead><tr>
-                        <th class="num">Mã đơn</th><th>Khách hàng</th><th>Ngày đặt</th>
-                        <th>Hình thức thanh toán</th>
-                        <th class="num">Tổng tiền</th><th>Trạng thái</th><th></th>
+                        <th class="num" data-i18n="adm.thOrderId">Mã đơn</th><th data-i18n="adm.thCustomer">Khách hàng</th><th data-i18n="adm.thOrderDate">Ngày đặt</th>
+                        <th data-i18n="adm.thPayMethod">Hình thức thanh toán</th>
+                        <th class="num" data-i18n="adm.thTotal">Tổng tiền</th><th data-i18n="adm.thStatus">Trạng thái</th><th></th>
                     </tr></thead>
                     <tbody id="blacklist-body">
-                        <tr><td colspan="7" class="adm-loading">Đang tải…</td></tr>
+                        <tr><td colspan="7" class="adm-loading" data-i18n="com.loading">Đang tải…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -361,63 +364,63 @@
     <!-- Modal thêm/sửa sản phẩm -->
     <div class="modal-backdrop" id="prod-modal">
         <div class="modal-card">
-            <h3 id="modal-title">Thêm sản phẩm</h3>
+            <h3 id="modal-title" data-i18n="adm.modalAdd">Thêm sản phẩm</h3>
             <div class="modal-err" id="modal-err"></div>
             <form id="prod-form" autocomplete="off">
                 <input type="hidden" id="f-id">
                 <div class="fld-row">
                     <div class="fld">
-                        <label>Slug <span class="req">*</span></label>
-                        <input type="text" id="f-slug" placeholder="vd: ao-thun-gg-2024">
-                        <div class="hint">Chỉ chữ/số và . _ - (không khoảng trắng). Duy nhất.</div>
+                        <label><span data-i18n="adm.fSlug">Slug</span> <span class="req">*</span></label>
+                        <input type="text" id="f-slug" placeholder="vd: ao-thun-gg-2024" data-i18n-ph="adm.slugPh">
+                        <div class="hint" data-i18n="adm.slugHint">Chỉ chữ/số và . _ - (không khoảng trắng). Duy nhất.</div>
                     </div>
                     <div class="fld">
-                        <label>Danh mục <span class="req">*</span></label>
+                        <label><span data-i18n="adm.fCategory">Danh mục</span> <span class="req">*</span></label>
                         <select id="f-category"></select>
                     </div>
                 </div>
                 <div class="fld">
-                    <label>Tên (Tiếng Việt) <span class="req">*</span></label>
+                    <label><span data-i18n="adm.fNameVi">Tên (Tiếng Việt)</span> <span class="req">*</span></label>
                     <input type="text" id="f-name-vi">
                 </div>
                 <div class="fld">
-                    <label>Tên (English)</label>
+                    <label data-i18n="adm.fNameEn">Tên (English)</label>
                     <input type="text" id="f-name-en">
                 </div>
                 <div class="fld-row">
                     <div class="fld">
-                        <label>Giá (VND) <span class="req">*</span></label>
+                        <label><span data-i18n="adm.fPrice">Giá (VND)</span> <span class="req">*</span></label>
                         <input type="number" id="f-price" min="0" step="1">
                     </div>
                     <div class="fld">
-                        <label>Giá sale (VND)</label>
-                        <input type="number" id="f-sale" min="0" step="1" placeholder="để trống nếu không giảm">
+                        <label data-i18n="adm.fSale">Giá sale (VND)</label>
+                        <input type="number" id="f-sale" min="0" step="1" placeholder="để trống nếu không giảm" data-i18n-ph="adm.salePh">
                     </div>
                     <div class="fld">
-                        <label>Tồn kho</label>
+                        <label data-i18n="adm.fStock">Tồn kho</label>
                         <input type="number" id="f-stock" min="0" step="1" value="0">
                     </div>
                 </div>
                 <div class="fld">
-                    <label>Ảnh (mỗi dòng 1 đường dẫn)</label>
+                    <label data-i18n="adm.fImages">Ảnh (mỗi dòng 1 đường dẫn)</label>
                     <textarea id="f-images" placeholder="img/gc5.png&#10;img/gc6.png"></textarea>
-                    <div class="hint">Đường dẫn tương đối trong client/, mỗi ảnh 1 dòng (hoặc ngăn bằng dấu phẩy).</div>
+                    <div class="hint" data-i18n="adm.imgHint">Đường dẫn tương đối trong client/, mỗi ảnh 1 dòng (hoặc ngăn bằng dấu phẩy).</div>
                 </div>
                 <div class="fld">
-                    <label>Mô tả (Tiếng Việt)</label>
+                    <label data-i18n="adm.fDescVi">Mô tả (Tiếng Việt)</label>
                     <textarea id="f-desc-vi"></textarea>
                 </div>
                 <div class="fld">
-                    <label>Mô tả (English)</label>
+                    <label data-i18n="adm.fDescEn">Mô tả (English)</label>
                     <textarea id="f-desc-en"></textarea>
                 </div>
                 <div class="fld fld-check">
                     <input type="checkbox" id="f-active" checked>
-                    <label for="f-active">Đang bán (hiển thị trên shop)</label>
+                    <label for="f-active" data-i18n="adm.fActive">Đang bán (hiển thị trên shop)</label>
                 </div>
                 <div class="modal-foot">
-                    <button type="button" class="adm-btn ghost small" id="btn-cancel">Hủy</button>
-                    <button type="submit" class="adm-btn small" id="btn-save">Lưu</button>
+                    <button type="button" class="adm-btn ghost small" id="btn-cancel" data-i18n="com.cancel">Hủy</button>
+                    <button type="submit" class="adm-btn small" id="btn-save" data-i18n="com.save">Lưu</button>
                 </div>
             </form>
         </div>
@@ -428,6 +431,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="js/firebase-config.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/api-config.js"></script>
     <script src="js/auth-helper.js"></script>
     <!-- Chart.js: chỉ dùng cho biểu đồ doanh thu Dashboard (dependency mới duy nhất phase này) -->

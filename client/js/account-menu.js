@@ -14,7 +14,15 @@
   // Chống khởi tạo trùng nếu file lỡ được nạp 2 lần.
   if (window.__acctMenuInit) return;
 
+  // Tra từ điển UI (js/i18n.js). Trả về khoá nếu i18n chưa nạp -> không bao giờ throw.
+  function _t(key, params) {
+    return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
+  }
+
   var trigger = document.querySelector('a[aria-label="Tài khoản"]');
+  // Dấu neo ổn định: aria-label có thể bị i18n đổi sang tiếng Anh, CSS bên dưới
+  // phải bám vào class chứ không bám vào aria-label.
+  if (trigger) trigger.classList.add('acct-trigger');
   if (!trigger) return; // trang không có icon user => thoát êm, không lỗi
   window.__acctMenuInit = true;
 
@@ -44,7 +52,7 @@
   if (!avatarImg) {
     avatarImg = document.createElement('img');
     avatarImg.className = 'user-avatar';
-    avatarImg.alt = 'Ảnh đại diện';
+    avatarImg.alt = _t('acc.avatarAlt');
     avatarImg.hidden = true;
     trigger.insertBefore(avatarImg, trigger.firstChild);
   }
@@ -144,7 +152,7 @@
     if (!user) return '';
     var n = user.displayName;
     if (!n && user.email) n = user.email.split('@')[0];   // không có tên -> lấy phần trước @
-    return n || 'bạn';
+    return n || _t('acc.you');
   }
   /* ---- Ảnh đại diện trên header ----
      Nguồn: GET /api/me (trường avatar_url) qua AuthHelper.apiFetch.
@@ -206,25 +214,25 @@
     loadAvatar(user);
     if (user) {
       var nm = nameOf(user);
-      greet.textContent = 'Xin chào, ' + nm;
+      greet.textContent = _t('acc.helloName', { name: nm });
       applyGreet(user);   // ẩn ở index/search/chính sách, hoặc khi đã có avatar
       pop.innerHTML =
         '<div class="acct-pop-name">' + escapeHtml(nm) + '</div>' +
-        '<button type="button" class="acct-pop-btn" data-act="profile" role="menuitem">Thông tin tài khoản</button>' +
+        '<button type="button" class="acct-pop-btn" data-act="profile" role="menuitem">' + _t('acc.profile') + '</button>' +
         '<button type="button" class="acct-pop-btn" data-act="cart" role="menuitem">' +
-          'Giỏ hàng<span class="cart-badge acct-pop-badge">0</span>' +
+          _t('acc.cart') + '<span class="cart-badge acct-pop-badge">0</span>' +
         '</button>' +
-        '<button type="button" class="acct-pop-btn" data-act="orders" role="menuitem">Đơn hàng</button>' +
-        '<button type="button" class="acct-pop-btn acct-pop-btn--sep" data-act="logout" role="menuitem">Đăng xuất</button>';
+        '<button type="button" class="acct-pop-btn" data-act="orders" role="menuitem">' + _t('acc.orders') + '</button>' +
+        '<button type="button" class="acct-pop-btn acct-pop-btn--sep" data-act="logout" role="menuitem">' + _t('com.signout') + '</button>';
     } else {
       greet.hidden = true;
       // Khách vẫn có giỏ riêng (localStorage) -> vẫn vào xem/sửa được ở cart.html.
       // Không dẫn thẳng tới checkout: nút Thanh Toán trong cart.html sẽ đẩy sang login.
       pop.innerHTML =
         '<button type="button" class="acct-pop-btn" data-act="cart" role="menuitem">' +
-          'Giỏ hàng<span class="cart-badge acct-pop-badge">0</span>' +
+          _t('acc.cart') + '<span class="cart-badge acct-pop-badge">0</span>' +
         '</button>' +
-        '<button type="button" class="acct-pop-btn acct-pop-btn--sep" data-act="login" role="menuitem">Đăng nhập</button>';
+        '<button type="button" class="acct-pop-btn acct-pop-btn--sep" data-act="login" role="menuitem">' + _t('com.signin') + '</button>';
     }
     // Badge trong menu vừa được dựng lại -> đồng bộ số lượng ngay (cart.js quét .cart-badge).
     if (typeof window._updateAllBadges === 'function') window._updateAllBadges();
@@ -236,6 +244,11 @@
   if (window.AuthHelper && typeof window.AuthHelper.onChange === 'function') {
     window.AuthHelper.onChange(render);
   }
+  // Đổi VI/EN: popover được dựng bằng innerHTML nên phải render lại.
+  document.addEventListener('langchange', function () {
+    render(window.AuthHelper && typeof window.AuthHelper.getUser === 'function'
+      ? window.AuthHelper.getUser() : null);
+  });
 
   function isLoggedIn() {
     try {
@@ -254,7 +267,7 @@
     var p = fb ? fb.signOut() : Promise.resolve();
     var done = function () {
       try { localStorage.removeItem('userName'); } catch (e) {}
-      toast('Đã đăng xuất');
+      toast(_t('acc.signedOut'));
       setTimeout(function () { window.location.href = 'index.html'; }, 1000);
     };
     p.then(done).catch(done); // dù signOut lỗi vẫn dọn + điều hướng
@@ -289,7 +302,7 @@
         'border:1px solid var(--c-line,#e6e3dd);background:var(--c-surface,#f6f4ef);}' +
       '.user-avatar[hidden]{display:none;}' +
       // Có ảnh -> giấu icon người, header chỉ còn ảnh tròn.
-      '[aria-label="Tài khoản"].has-avatar .fa{display:none;}' +
+      '.acct-trigger.has-avatar .fa{display:none;}' +
       '.acct-greet{font-family:var(--font-ui,\'Jost\',sans-serif);font-size:13px;' +
         'color:var(--c-muted,#6b6b6b);margin-right:12px;white-space:nowrap;}' +
       '.acct-greet[hidden]{display:none;}' +

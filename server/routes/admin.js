@@ -654,6 +654,8 @@ router.post('/blacklist/:userId/release', async (req, res) => {
 // Danh sách status là literal cố định (không phải input) nên nhúng thẳng an toàn;
 // MỌI giá trị ngày do client truyền đều PARAMETERIZED (request.input) — chống SQL injection.
 
+const VN_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7 — quy ước "ngày" theo giờ VN cho khớp dashboard (browser VN).
+
 // Parse 'YYYY-MM-DD' -> Date (UTC 00:00). Chặt: loại ngày không tồn tại (vd 2026-02-30 bị cuộn).
 function parseYMD(s) {
   if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
@@ -663,16 +665,41 @@ function parseYMD(s) {
   return d;
 }
 
-// Chuẩn hoá khoảng ngày từ query. Không truyền from/to -> 30 ngày gần nhất.
+// "Hôm nay" của phần thống kê KHÔNG lấy từ đồng hồ máy chủ mà neo vào đơn mới nhất
+// có trong DB (MAX(created_at)). Lý do: dữ liệu hiện dừng ở 2026-07-30 trong khi đồng
+// hồ thật đã sang tháng 8, nên mọi preset ngắn ('7 ngày qua', 'Tháng này') rơi trọn vào
+// vùng trống và bảng hiện rỗng như thể mất dữ liệu. Neo theo dữ liệu thì preset luôn có
+// số liệu, và khi có đơn mới THẬT thì mốc tự trôi về hiện tại — không phải sửa lại code.
+// LƯU Ý: mốc này chỉ đổi CÁCH CHỌN KHOẢNG. Ngày giờ hiển thị trên UI (cột "Ngày đặt",
+// hoá đơn, trục chart) vẫn là created_at thật của đơn, không bị dịch.
+// CHỈ neo theo đơn có doanh thu ('paid','shipped','completed' — cùng tập với rangeStats).
+// Đơn 'pending'/'cancelled' bị loại có chủ đích: chỉ cần MỘT đơn test đặt hôm nay là mốc
+// nhảy về hiện tại, mọi preset ngắn lại rơi vào vùng trống và biểu đồ rỗng đúng như lỗi
+// mà cách neo này sinh ra để tránh. Đơn test thường nằm ở 'pending' nên loại là đủ.
+// Không có đơn doanh thu nào -> lùi về đơn bất kỳ; bảng rỗng hẳn -> giờ hệ thống.
+async function getAnchorInstant(pool) {
+  const r = await pool.request().query(`
+    SELECT MAX(created_at) AS mx FROM dbo.orders
+    WHERE status IN ('paid','shipped','completed');`);
+  const mx = r.recordset[0] && r.recordset[0].mx;
+  if (mx) return new Date(mx);
+
+  const any = await pool.request().query('SELECT MAX(created_at) AS mx FROM dbo.orders;');
+  const mxAny = any.recordset[0] && any.recordset[0].mx;
+  return mxAny ? new Date(mxAny) : new Date();
+}
+
+// Chuẩn hoá khoảng ngày từ query. Không truyền from/to -> 30 ngày gần nhất tính từ mốc neo.
 // Trả { ok, from, to, fromDate, toDate, start, end } hoặc { ok:false, error }.
-function resolveDateRange(query) {
+function resolveDateRange(query, anchorInstant) {
   const fromRaw = query.from, toRaw = query.to;
   const hasFrom = fromRaw != null && fromRaw !== '';
   const hasTo = toRaw != null && toRaw !== '';
   let fromDate, toDate;
   if (!hasFrom && !hasTo) {
-    const now = new Date();
-    toDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    // Ngày của mốc neo tính theo giờ VN (khớp quy ước với resolveStatisticsRange).
+    const shifted = new Date((anchorInstant || new Date()).getTime() + VN_OFFSET_MS);
+    toDate = new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()));
     fromDate = new Date(toDate.getTime() - 30 * 86400000);
   } else {
     if (!hasFrom || !hasTo) return { ok: false, error: 'Phải truyền cả from và to (YYYY-MM-DD)' };
@@ -712,19 +739,32 @@ async function rangeStats(pool, start, end) {
   return { revenue, orders, customers, aov: orders > 0 ? Math.round(revenue / orders) : 0 };
 }
 
+// ---- GET /api/admin/stats/anchor -------------------------------------------------
+// Mốc "hôm nay" (YYYY-MM-DD, giờ VN) để client tính các preset của Dashboard.
+// Dashboard tự tính from/to ở client rồi mới gửi lên, nên client phải biết mốc này —
+// nếu vẫn dùng new Date() của máy thì preset ngắn sẽ rơi vào vùng chưa có đơn.
+router.get('/stats/anchor', async (req, res) => {
+  try {
+    const pool = await getPool();
+    res.json({ anchor: ymdVN(await getAnchorInstant(pool)) });
+  } catch (err) {
+    console.error('[admin] stats/anchor error:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không tải được mốc thời gian' });
+  }
+});
+
 // ---- GET /api/admin/stats?from=&to= --- KPI kỳ hiện tại + kỳ trước + doanh thu/ngày --
 // 'previous' = kỳ liền trước cùng độ dài N ngày. Frontend tự tính % delta.
 router.get('/stats', async (req, res) => {
-  const rg = resolveDateRange(req.query);
-  if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
-
-  // Kỳ trước: cùng số ngày N, ngay liền trước kỳ hiện tại.
-  const N = Math.round((rg.toDate.getTime() - rg.fromDate.getTime()) / 86400000) + 1;
-  const prevStart = new Date(rg.fromDate.getTime() - N * 86400000);
-  const prevEnd = rg.fromDate; // exclusive = from
-
   try {
     const pool = await getPool();
+    const rg = resolveDateRange(req.query, await getAnchorInstant(pool));
+    if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
+
+    // Kỳ trước: cùng số ngày N, ngay liền trước kỳ hiện tại.
+    const N = Math.round((rg.toDate.getTime() - rg.fromDate.getTime()) / 86400000) + 1;
+    const prevStart = new Date(rg.fromDate.getTime() - N * 86400000);
+    const prevEnd = rg.fromDate; // exclusive = from
 
     const current = await rangeStats(pool, rg.start, rg.end);
     const previous = await rangeStats(pool, prevStart, prevEnd);
@@ -758,14 +798,14 @@ router.get('/stats', async (req, res) => {
 // Top sản phẩm bán chạy (đơn hợp lệ) trong khoảng, giảm dần theo số lượng bán.
 // imageUrl = phần tử đầu của cột images (JSON array), fallback placeholder nếu rỗng/lỗi.
 router.get('/stats/top-products', async (req, res) => {
-  const rg = resolveDateRange(req.query);
-  if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
-
   let limit = Number(req.query.limit);
   limit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 50) : 5;
 
   try {
     const pool = await getPool();
+    const rg = resolveDateRange(req.query, await getAnchorInstant(pool));
+    if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
+
     const r = await pool.request()
       .input('start', sql.DateTime2, rg.start)
       .input('end', sql.DateTime2, rg.end)
@@ -805,11 +845,11 @@ router.get('/stats/top-products', async (req, res) => {
 // ---- GET /api/admin/stats/order-status?from=&to= ---------------------------------
 // Phân bố trạng thái đơn trong khoảng (GỒM mọi status để vẽ donut — không lọc theo doanh thu).
 router.get('/stats/order-status', async (req, res) => {
-  const rg = resolveDateRange(req.query);
-  if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
-
   try {
     const pool = await getPool();
+    const rg = resolveDateRange(req.query, await getAnchorInstant(pool));
+    if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
+
     const r = await pool.request()
       .input('start', sql.DateTime2, rg.start)
       .input('end', sql.DateTime2, rg.end)
@@ -831,7 +871,6 @@ router.get('/stats/order-status', async (req, res) => {
 // Chỉ tính đơn 'paid' + 'completed' — KHÔNG gồm 'shipped': status là chuỗi admin gán
 // tay qua PUT /orders/:id/status, không gắn với việc đã thu tiền (đơn COD có thể đang
 // "shipped" mà giao hàng chưa thu tiền xong) nên không được coi là doanh thu chắc chắn.
-const VN_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7 — quy ước "ngày" theo giờ VN cho khớp dashboard (browser VN).
 const STATISTICS_RANGE_KEYS = ['7d', '30d', 'month', 'year'];
 
 // "Nửa đêm giờ VN của ngày y-m-d" quy đổi ra Date UTC thật (để so sánh với created_at lưu UTC).
@@ -847,11 +886,12 @@ function ymdVN(utcInstant) {
 }
 
 // range whitelist -> { start, end, from, to } (start/end = mốc UTC thật; end EXCLUSIVE).
-// Server tự tính hoàn toàn theo giờ VN hiện tại — KHÔNG nhận from/to từ client.
-function resolveStatisticsRange(rangeKey) {
+// Server tự tính hoàn toàn theo giờ VN — KHÔNG nhận from/to từ client. Mốc "hôm nay"
+// là anchorInstant (đơn mới nhất trong DB), xem getAnchorInstant().
+function resolveStatisticsRange(rangeKey, anchorInstant) {
   if (!STATISTICS_RANGE_KEYS.includes(rangeKey)) return null;
 
-  const shiftedNow = new Date(Date.now() + VN_OFFSET_MS);
+  const shiftedNow = new Date((anchorInstant || new Date()).getTime() + VN_OFFSET_MS);
   const y = shiftedNow.getUTCFullYear(), m = shiftedNow.getUTCMonth(), d = shiftedNow.getUTCDate();
   const todayStart = vnMidnightUTC(y, m, d);
   const end = new Date(todayStart.getTime() + 86400000); // hết ngày hôm nay (giờ VN)
@@ -866,8 +906,7 @@ function resolveStatisticsRange(rangeKey) {
 }
 
 router.get('/statistics', async (req, res) => {
-  const rg = resolveStatisticsRange(req.query.range);
-  if (!rg) {
+  if (!STATISTICS_RANGE_KEYS.includes(req.query.range)) {
     return res.status(400).json({
       status: 'error',
       message: 'range không hợp lệ. Hợp lệ: ' + STATISTICS_RANGE_KEYS.join(', '),
@@ -876,6 +915,7 @@ router.get('/statistics', async (req, res) => {
 
   try {
     const pool = await getPool();
+    const rg = resolveStatisticsRange(req.query.range, await getAnchorInstant(pool));
     const r = await pool.request()
       .input('start', sql.DateTime2, rg.start)
       .input('end', sql.DateTime2, rg.end)
