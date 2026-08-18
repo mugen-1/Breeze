@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets — KHÔNG BAO GIỜ commit
+.env
+.env.local
+*.env
+firebase-service-account.json
+*serviceAccount*.json
+
+# Logs (kể cả log ẩn do script chạy nền sinh ra)
+*.log
+.s-*.log
+.srv-*.log
+.server-*.log
+npm-debug.log*
+
+# File backup tạm khi sửa code
+*.bak
+*.orig
+*~
+
+# Ảnh user upload (avatar) — dữ liệu runtime
+uploads/
+
+# Rác hệ điều hành / IDE
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
