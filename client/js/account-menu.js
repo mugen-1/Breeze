@@ -144,7 +144,7 @@
   });
 
   // ---- dựng nội dung theo trạng thái, cập nhật khi đăng nhập/đăng xuất ----
-  function escapeHtml(s) {
+  function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
@@ -217,7 +217,7 @@
       greet.textContent = _t('acc.helloName', { name: nm });
       applyGreet(user);   // ẩn ở index/search/chính sách, hoặc khi đã có avatar
       pop.innerHTML =
-        '<div class="acct-pop-name">' + escapeHtml(nm) + '</div>' +
+        '<div class="acct-pop-name">' + esc(nm) + '</div>' +
         '<button type="button" class="acct-pop-btn" data-act="profile" role="menuitem">' + _t('acc.profile') + '</button>' +
         '<button type="button" class="acct-pop-btn" data-act="cart" role="menuitem">' +
           _t('acc.cart') + '<span class="cart-badge acct-pop-badge">0</span>' +

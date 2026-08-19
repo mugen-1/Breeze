@@ -19,7 +19,7 @@
     function currentLang() {
         return (window.__i18n && window.__i18n.current) || localStorage.getItem('ql_lang') || 'en';
     }
-    function tr(key, params) {
+    function t(key, params) {
         return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
     }
     function pName(p) { return currentLang() === 'en' ? (p.name_en || p.name_vi) : (p.name_vi || p.name_en); }
@@ -70,12 +70,12 @@
             }).join('');
         }
         var g = cfg.guide;
-        var gHead = document.querySelector('.sg-table thead tr');
+        var gHead = document.querySelector('.sg-table thead t');
         if (gHead) gHead.innerHTML = g.cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('');
         var body = document.querySelector('.sg-table tbody');
         if (body) {
             body.innerHTML = g.rows.map(function (row) {
-                return '<tr>' + row.map(function (cell) { return '<td>' + esc(cell) + '</td>'; }).join('') + '</tr>';
+                return '<t>' + row.map(function (cell) { return '<td>' + esc(cell) + '</td>'; }).join('') + '</t>';
             }).join('');
         }
     }
@@ -142,7 +142,7 @@
         root.setAttribute('data-stock', Number.isFinite(st) ? st : '');
         if (addBtn) {
             addBtn.disabled = soldOut;
-            addBtn.textContent = soldOut ? tr('sr.soldOut') : tr('pd.addToCart');
+            addBtn.textContent = soldOut ? t('sr.soldOut') : t('pd.addToCart');
             addBtn.classList.toggle('sold-out', soldOut);
             var note = document.getElementById('pd-soldout-note');
             if (soldOut) {
@@ -213,7 +213,7 @@
         // Nút thêm giỏ: giữ đúng trạng thái Hết hàng / Thêm vào giỏ.
         if (addBtn && !addBtn.classList.contains('added')) {
             addBtn.textContent = addBtn.classList.contains('sold-out')
-                ? tr('sr.soldOut') : tr('pd.addToCart');
+                ? t('sr.soldOut') : t('pd.addToCart');
         }
     });
 

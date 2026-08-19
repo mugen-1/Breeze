@@ -25,7 +25,7 @@
     return p.name_vi || p.name_en;
   }
 
-  function formatPrice(n) {
+  function money(n) {
     return Number(n).toLocaleString('vi-VN') + 'đ';
   }
 
@@ -47,11 +47,11 @@
     if (p.sale_price != null) {
       priceHTML =
         '<div class="product-price">' +
-          '<span class="price-default">' + formatPrice(p.price) + '</span> ' +
-          '<span class="price-sale">' + formatPrice(p.sale_price) + '</span>' +
+          '<span class="price-default">' + money(p.price) + '</span> ' +
+          '<span class="price-sale">' + money(p.sale_price) + '</span>' +
         '</div>';
     } else {
-      priceHTML = '<div class="product-price">' + formatPrice(p.price) + '</div>';
+      priceHTML = '<div class="product-price">' + money(p.price) + '</div>';
     }
 
     // Tồn kho: stock <= 0 => hết hàng (chặn thêm giỏ + badge). data-stock để cart.js đọc.

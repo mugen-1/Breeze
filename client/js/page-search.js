@@ -39,7 +39,7 @@
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
     }
-    function formatPrice(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
+    function money(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
 
     // Bỏ dấu để gõ không dấu vẫn ra: "quan nam" -> khớp "Quần Nam".
     // Lưu ý: đ/Đ KHÔNG tách được bằng NFD nên phải thay tay sau khi bỏ dấu thanh.
@@ -63,10 +63,10 @@
 
         var priceHTML = (p.sale_price != null)
             ? '<div class="product-price">' +
-                  '<span class="price-default">' + formatPrice(p.price) + '</span> ' +
-                  '<span class="price-sale">' + formatPrice(p.sale_price) + '</span>' +
+                  '<span class="price-default">' + money(p.price) + '</span> ' +
+                  '<span class="price-sale">' + money(p.sale_price) + '</span>' +
               '</div>'
-            : '<div class="product-price">' + formatPrice(p.price) + '</div>';
+            : '<div class="product-price">' + money(p.price) + '</div>';
 
         var stock = Number(p.stock);
         var soldOut = Number.isFinite(stock) && stock <= 0;

@@ -52,7 +52,7 @@
         $('inv-items').innerHTML = items.length
             ? items.map(function (it) {
                 return '<tr>' +
-                    '<td>' + escapeHtml(it.product_name) + '</td>' +
+                    '<td>' + esc(it.product_name) + '</td>' +
                     '<td class="col-qty num">x' + it.quantity + '</td>' +
                     '<td class="col-price num">' + money(it.unit_price) + '</td>' +
                     '<td class="col-total num">' + money(it.line_total) + '</td>' +
@@ -79,7 +79,7 @@
         $('inv-actions').hidden = false;   // chỉ hiện khi đã có dữ liệu (không tự bật print dialog)
     }
 
-    function escapeHtml(s) {
+    function esc(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;')
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
