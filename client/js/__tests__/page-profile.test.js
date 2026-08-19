@@ -18,6 +18,7 @@ function setup(opts) {
   if (opts.qsa) Object.assign(doc._qsa, opts.qsa);
 
   const r = load('page-profile.js', {
+    deps: ['utils-i18n.js'],
     doc: doc,
     globals: { alert: function () { acts.push(['alert']); } },
     window: {
@@ -52,7 +53,7 @@ function setup(opts) {
 
   // Không rò global (toàn bộ trong 1 IIFE)
   let r = setup();
-  ['t', 'toast', 'byId', 'saveProfile', 'loadMe', 'render', 'fmtDate', 'openModal', 'validate']
+  ['toast', 'byId', 'saveProfile', 'loadMe', 'render', 'fmtDate', 'openModal', 'validate']
     .forEach(function (k) { eq('IIFE khong ro global: ' + k, typeof r.sandbox[k], 'undefined'); });
 
   // Auth gate

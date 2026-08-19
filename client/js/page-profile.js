@@ -23,9 +23,6 @@
     var _meLoaded = false;                     // tránh gọi /api/me lặp
 
     // i18n — nhãn tĩnh do js/i18n.js áp qua data-i18n; t() dùng cho chuỗi JS sinh.
-    function t(key, params) {
-        return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
-    }
     function locale() {
         return (window.__i18n && window.__i18n.current === 'en') ? 'en-GB' : 'vi-VN';
     }

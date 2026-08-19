@@ -19,9 +19,6 @@
     function currentLang() {
         return (window.__i18n && window.__i18n.current) || localStorage.getItem('ql_lang') || 'en';
     }
-    function t(key, params) {
-        return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
-    }
     function pName(p) { return currentLang() === 'en' ? (p.name_en || p.name_vi) : (p.name_vi || p.name_en); }
     function pDesc(p) { return currentLang() === 'en' ? (p.description_en || p.description_vi || '') : (p.description_vi || p.description_en || ''); }
 
