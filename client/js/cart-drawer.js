@@ -4,11 +4,6 @@
 (function () {
     'use strict';
 
-    function esc(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
     function cart() { return (typeof getCart === 'function') ? getCart() : []; }
 
     var backdrop, drawer, bodyEl, totalEl, countEl;

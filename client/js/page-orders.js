@@ -11,11 +11,6 @@ function _op() {
 }
 function _lang() { return (window.__i18n && window.__i18n.current) || 'vi'; }
 
-function esc(s) {
-    return String(s == null ? '' : s)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
 function fmtDate(iso) {
     try { return new Date(iso).toLocaleString(_lang() === 'en' ? 'en-GB' : 'vi-VN'); }
     catch (e) { return iso; }

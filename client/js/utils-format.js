@@ -20,3 +20,15 @@
 function money(n) {
     return Number(n || 0).toLocaleString('vi-VN') + '₫';
 }
+
+/* Escape ký tự đặc biệt trước khi nhét dữ liệu vào chuỗi HTML.
+
+   Có 9 bản rải khắp client/js dưới 2 tên (esc / escapeHtml). 8 bản chỉ escape
+   & < > và dấu nháy KÉP; riêng bản của admin.js escape thêm dấu nháy ĐƠN.
+   Lấy theo bản admin vì nó chặn được cả XSS qua thuộc tính HTML viết bằng nháy
+   đơn, kiểu title='...' — 8 bản kia để lọt. */
+function esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}

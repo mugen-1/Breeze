@@ -78,11 +78,6 @@
         $('inv-actions').hidden = false;   // chỉ hiện khi đã có dữ liệu (không tự bật print dialog)
     }
 
-    function esc(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
 
     function load(user) {
         if (!user) {

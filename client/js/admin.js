@@ -19,11 +19,6 @@
         var categories = [];   // [{id, slug, name_vi}]
         var catById = {};
 
-        function esc(s) {
-            return String(s == null ? '' : s)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        }
         // Ngày/giờ theo ngôn ngữ đang chọn (VN dd/mm/yyyy, EN dd/mm/yyyy kiểu en-GB).
         function fmtDate(iso) {
             try { return new Date(iso).toLocaleString(lang() === 'en' ? 'en-GB' : 'vi-VN'); }
