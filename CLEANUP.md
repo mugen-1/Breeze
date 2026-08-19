@@ -52,7 +52,44 @@ Ngoài ra `esc`/`money`/`t` ở `search.html` và `product.html` nằm trong IIF
 **không xung đột** với bản global ở `orders.html` — gom được thì tốt, nhưng đây không
 phải xung đột đang tồn tại.
 
-**TASK 4 mục 4.1 phải đối chiếu lại từng hàm từ đầu, không tin bảng.**
+## Kết quả TASK 4.1 — đối chiếu lại từ đầu (bảng CHỐT)
+
+So bằng cách bỏ **hết** khoảng trắng và comment rồi băm nội dung thân hàm. Lần so đầu
+bị nhiễu vì các bản chỉ khác chỗ xuống dòng — đừng lặp lại sai lầm đó.
+
+| Hàm | Số nơi định nghĩa | Số bản **thực sự** khác nhau | Quyết định |
+|---|---|---|---|
+| `esc` / `escapeHtml` | 4 | **1** | Gom. `escapeHtml` (invoice) giống hệt `esc`, chỉ khác tên |
+| `t` / `tr` | 4 | **1** | Gom. Bản invoice chỉ khác **tên tham số** (`k,p` vs `key,params`) — thân hàm hoàn toàn tương đương |
+| `money` / `formatPrice` | 4 | **2** | Gom về bản an toàn, xem dưới. `formatPrice` (search) giống hệt `money` |
+| `toggleFilter` | 6 | **1** | Gom. 6 bản giống hệt nhau từng byte |
+| `fmtDate` / `fmtDateVN` | 3 | **3** | KHÔNG gom — khác hẳn nhau |
+| `lang` / `_lang` / `locale` | 3 | **3** | KHÔNG gom — khác hẳn nhau |
+| `render` | 4 | **4** | KHÔNG gom — đổi tên. Kích thước 252/639/1682/2632 ký tự |
+| `imgs` | **0** | — | Không tồn tại hàm nào tên này |
+
+Lưu ý về cách đếm: nếu đọc lướt có thể thấy `t/tr` là "2 bản" vì hash khác nhau. Đó là
+do **tên tham số** khác, không phải hành vi khác. Đã chốt: **1 bản**.
+
+Bảng gốc còn **bỏ sót** việc cùng một hàm mang tên khác nhau ở các trang
+(`esc`/`escapeHtml`, `money`/`formatPrice`, `t`/`tr`). Tính đúng thì số chỗ trùng
+NHIỀU hơn bảng ghi, nhưng số bản khác nhau lại ÍT hơn.
+
+### Khác biệt thật của `money` — đây là bug, không phải style
+
+```js
+orders / product / search:  Number(n).toLocaleString('vi-VN') + 'đ'
+invoice:                    Number(n || 0).toLocaleString('vi-VN') + 'đ'
+```
+
+Với `null`/`undefined`, 3 bản đầu in ra **`NaNđ`** trên giao diện. Bản invoice ra `0đ`.
+Đã chốt: gom về bản có `|| 0`, kèm test khoá hành vi cho cả 3 trang.
+
+### `toggleFilter` — lấy lại guard đã mất
+
+Bản từng nằm ở index (đã xoá ở `61d25b9`) có `if (list)` bảo vệ null; 6 bản đang chạy
+thì **không có** nên sẽ throw nếu `nextElementSibling` là null. Bản gom lấy lại guard —
+đây là mang hàm về đúng phiên bản an toàn nhất từng tồn tại, không phải thêm tính năng.
 
 ## Đính chính: `invoice.html` không dùng html2pdf.js
 
