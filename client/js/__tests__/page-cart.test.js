@@ -10,9 +10,9 @@ function setup(cart) {
   const log = [];
   const r = load('page-cart.js', {
     doc: doc,
+    deps: ['utils-format.js'],
     globals: {
       getCart: function () { return cart; },
-      formatPrice: function (n) { return Number(n).toLocaleString('vi-VN') + 'd'; },
       updateQty: function (id, d) { log.push(['updateQty', id, d]); },
       removeFromCart: function (id) { log.push(['removeFromCart', id]); },
     },
@@ -39,7 +39,7 @@ eq('gio rong -> an noi dung', g(r, 'cart-content').style.display, 'none');
 r = setup([{ id: 1, name: 'Ao', price: 100000, qty: 2, img: 'a.png', stock: 5 },
            { id: 2, name: 'Quan', price: 50000, qty: 1, img: 'b.png', stock: 3 }]);
 eq('2 mon -> render 2 dong', g(r, 'cart-body').children.length, 2);
-eq('tong tien = 100000*2 + 50000', g(r, 'cart-total-price').textContent, '250.000d');
+eq('tong tien = 100000*2 + 50000', g(r, 'cart-total-price').textContent, '250.000₫');
 eq('con hang -> nut thanh toan bat', r.btn.disabled, false);
 
 // Vượt tồn kho

@@ -25,9 +25,6 @@
     return p.name_vi || p.name_en;
   }
 
-  function money(n) {
-    return Number(n).toLocaleString('vi-VN') + 'đ';
-  }
 
   function esc(s) {
     return String(s == null ? '' : s)

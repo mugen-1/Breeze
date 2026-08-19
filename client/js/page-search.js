@@ -39,7 +39,6 @@
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
     }
-    function money(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
 
     // Bỏ dấu để gõ không dấu vẫn ra: "quan nam" -> khớp "Quần Nam".
     // Lưu ý: đ/Đ KHÔNG tách được bằng NFD nên phải thay tay sau khi bỏ dấu thanh.

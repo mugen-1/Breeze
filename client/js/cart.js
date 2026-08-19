@@ -3,8 +3,9 @@
    - Đã đăng nhập (AuthHelper có user): mọi thao tác đồng bộ qua API /api/cart (Bearer token).
      Khi đăng nhập mà localStorage còn giỏ cũ -> merge lên server 1 lần rồi xoá localStorage.
    - Giữ NGUYÊN API đồng bộ: getCart / saveCart / addToCart / updateQty / removeFromCart /
-     formatPrice / _updateAllBadges / _injectAddToCartButtons — để cart-drawer.js, cart.html,
+     _updateAllBadges / _injectAddToCartButtons — để cart-drawer.js, cart.html,
      products-render.js không phải đổi. _cart (in-memory) là nguồn sự thật ở CẢ hai chế độ.
+     (formatPrice từng nằm ở đây, nay là money() dùng chung trong js/utils-format.js.)
    - Mỗi lần giỏ đổi phát sự kiện document 'cartchange' để các view render lại. */
 
 var CART_KEY = 'bookstore_cart';
@@ -314,9 +315,6 @@ function updateQty(id, delta) {
     else saveCart(_cart);
 }
 
-function formatPrice(n) {
-    return n.toLocaleString('vi-VN') + 'đ';
-}
 
 function _injectAddToCartButtons() {
     document.querySelectorAll('.product-info').forEach(function (info) {

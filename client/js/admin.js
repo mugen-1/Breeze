@@ -24,7 +24,6 @@
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
-        function money(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
         // Ngày/giờ theo ngôn ngữ đang chọn (VN dd/mm/yyyy, EN dd/mm/yyyy kiểu en-GB).
         function fmtDate(iso) {
             try { return new Date(iso).toLocaleString(lang() === 'en' ? 'en-GB' : 'vi-VN'); }

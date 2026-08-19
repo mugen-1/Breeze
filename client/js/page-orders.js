@@ -16,7 +16,6 @@ function esc(s) {
         .replace(/&/g, '&amp;').replace(/</g, '&lt;')
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
-function money(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
 function fmtDate(iso) {
     try { return new Date(iso).toLocaleString(_lang() === 'en' ? 'en-GB' : 'vi-VN'); }
     catch (e) { return iso; }

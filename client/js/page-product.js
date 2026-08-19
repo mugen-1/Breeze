@@ -24,7 +24,6 @@
     }
     function pName(p) { return currentLang() === 'en' ? (p.name_en || p.name_vi) : (p.name_vi || p.name_en); }
     function pDesc(p) { return currentLang() === 'en' ? (p.description_en || p.description_vi || '') : (p.description_vi || p.description_en || ''); }
-    function money(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
     function esc(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
