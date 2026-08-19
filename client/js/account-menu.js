@@ -144,10 +144,6 @@
   });
 
   // ---- dựng nội dung theo trạng thái, cập nhật khi đăng nhập/đăng xuất ----
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
   function nameOf(user) {
     if (!user) return '';
     var n = user.displayName;

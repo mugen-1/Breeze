@@ -117,9 +117,10 @@ const g = (r, id) => r.doc.getElementById(id);
   check('nhan Escape -> dong overlay', !g(r, 'sg-overlay').classList.contains('open'));
   eq('dong overlay -> tra lai cuon trang', r.sandbox.document.body.style.overflow, '');
 
-  ['t', 'esc', 'pName', 'currentLang', 'renderProduct', 'loadRelated'].forEach(function (k) {
+  ['t', 'pName', 'currentLang', 'renderProduct', 'loadRelated'].forEach(function (k) {
     eq('IIFE khong ro global: ' + k, typeof r.sandbox[k], 'undefined');
   });
   // money nay la global DUNG CHUNG tu utils-format.js (TASK 4) — phai co, khong phai ro ri.
   eq('money la global dung chung tu utils-format.js', typeof r.sandbox.money, 'function');
+  eq('esc la global dung chung tu utils-format.js', typeof r.sandbox.esc, 'function');
 })();

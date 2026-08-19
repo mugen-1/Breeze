@@ -34,11 +34,6 @@
     function productName(p) {
         return lang() === 'en' ? (p.name_en || p.name_vi) : (p.name_vi || p.name_en);
     }
-    function esc(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    }
 
     // Bỏ dấu để gõ không dấu vẫn ra: "quan nam" -> khớp "Quần Nam".
     // Lưu ý: đ/Đ KHÔNG tách được bằng NFD nên phải thay tay sau khi bỏ dấu thanh.

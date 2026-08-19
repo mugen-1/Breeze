@@ -24,10 +24,6 @@
     }
     function pName(p) { return currentLang() === 'en' ? (p.name_en || p.name_vi) : (p.name_vi || p.name_en); }
     function pDesc(p) { return currentLang() === 'en' ? (p.description_en || p.description_vi || '') : (p.description_vi || p.description_en || ''); }
-    function esc(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
 
     // Size theo danh mục. Mặc định: áo/quần dùng S/M/L/XL.
     // Giày (sanpham-giay) dùng size số 41–44 (trái -> phải).

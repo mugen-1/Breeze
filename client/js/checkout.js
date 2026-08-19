@@ -25,11 +25,6 @@
     function money(n) { return num(n) + '₫'; }               // kèm ký hiệu: 2.900.000₫
     var PLACEHOLDER_IMG = 'img/breeze.png';
 
-    function esc(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
 
     // ---------- PHASE 2: key định danh duy nhất (phòng thủ) ----------
     // Có biến thể -> `${id}__${size}__${color}`; không có -> id; thiếu cả id -> `name:<name>` (fallback).

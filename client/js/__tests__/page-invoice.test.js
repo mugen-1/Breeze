@@ -111,9 +111,10 @@ const donCo = (body) => ({ body: { orders: [body] } });
   r.doc.fire('langchange');
   eq('langchange -> ve lai noi dung da sinh', r.sandbox.document.title, 'EN:inv.docTitleN');
 
-  ['t', 'render', 'load', 'esc', 'fmtDateVN'].forEach(function (k) {
+  ['t', 'render', 'load', 'fmtDateVN'].forEach(function (k) {
     eq('IIFE khong ro global: ' + k, typeof r.sandbox[k], 'undefined');
   });
   // money nay la global DUNG CHUNG tu utils-format.js (TASK 4) — phai co, khong phai ro ri.
   eq('money la global dung chung tu utils-format.js', typeof r.sandbox.money, 'function');
+  eq('esc la global dung chung tu utils-format.js', typeof r.sandbox.esc, 'function');
 })();
