@@ -116,7 +116,7 @@ const g = (r, id) => r.doc.getElementById(id);
   check('nhan Escape -> dong overlay', !g(r, 'sg-overlay').classList.contains('open'));
   eq('dong overlay -> tra lai cuon trang', r.sandbox.document.body.style.overflow, '');
 
-  ['tr', 'money', 'esc', 'pName', 'currentLang', 'renderProduct', 'loadRelated'].forEach(function (k) {
+  ['t', 'money', 'esc', 'pName', 'currentLang', 'renderProduct', 'loadRelated'].forEach(function (k) {
     eq('IIFE khong ro global: ' + k, typeof r.sandbox[k], 'undefined');
   });
 })();

@@ -80,7 +80,7 @@ const g = (r, id) => r.doc.getElementById(id);
   eq('khong khop -> danh sach rong', g(r, 'results').innerHTML, '');
 
   // Toàn bộ nằm trong IIFE, không được rò ra global
-  ['t', 'lang', 'esc', 'formatPrice', 'norm', 'cardHTML', 'productName'].forEach(function (k) {
+  ['t', 'lang', 'esc', 'money', 'norm', 'cardHTML', 'productName'].forEach(function (k) {
     eq('IIFE khong ro global: ' + k, typeof r.sandbox[k], 'undefined');
   });
 })();

@@ -110,7 +110,7 @@ const donCo = (body) => ({ body: { orders: [body] } });
   r.doc.fire('langchange');
   eq('langchange -> ve lai noi dung da sinh', r.sandbox.document.title, 'EN:inv.docTitleN');
 
-  ['t', 'money', 'render', 'load', 'escapeHtml', 'fmtDateVN'].forEach(function (k) {
+  ['t', 'money', 'render', 'load', 'esc', 'fmtDateVN'].forEach(function (k) {
     eq('IIFE khong ro global: ' + k, typeof r.sandbox[k], 'undefined');
   });
 })();
