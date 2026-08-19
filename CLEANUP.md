@@ -64,6 +64,35 @@ Cơ chế in thật: nút "In hoá đơn" gọi `window.print()` của trình du
 người dùng bấm (không auto-print), bố cục bản in do khối `@media print` trong `<style>`
 của `invoice.html` lo. Việc tách JS không ảnh hưởng gì tới in.
 
+## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
+
+Ghi ở đây để không trôi mất qua các task sau.
+
+### N-1 — Hoá đơn hiện "Giảm giá: −0đ" với voucher giảm 0đ
+
+- **Ở đâu:** `client/js/page-invoice.js`, điều kiện `if (discount > 0 || o.voucher_code)`
+- **Hiện tượng:** đơn áp voucher không giảm tiền hàng (vd mã freeship) có
+  `discount_amount = 0` nhưng vẫn có `voucher_code`, nên dòng giảm giá **vẫn hiện**
+  và in ra "−0đ" trên hoá đơn.
+- **Đúng hay sai:** nhánh `|| o.voucher_code` là **có chủ đích** — đã áp mã thì hoá
+  đơn nên ghi nhận. Vấn đề chỉ nằm ở chỗ hiển thị "−0đ" trông kỳ trên bản in.
+- **Đã có test phủ:** `client/js/__tests__/page-invoice.test.js`, case
+  "giam 0 NHUNG co voucher_code -> HIEN". Test đang khoá hành vi **hiện tại**; nếu
+  sau này đổi cách hiển thị thì phải sửa case đó theo.
+- **Gợi ý khi xử lý:** giữ dòng nhưng đổi text thành tên mã + "miễn phí vận chuyển"
+  thay vì "−0đ". Cần chốt với người dùng vì đây là thay đổi nội dung hoá đơn.
+- **Mức độ:** thấp, không sai số tiền. Tổng vẫn lấy `total_amount` thật từ DB.
+
+## Test tự động cho client
+
+`client/js/__tests__/` — chạy `node client/js/__tests__/run-all.js`, không cần cài
+thư viện ngoài. Hiện có **168 assertion / 8 file**, phủ toàn bộ `page-*.js` tách ra
+ở TASK 3. Đã kiểm chứng bộ test thật sự bắt lỗi: cố ý phá điều kiện hết hàng trong
+`page-cart.js` thì 4 case đỏ và runner thoát mã 1.
+
+Chạy lại bộ này sau mỗi bước của TASK 4-9 để biết việc gom hàm có làm vỡ trang nào
+không. Chi tiết và giới hạn: xem `client/js/__tests__/README.md`.
+
 ## Tiến độ
 
 | TASK | Trạng thái | Commit |
