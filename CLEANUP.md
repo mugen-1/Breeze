@@ -85,6 +85,44 @@ invoice:                    Number(n || 0).toLocaleString('vi-VN') + 'đ'
 Với `null`/`undefined`, 3 bản đầu in ra **`NaNđ`** trên giao diện. Bản invoice ra `0đ`.
 Đã chốt: gom về bản có `|| 0`, kèm test khoá hành vi cho cả 3 trang.
 
+### Chốt: vì sao dùng `₫` (U+20AB) chứ không phải chữ `đ` — ĐÃ KIỂM CHỨNG
+
+Quyết định đã chốt, **không mở lại**. Lý do:
+
+1. `₫` là ký hiệu tiền tệ chuẩn của đồng Việt Nam trong Unicode. Chữ `đ` là một chữ
+   cái, dùng làm ký hiệu tiền là quy ước dân gian.
+2. Trước khi gộp, site **đã dùng lẫn cả hai**: `₫` ở trang thanh toán và voucher,
+   `đ` ở giỏ hàng, đơn hàng, hoá đơn, trang quản trị. Khách đi hết một luồng mua
+   sẽ thấy hai kiểu khác nhau. Buộc phải chọn một.
+3. Chọn `₫` thì chỉ cần sửa hàm gộp; chọn `đ` thì phải sửa cả `checkout.js` lẫn
+   `voucher.js` (2 file đang dùng `Intl.NumberFormat` riêng) — nhiều rủi ro hơn ở
+   đúng luồng nhạy cảm nhất là thanh toán.
+
+**Đã kiểm chứng bằng trình duyệt thật (Chrome headless), không phải suy đoán:**
+
+| Kiểm tra | Kết quả |
+|---|---|
+| Jost (font UI của site) có glyph `₫`? | CÓ — thuộc subset `latin-ext` (`U+20A0-20AB`) |
+| Cormorant Garamond có glyph `₫`? | CÓ — Google Fonts xếp `U+20AB` ngay trong subset `vietnamese` |
+| Font hệ thống (khi Google Fonts không tải được, vd in offline) | CÓ — Arial có glyph thật |
+| Khi IN ra PDF | `₫` ánh xạ tới glyph `0x047E` trong Arial nhúng vào PDF — **không phải ô vuông**, không bị thay bằng font khác |
+| Hiển thị thật trên web | Đã chụp màn hình `search.html`, `product.html`, `sanpham-ao.html`, `cart.html` — đều đúng |
+
+Ví dụ đã xác nhận trên giỏ hàng: `459.000₫` × 2 = `918.000₫`, cộng `199.000₫`,
+tổng `1.117.000₫`.
+
+### Phát hiện thêm (KHÔNG do đợt dọn dẹp gây ra) — Jost thiếu chữ Việt có dấu
+
+Các trang gọi Google Fonts với `subset=vietnamese,latin`, nhưng **Jost không hề có
+subset `vietnamese`** — Google chỉ phục vụ `cyrillic`, `latin-ext`, `latin`. Dải
+`latin-ext` phủ `U+1E00-1E9F` và `U+1EF2-1EFF`, tức là **bỏ trống `U+1EA0-1EF1`** —
+đúng vùng chứa phần lớn chữ Việt có dấu thanh (ế, ộ, ứ, ậ...).
+
+Hệ quả: những chữ đó đang rơi về font hệ thống, nằm lẫn giữa chữ Jost. Nhìn kỹ sẽ
+thấy nét không đồng đều. Việc này có từ trước, không liên quan TASK 4. Muốn xử lý thì
+đổi sang font có hỗ trợ tiếng Việt đầy đủ, hoặc bỏ `subset=vietnamese` cho Jost và
+chấp nhận fallback. Cần quyết định riêng vì đụng tới nhận diện thương hiệu.
+
 ### `toggleFilter` — lấy lại guard đã mất
 
 Bản từng nằm ở index (đã xoá ở `61d25b9`) có `if (list)` bảo vệ null; 6 bản đang chạy
