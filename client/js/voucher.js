@@ -10,9 +10,6 @@
     if (!block) return; // không phải trang checkout -> bỏ qua (file dùng chung)
 
     function id(x) { return document.getElementById(x); }
-    function t(key, params) {
-        return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
-    }
     var lineBtn = id('voucher-line');   // dòng "Giảm giá" — vừa hiển thị số vừa là nút mở/đóng panel
     var input = id('voucher-code');
     var applyBtn = id('voucher-apply');

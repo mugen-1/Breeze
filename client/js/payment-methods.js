@@ -18,9 +18,6 @@
 
   function byId(id) { return document.getElementById(id); }
   // i18n — nhãn tĩnh do js/i18n.js áp qua data-i18n; t() cho chuỗi JS sinh.
-  function t(key, params) {
-    return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
-  }
   function elHide(el) { if (el) el.hidden = true; }
   function elShow(el) { if (el) el.hidden = false; }
   function fVal(id) { var el = byId(id); return el ? (el.value || '').trim() : ''; }

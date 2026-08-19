@@ -9,9 +9,6 @@ const ERROR_KEYS = {
     'auth/too-many-requests': 'au.eTooMany'
 };
 
-function t(key, params) {
-    return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
-}
 function authError(error) {
     return ERROR_KEYS[error.code] ? t(ERROR_KEYS[error.code]) : error.message;
 }

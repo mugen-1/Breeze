@@ -11,9 +11,6 @@
     function $(id) { return document.getElementById(id); }
 
     // i18n: js/i18n.js nạp trước file này. Fallback trả về khoá nếu chưa sẵn sàng.
-    function t(key, params) {
-        return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
-    }
 
     function getCartSafe() {
         return (typeof getCart === 'function' && Array.isArray(getCart())) ? getCart() : [];

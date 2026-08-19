@@ -20,7 +20,7 @@ function setup(query) {
     doc.getElementById(id);
   });
   const r = load('page-search.js', {
-    deps: ['utils-format.js'],
+    deps: ['utils-format.js', 'utils-i18n.js'],
     doc: doc,
     globals: {
       fetch: function (u) {
@@ -81,10 +81,11 @@ const g = (r, id) => r.doc.getElementById(id);
   eq('khong khop -> danh sach rong', g(r, 'results').innerHTML, '');
 
   // Toàn bộ nằm trong IIFE, không được rò ra global
-  ['t', 'lang', 'norm', 'cardHTML', 'productName'].forEach(function (k) {
+  ['lang', 'norm', 'cardHTML', 'productName'].forEach(function (k) {
     eq('IIFE khong ro global: ' + k, typeof r.sandbox[k], 'undefined');
   });
   // money nay la global DUNG CHUNG tu utils-format.js (TASK 4) — phai co, khong phai ro ri.
   eq('money la global dung chung tu utils-format.js', typeof r.sandbox.money, 'function');
   eq('esc la global dung chung tu utils-format.js', typeof r.sandbox.esc, 'function');
+  eq('t la global dung chung tu utils-i18n.js', typeof r.sandbox.t, 'function');
 })();

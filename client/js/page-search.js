@@ -25,9 +25,6 @@
 
     if (inputEl) inputEl.value = keyword;   // giữ lại từ khoá để sửa & tìm tiếp
 
-    function t(key, params) {
-        return (window.__i18n && window.__i18n.t) ? window.__i18n.t(key, params) : key;
-    }
     function lang() {
         return (window.__i18n && window.__i18n.current) || localStorage.getItem('ql_lang') || 'vi';
     }
