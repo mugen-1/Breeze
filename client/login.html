@@ -209,27 +209,7 @@
     <script src="js/drawer-menu.js"></script>
     <script src="js/i18n.js"></script>
 
-    <script>
-        function showMsg(id, text, type) {
-            var el = document.getElementById(id);
-            el.textContent = text;
-            el.className = 'auth-msg show ' + type;
-        }
-
-        // Bị chuyển hướng từ nút "Đăng xuất" (account-menu) lúc CHƯA đăng nhập.
-        // Chờ 'langchange' (i18n.js phát khi áp ngôn ngữ) để lấy đúng bản dịch,
-        // và đổi lại text mỗi lần người dùng chuyển VI/EN.
-        (function () {
-            var notice = new URLSearchParams(window.location.search).get('notice');
-            if (notice !== 'need-login') return;
-            function paint() {
-                if (typeof showMessage !== 'function' || !window.__i18n) return;
-                showMessage('login-msg', window.__i18n.t('au.notLoggedIn'), true);
-            }
-            document.addEventListener('langchange', paint);
-            document.addEventListener('DOMContentLoaded', paint);
-        })();
-    </script>
+    <script src="js/page-login.js"></script>
     <script src="js/reveal.js"></script>
 </body>
 </html>
