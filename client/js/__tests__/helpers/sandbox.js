@@ -36,7 +36,10 @@ function baseGlobals(log) {
 /* load(tenFile, opts) -> { sandbox, doc, log, win }
      opts.window  : các thuộc tính gắn thêm vào window
      opts.globals : global trần cần thêm (vd fetch, alert)
-     opts.doc     : dùng document dựng sẵn thay vì tạo mới                       */
+     opts.doc     : dùng document dựng sẵn thay vì tạo mới
+     opts.deps    : các file js/ nạp TRƯỚC file chính, đúng thứ tự trang thật
+                    (vd ['utils-format.js'] để có global money) — dùng file THẬT
+                    chứ không stub, để test bắt được cả lỗi ở module dùng chung */
 function load(fileName, opts) {
   opts = opts || {};
   const log = [];
@@ -50,8 +53,11 @@ function load(fileName, opts) {
   if (sandbox.window.location) sandbox.location = sandbox.window.location;
   sandbox.globalThis = sandbox;
 
-  const code = fs.readFileSync(path.join(JS_DIR, fileName), 'utf8');
   vm.createContext(sandbox);
+  (opts.deps || []).forEach(function (dep) {
+    vm.runInContext(fs.readFileSync(path.join(JS_DIR, dep), 'utf8'), sandbox, { filename: dep });
+  });
+  const code = fs.readFileSync(path.join(JS_DIR, fileName), 'utf8');
   vm.runInContext(code, sandbox, { filename: fileName });
   return { sandbox, doc, log, win: sandbox.window };
 }

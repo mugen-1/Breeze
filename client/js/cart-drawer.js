@@ -1,5 +1,5 @@
 /* Mini-cart drawer trượt từ phải.
-   Tái dùng getCart / saveCart / updateQty / removeFromCart / formatPrice / _updateAllBadges
+   Tái dùng getCart / saveCart / updateQty / removeFromCart / _updateAllBadges
    trong cart.js — KHÔNG viết lại logic lưu trữ. */
 (function () {
     'use strict';
@@ -10,7 +10,6 @@
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
     function cart() { return (typeof getCart === 'function') ? getCart() : []; }
-    function money(n) { return (typeof formatPrice === 'function') ? formatPrice(n) : (n + 'đ'); }
 
     var backdrop, drawer, bodyEl, totalEl, countEl;
 

@@ -21,6 +21,7 @@ function setup(search, res) {
   const acts = [];
   let onChangeCb = null;
   const r = load('page-invoice.js', {
+    deps: ['utils-format.js'],
     doc: doc,
     window: {
       location: { search: search },
@@ -66,10 +67,10 @@ const donCo = (body) => ({ body: { orders: [body] } });
   eq('ten khach hang', g(r, 'inv-customer').textContent, 'Nguyen A');
   eq('ngay dinh dang dd-mm-yyyy', g(r, 'inv-date').textContent, '05-07-2026');
   eq('ma don co dau #', g(r, 'inv-id').textContent, '#42');
-  eq('tam tinh = tong line_total', g(r, 'inv-subtotal').textContent, '500.000đ');
-  eq('giam gia hien dau tru', g(r, 'inv-discount').textContent, '−50.000đ');
+  eq('tam tinh = tong line_total', g(r, 'inv-subtotal').textContent, '500.000₫');
+  eq('giam gia hien dau tru', g(r, 'inv-discount').textContent, '−50.000₫');
   eq('TONG lay total_amount THAT tu DB (khong phai tam tinh)',
-     g(r, 'inv-total').textContent, '450.000đ');
+     g(r, 'inv-total').textContent, '450.000₫');
   eq('hinh thuc thanh toan dich qua khoa pay.*', g(r, 'inv-payment').textContent, 'pay.cod');
   check('escapeHtml chan the HTML trong ten san pham',
         g(r, 'inv-items').innerHTML.includes('&lt;b&gt;') && !g(r, 'inv-items').innerHTML.includes('<b>'));
@@ -110,7 +111,9 @@ const donCo = (body) => ({ body: { orders: [body] } });
   r.doc.fire('langchange');
   eq('langchange -> ve lai noi dung da sinh', r.sandbox.document.title, 'EN:inv.docTitleN');
 
-  ['t', 'money', 'render', 'load', 'esc', 'fmtDateVN'].forEach(function (k) {
+  ['t', 'render', 'load', 'esc', 'fmtDateVN'].forEach(function (k) {
     eq('IIFE khong ro global: ' + k, typeof r.sandbox[k], 'undefined');
   });
+  // money nay la global DUNG CHUNG tu utils-format.js (TASK 4) — phai co, khong phai ro ri.
+  eq('money la global dung chung tu utils-format.js', typeof r.sandbox.money, 'function');
 })();

@@ -5,6 +5,7 @@ const { load, wait } = require('./helpers/sandbox');
 function setup(loggedIn, orders) {
   const log = [];
   const r = load('page-orders.js', {
+    deps: ['utils-format.js'],
     window: {
       __i18n: { current: 'vi', T: { vi: { orders: {
         heading: 'Don Hang Cua Toi', empty: 'Chua co don', orderNo: 'Don hang #',
@@ -51,7 +52,7 @@ const ORDERS = [{
   eq('authchange -> goi dung endpoint', r.acts, [['api', '/api/orders']]);
   const html = g(r, 'orders-list').innerHTML;
   check('render ra the .order-card', html.includes('order-card'));
-  check('money() dinh dang tien VN', /250\.000đ/.test(html));
+  check('money() dinh dang tien VN', /250\.000₫/.test(html));
   check('esc() chan XSS trong ten san pham',
         html.includes('&lt;script&gt;') && !html.includes('<script>'));
   check('statusMap dich trang thai don', html.includes('Da thanh toan'));

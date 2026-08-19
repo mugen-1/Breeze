@@ -15,7 +15,6 @@
     // Đồng bộ đúng nhãn với admin.js / UI checkout.
     function t(k, p) { return (window.__i18n && window.__i18n.t) ? window.__i18n.t(k, p) : k; }
 
-    function money(n) { return Number(n || 0).toLocaleString('vi-VN') + 'đ'; }
     function pad2(n) { return String(n).padStart(2, '0'); }
     function fmtDateVN(iso) {                    // dd-mm-yyyy
         try {

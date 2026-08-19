@@ -1,5 +1,5 @@
 // Script riêng của cart.html — tách ra từ thẻ <script> inline cuối trang.
-// Phải load SAU cart.js (dùng getCart/updateQty/removeFromCart/formatPrice/startCheckout)
+// Phải load SAU cart.js (dùng getCart/updateQty/removeFromCart/money/startCheckout)
 // và SAU i18n.js (đọc window.__i18n).
 // changeQty / removeItem / checkout được gọi từ onclick trong HTML -> phải ở scope global.
 
@@ -41,7 +41,7 @@ function renderCart() {
         tr.innerHTML =
             '<td><img class="cart-item-img" src="' + item.img + '" alt="' + item.name + '" onerror="this.src=\'img/gc8.png\'"></td>' +
             '<td><div class="cart-item-name">' + item.name + tag + '</div></td>' +
-            '<td>' + formatPrice(item.price) + '</td>' +
+            '<td>' + money(item.price) + '</td>' +
             '<td>' +
                 '<div class="qty-control">' +
                     '<button class="qty-btn" onclick="changeQty(' + item.id + ', -1)">−</button>' +
@@ -49,12 +49,12 @@ function renderCart() {
                     '<button class="qty-btn" onclick="changeQty(' + item.id + ', 1)">+</button>' +
                 '</div>' +
             '</td>' +
-            '<td class="item-price">' + formatPrice(subtotal) + '</td>' +
+            '<td class="item-price">' + money(subtotal) + '</td>' +
             '<td><button class="btn-remove" onclick="removeItem(' + item.id + ')" title="' + (cp.removeTitle || 'Xóa') + '"><i class="fa fa-times"></i></button></td>';
         bodyEl.appendChild(tr);
     });
 
-    totalEl.textContent = formatPrice(total);
+    totalEl.textContent = money(total);
 
     // Chặn thanh toán nếu có sản phẩm hết hàng trong giỏ (đánh dấu, để khách tự bỏ).
     var coBtn = document.querySelector('.btn-checkout');
