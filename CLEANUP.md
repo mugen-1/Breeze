@@ -7,8 +7,8 @@ repo để chỉ tiêu không bị hỏi lại hay tranh cãi lúc review TASK 1
 
 | Chỉ số | Trước dọn dẹp | Mục tiêu | Thực tế (2026-08-20) |
 |---|---|---|---|
-| JS inline trong HTML | ~90.000 chars | **chỉ còn snippet FOUC** | 7.254 (6.048 FOUC + 1.206 chờ TASK 4) |
-| Hàm định nghĩa trùng | 8 hàm (số này SAI, xem dưới) | 0, hoặc đã đổi tên rõ ràng | TASK 4 |
+| JS inline trong HTML | ~90.000 chars | **chỉ còn snippet FOUC** | **6.048 — đúng bằng FOUC** ✅ |
+| Hàm định nghĩa trùng | 8 hàm (số này SAI, xem dưới) | 0, hoặc đã đổi tên rõ ràng | **0** ✅ |
 | Biến thể drawer menu | 2 | 1 | TASK 8 |
 | Biến thể footer | 1 | 1 | TASK 8 |
 | Biến thể policy-header | 2 | 1, hoặc 2 có chủ đích | TASK 8 |
@@ -137,7 +137,7 @@ không. Chi tiết và giới hạn: xem `client/js/__tests__/README.md`.
 | 1 — Dọn file chết, file rác | ✅ xong | `f804104` |
 | 2 — Line ending + BOM | ✅ xong | `c43a7e8`, `c665c63` |
 | 3 — Tách JS inline (8 trang) | ✅ xong | `f1821e6` → `c362f01` |
-| 4 — Gom hàm trùng | chưa làm | |
+| 4 — Gom hàm trùng | ✅ xong | `1c8f359` → `b8ddc62` |
 | 5 — Chuẩn hoá thứ tự script | chưa làm | |
 | 6 — Chuẩn hoá CSS | chưa làm | |
 | 7 — Bỏ hardcode `.html` | chưa làm | |
@@ -146,6 +146,19 @@ không. Chi tiết và giới hạn: xem `client/js/__tests__/README.md`.
 | 10 — Kiểm tra tổng thể | chưa làm | |
 
 Checkpoint trước cả đợt: `5397db8`.
+
+### File dùng chung mới tạo ở TASK 4
+
+| File | Chứa | Gộp từ |
+|---|---|---|
+| `client/js/utils-format.js` | `money`, `esc` | 8 bản money (3 tên) + 9 bản esc (2 tên) |
+| `client/js/utils-i18n.js` | `t` | 8 bản y hệt nhau |
+| `client/js/filter-ui.js` | `toggleFilter` | 6 bản giống nhau từng byte |
+
+**KHÔNG gộp, cố ý:** `fmtDate`/`fmtDateVN` (3 bản khác hẳn), `lang`/`_lang`/`locale`
+(3 bản khác hẳn), `render` (4 bản khác hẳn — cần đổi tên, chưa làm),
+`admin.js:tr` (có tham số `fallback`), `checkout.js`/`voucher.js` `money`
+(dùng `Intl.NumberFormat`, voucher có `Math.round`).
 
 ### File JS mới tạo ở TASK 3
 
