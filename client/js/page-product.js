@@ -167,9 +167,9 @@
             : '<div class="product-price">' + money(p.price) + '</div>';
         var nm = esc(pName(p));
         return '<li><div class="product-item reveal in" data-id="' + p.id + '">' +
-            '<div class="product-top"><a href="product.html?id=' + p.id + '" class="product-thumb">' +
+            '<div class="product-top"><a href="' + window.BreezeRoutes.product(p.id) + '" class="product-thumb">' +
                 '<img src="' + esc(imgs[0]) + '" alt="' + nm + '"></a></div>' +
-            '<div class="product-info"><a href="product.html?id=' + p.id + '" class="product-name">' + nm + '</a>' + priceHTML + '</div>' +
+            '<div class="product-info"><a href="' + window.BreezeRoutes.product(p.id) + '" class="product-name">' + nm + '</a>' + priceHTML + '</div>' +
             '</div></li>';
     }
 

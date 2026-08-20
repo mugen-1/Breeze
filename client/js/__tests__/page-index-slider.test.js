@@ -16,6 +16,7 @@ function setup(nSlides) {
 
   let timers = [];
   const r = load('page-index-slider.js', {
+    deps: ['routes.js'],
     doc: doc,
     globals: {
       setInterval: function (fn, ms) { timers.push({ fn: fn, ms: ms, id: timers.length + 1 }); return timers.length; },

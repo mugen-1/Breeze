@@ -20,7 +20,7 @@ function setup(query) {
     doc.getElementById(id);
   });
   const r = load('page-search.js', {
-    deps: ['utils-format.js', 'utils-i18n.js'],
+    deps: ['routes.js', 'utils-format.js', 'utils-i18n.js'],
     doc: doc,
     globals: {
       fetch: function (u) {

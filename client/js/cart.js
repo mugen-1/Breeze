@@ -383,7 +383,7 @@ function startCheckout(opts) {
     }
 
     if (!(window.AuthHelper && window.AuthHelper.isLoggedIn())) {
-        window.location.href = 'login.html?redirect=checkout.html';
+        window.location.href = window.BreezeRoutes.to('login', { redirect: 'checkout' });
         return;
     }
 
@@ -395,11 +395,11 @@ function startCheckout(opts) {
                 onError(_t('acc.adminBlocked'));
                 return;
             }
-            window.location.href = 'checkout.html';
+            window.location.href = window.BreezeRoutes.to('checkout');
         })
         .catch(function () {
             // Không kiểm tra được role (mạng lỗi) -> vẫn cho user thường tiếp tục.
-            window.location.href = 'checkout.html';
+            window.location.href = window.BreezeRoutes.to('checkout');
         });
 }
 window.startCheckout = startCheckout;

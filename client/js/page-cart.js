@@ -91,7 +91,7 @@ function checkout() {
     if (typeof window.startCheckout === 'function') {
         window.startCheckout({ onError: function (msg) { _showCheckoutMsg(msg, true); } });
     } else {
-        window.location.href = 'checkout.html';
+        window.location.href = window.BreezeRoutes.to('checkout');
     }
 }
 

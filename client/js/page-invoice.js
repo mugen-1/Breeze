@@ -80,7 +80,7 @@
 
     function load(user) {
         if (!user) {
-            showState(t('inv.needLogin') + '<br><a href="login.html">' + t('com.signin') + '</a>');
+            showState(t('inv.needLogin') + '<br><a href="' + window.BreezeRoutes.to('login') + '">' + t('com.signin') + '</a>');
             return;
         }
         var id = getOrderId();

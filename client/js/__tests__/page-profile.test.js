@@ -18,7 +18,7 @@ function setup(opts) {
   if (opts.qsa) Object.assign(doc._qsa, opts.qsa);
 
   const r = load('page-profile.js', {
-    deps: ['utils-i18n.js'],
+    deps: ['routes.js', 'utils-i18n.js'],
     doc: doc,
     globals: { alert: function () { acts.push(['alert']); } },
     window: {
@@ -110,8 +110,10 @@ function setup(opts) {
   check('langchange -> ve lai ca danh sach the thanh toan',
         r.acts.some(function (x) { return x[0] === 'pm.rerender'; }));
   r.doc.fire('authexpired'); await wait(1800);
+  // redirect gio la KHOA trang ('profile'), khong con duoi .html — auth.js dung
+  // BreezeRoutes.keyOf() nen nhan ca hai dang.
   eq('authexpired -> dua ve trang dang nhap kem redirect', r.sandbox.window.location.href,
-     'login.html?redirect=profile.html&notice=session-expired');
+     'login.html?redirect=profile&notice=session-expired');
 
   // Xoá tài khoản: server chặn vì còn đơn pending
   let cd = setup({ api: { 'DELETE /api/account': { ok: false, status: 409, body: { error: 'pending' } } } });

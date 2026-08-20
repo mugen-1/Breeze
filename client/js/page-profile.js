@@ -798,7 +798,7 @@
                 toast(t('pf.acctDeleted'));
                 try { localStorage.removeItem('userName'); } catch (er) { /* bỏ qua */ }
                 var fb = (window.firebase && firebase.auth) ? firebase.auth() : null;
-                var done = function () { window.location.href = 'index.html'; };
+                var done = function () { window.location.href = window.BreezeRoutes.to('index'); };
                 if (fb) fb.signOut().then(done).catch(done); else setTimeout(done, 900);
             })
             .catch(function (err) {
@@ -893,7 +893,7 @@
     document.addEventListener('authexpired', function () {
         toast(t('pf.sessionExpired'), false);
         setTimeout(function () {
-            window.location.href = 'login.html?redirect=profile.html&notice=session-expired';
+            window.location.href = window.BreezeRoutes.to('login', { redirect: 'profile', notice: 'session-expired' });
         }, 1600);
     });
 

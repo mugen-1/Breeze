@@ -160,7 +160,7 @@
                 if (me && me.role === 'admin') {
                     adminGuarded = true;
                     window.alert(t('co.adminBlocked'));
-                    window.location.replace('index.html');
+                    window.location.replace(window.BreezeRoutes.to('index'));
                 }
             })
             .catch(function () { /* lỗi mạng -> bỏ qua, không chặn nhầm user thường */ });
@@ -174,7 +174,7 @@
         if (emptyTimer) clearTimeout(emptyTimer);
         emptyTimer = setTimeout(function () {
             if (getCartSafe().length === 0) {
-                window.location.replace('cart.html');
+                window.location.replace(window.BreezeRoutes.to('cart'));
             }
         }, delay);
     }
@@ -397,7 +397,7 @@
 
             if (!(window.AuthHelper && typeof window.AuthHelper.apiFetch === 'function')) {
                 showFormMsg(t('co.msgSessionExpired'), 'err');
-                window.location.href = 'login.html?redirect=checkout.html';
+                window.location.href = window.BreezeRoutes.to('login', { redirect: 'checkout' });
                 return;
             }
 
@@ -421,7 +421,7 @@
                         ? t('co.msgOkVoucherDropped', { id: order.id })
                         : t('co.msgOk', { id: order.id });
                     showFormMsg(okMsg, 'ok');
-                    setTimeout(function () { window.location.href = 'orders.html'; }, data.voucherDropped ? 2200 : 1200);
+                    setTimeout(function () { window.location.href = window.BreezeRoutes.to('orders'); }, data.voucherDropped ? 2200 : 1200);
                     return; // giữ nút disabled vì đang rời trang
                 }
 
@@ -444,7 +444,7 @@
 
                 if (r.status === 401) {
                     showFormMsg(t('co.msgSessionExpired'), 'err');
-                    window.location.href = 'login.html?redirect=checkout.html';
+                    window.location.href = window.BreezeRoutes.to('login', { redirect: 'checkout' });
                     return;
                 }
 
