@@ -471,6 +471,61 @@ khác nhau. Đã xem mắt ảnh sau — hero, nút, dots đều bình thường
 **Lưu ý cho ai đo lại sau này:** đừng dùng `index.html` làm mốc so pixel, nó không tất
 định. Dùng trang tĩnh bất kỳ khác.
 
+## TASK 7.1 — Kiểm kê đường dẫn `.html` (CHƯA sửa, chờ duyệt)
+
+Đếm lại từ đầu, không dùng số trong kế hoạch (số cũ tính cả `search-data.js` — file đã
+xoá ở TASK 1).
+
+| Nhóm | Số lượng |
+|---|---|
+| **A** · link điều hướng trong HTML (`href`/`src`/`action`) | **336** |
+| **A** · `location.href/replace/assign` trong JS | **19** |
+| **A** · chuỗi `href="..."` do JS sinh ra | **27** |
+| **B** · khoá tra cứu bằng tên file | **3 file** — xem dưới |
+| **C** · trong comment (49 JS + 1 HTML) | 50 |
+| **D** · đường dẫn tới file thật không phải trang | **0** |
+| **TỔNG nhóm A** (phải đổi khi đổi route) | **382** |
+
+Kế hoạch ghi 339 + 113 + 17. Số thật: 336 + 46 (JS) + 17→19 redirect. Chênh vì
+`search-data.js` (38 chuỗi) đã bị xoá, và vì cách đếm cũ tính cả comment.
+
+**Có đúng 22 đường dẫn `.html` khác nhau trong toàn bộ `client/`, trong đó 21 ứng với
+file thật** (đủ 21 trang). Cái thứ 22 là `client/checkout.html` nằm trong một comment —
+không phải link. Nghĩa là không có link chết nào.
+
+### Nhóm B — chi tiết 3 chỗ hỏng ngầm
+
+**1. `i18n.js`** — nặng nhất, 4 cơ chế:
+
+```js
+var EXCLUDED = ['index.html', ''];
+function currentPage() {
+    var parts = location.pathname.split('/');
+    return parts[parts.length - 1] || 'index.html';
+}
+```
+- `t.page[pg]` — tiêu đề 6 trang danh mục, khoá là `'sanpham-ao.html'`…
+- `t.policy[currentPage()]` — nội dung dịch của 3 trang chính sách
+- `currentPage() === 'cart.html'` — quyết định có gọi `window.renderCart()` không
+- `EXCLUDED.indexOf(currentPage())` — quyết định dịch toàn trang hay chỉ nav
+
+**2. `account-menu.js`** — `NO_GREET_PAGES` gồm 6 khoá (`''`, `index.html`,
+`search.html`, 3 trang chính sách), tra bằng
+`(location.pathname.split('/').pop() || '').toLowerCase()`.
+
+**3. `auth.js`** — `if (redirect === 'checkout.html')`, so tham số `?redirect=` với tên
+file. Tham số này do chính code sinh ra (`login.html?redirect=checkout.html`) nên hiện
+tự nhất quán, nhưng vẫn là ghép cứng theo tên file.
+
+### Cảnh báo: 2 chỗ tôi phát hiện bị phân loại NHẦM
+
+Regex ban đầu xếp `auth.js` vào nhóm B vì bắt được `'admin.html' :`. Thực ra đó là
+**ternary** `isAdmin ? 'admin.html' : 'index.html'` — thuộc nhóm A. Tương tự
+`'checkout.html'` ở `auth.js:89` là redirect, không phải khoá.
+
+Bài học lặp lại lần thứ ba trong đợt này: phân loại bằng regex luôn phải kiểm lại bằng
+mắt trên từng chỗ trước khi sửa.
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
