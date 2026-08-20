@@ -613,6 +613,26 @@ chuẩn TASK 5: `firebase-config.js` → `api-config.js` → **`routes.js`**. Nh
 | `currentPageKey()` sai ở dạng URL lạ | Viết test bảng trước, phủ 10 dạng URL gồm `/`, đuôi hoa, dấu `/` cuối, query, hash |
 | Đổi khoá i18n làm mất bản dịch | Test khoá `t.page`/`t.policy` khớp đúng cho cả 6 trang danh mục + 3 trang chính sách, ở cả VI và EN |
 
+## QUYẾT ĐỊNH: 336 link `.html` tĩnh trong HTML — CỐ Ý để lại cho migrate EJS
+
+**Đây không phải việc bỏ sót.** Đã cân nhắc và chốt ở TASK 7.
+
+Mục 7.5 của kế hoạch gốc yêu cầu xử lý 336 link `.html` tĩnh trong HTML. Đã bỏ khỏi
+phạm vi TASK 7, vì không có template engine thì chỉ còn hai cách, cả hai đều tệ hơn:
+
+| Cách | Nhược điểm |
+|---|---|
+| Viết JS sửa `href` lúc chạy | Nháy link khi tải, hỏng hoàn toàn khi tắt JS, hại SEO |
+| Sửa tay 336 chỗ ngay bây giờ | Phải sửa **lần thứ hai** khi lên EJS — lãng phí, và tăng rủi ro sai sót gấp đôi |
+
+Phần lớn 336 link nằm trong **drawer menu và footer** — hai khối vốn sẽ thành partial EJS.
+Khi migrate, partial render bằng `BreezeRoutes.PATHS` là xong một lần, đúng chỗ.
+
+**Người làm migrate EJS cần biết:** `client/js/routes.js` đã có sẵn bảng `PATHS` cho cả 21
+trang. Dùng nó khi render partial thay vì gõ lại đường dẫn.
+
+Phần nhóm A trong JS (19 redirect + 27 chuỗi `href` do JS sinh) thì ĐÃ xử lý ở TASK 7.
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
