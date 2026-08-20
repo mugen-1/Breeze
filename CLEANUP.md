@@ -232,6 +232,78 @@ thì buộc phải chọn một thứ tự, nên cần bảng này để chọn 
 
 Lưu ý: `theme.js` mới chỉ có ở `profile.html` (1/21) — mục 5.4 phải thêm vào 20 trang còn lại.
 
+## TASK 5.2 — Thứ tự chuẩn đề xuất (CHƯA áp dụng, chờ duyệt)
+
+### Đính chính cách đo ở 5.1
+
+Kết luận "13 kiểu thứ tự, không kiểu nào vỡ" ban đầu **chỉ là phân tích tĩnh** — đo
+từng file riêng lẻ rồi suy ra. Nay đã **chạy thật**: dựng harness nạp cả bộ script theo
+một thứ tự vào cùng một sandbox, có DOM lấy id từ chính file HTML thật, rồi bắn
+`DOMContentLoaded` / `authchange` / `langchange` / `cartchange` để chạy nốt các đường hoãn.
+
+Harness được chứng minh là **đáng tin** bằng negative control: cố tình đặt `auth.js`
+trước `firebase-config.js` và `page-search.js` trước `utils-i18n.js` — cả hai đều bị bắt
+đúng (`ReferenceError`). Nếu negative control không đỏ thì harness vô dụng.
+
+### Kết quả fuzz 400 hoán vị ngẫu nhiên
+
+Hoán vị ngẫu nhiên 12 script dùng chung, đối chiếu "có vi phạm RB1 không" với "có vỡ không":
+
+| | Vỡ | Không vỡ |
+|---|---|---|
+| Vi phạm RB1 | **206** | 0 |
+| Không vi phạm | 0 | **194** |
+
+Tương quan tuyệt đối, **không một trường hợp bất ngờ nào**. Kết luận thực nghiệm: trong
+bộ script dùng chung, **"Firebase SDK trước firebase-config.js" là ràng buộc DUY NHẤT**.
+
+### Thứ tự chuẩn đề xuất
+
+| Nhóm | Script | Phạm vi |
+|---|---|---|
+| 1. Vendor ngoài | Firebase SDK (app, auth), Chart.js | Firebase: 21/21 · Chart: admin |
+| 2. Cấu hình | `firebase-config.js`, `api-config.js` | 21/21 |
+| 3. Hạ tầng | `auth-helper.js`, `theme.js`, `i18n.js` | 21/21 (theme sau 5.4) |
+| 4. Utils dùng chung | `utils-format.js`, `utils-i18n.js` | dùng chung |
+| 5. UI dùng chung | `account-menu.js`, `cart.js`, `cart-drawer.js`, `drawer-menu.js`, `reveal.js` | 18–19/21 |
+| 6. Riêng trang | `auth`, `filter-ui`, `filter`, `products-render`, `checkout`, `voucher`, `payment-methods`, `admin`, `page-*` | từng trang |
+
+Nhóm 1–5 sẽ nằm trong partial dùng chung khi lên EJS; nhóm 6 truyền qua biến `pageJs`.
+
+### Bảng đối chiếu ràng buộc — thứ tự chuẩn có phá vỡ gì không
+
+| Ràng buộc (từ 5.1) | Số trang áp dụng | Kết quả |
+|---|---|---|
+| RB1 Firebase SDK → `firebase-config.js` | 21 | **PASS 21/21** |
+| RB2 `firebase-config.js` → `auth.js` | 2 | **PASS 2/2** |
+| RB3 `utils-i18n.js` → `page-search.js` | 1 | **PASS 1/1** |
+| RB4 7 file đọc DOM lúc parse phải sau markup | 21 | **PASS** — mọi script vẫn ở cuối `<body>`, không đổi vị trí |
+
+Ngoài ra đã **sắp lại script của cả 21 trang theo thứ tự chuẩn rồi chạy thử**:
+**21/21 PASS, 0 lỗi.** Cả 21 trang đều phải đổi thứ tự so với hiện tại.
+
+### 3 trang chính sách — không có ràng buộc riêng
+
+`chinhsachbaomat`, `chinhsachdoitra`, `chinhsachgiaohang` đang để `drawer-menu`, `i18n`,
+`reveal` **trước cả Firebase SDK**. Đã kiểm riêng bằng chính id lấy từ HTML của chúng:
+
+- Bộ script của 3 trang này là **tập con thật sự** của bộ dùng chung — không có script nào
+  mà 18 trang kia không có, và cũng không thiếu script nào gây ràng buộc riêng.
+- Chỗ lệch chỉ là thứ tự **giữa các script với nhau**; toàn bộ thẻ `<script>` vẫn nằm ở
+  cuối `<body>` (dòng 212+), còn markup drawer ở dòng 32 — nên RB4 vốn đã thoả.
+- Thứ tự hiện tại của chúng thoả RB1 (Firebase SDK vẫn trước `firebase-config.js`), nên
+  đang không vỡ; thứ tự chuẩn cũng thoả RB1 → **không phá vỡ gì**.
+
+Kết luận: 3 trang này **không cần ngoại lệ**, áp thứ tự chuẩn bình thường.
+
+### Một thay đổi cần biết trước khi áp dụng
+
+`profile.html` đang nạp `theme.js` bằng **`<script defer>` trong `<head>`**. Thứ tự chuẩn
+đưa `theme.js` vào nhóm 3 ở cuối `<body>`. Hệ quả: `window.BreezeTheme` sẽ tồn tại **trước**
+`page-profile.js` thay vì sau. Đây là thay đổi có lợi (hàm `syncThemeUI()` không còn phải
+rơi về giá trị mặc định `'light'`), nhưng vẫn là đổi hành vi — cần kiểm lại nút đổi
+sáng/tối ở trang profile khi áp dụng.
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
