@@ -526,6 +526,93 @@ Regex ban đầu xếp `auth.js` vào nhóm B vì bắt được `'admin.html' :
 Bài học lặp lại lần thứ ba trong đợt này: phân loại bằng regex luôn phải kiểm lại bằng
 mắt trên từng chỗ trước khi sửa.
 
+## TASK 7.3 — Thiết kế `client/js/routes.js` (CHƯA viết code, chờ duyệt)
+
+### Phạm vi đã chốt
+
+TASK 7 **KHÔNG đổi route thật**. Site vẫn chạy nguyên với URL `.html` hiện tại. Việc duy
+nhất TASK 7 làm là **gỡ bỏ giả định "URL phải có đuôi .html"** khỏi code, để lần migrate
+EJS sau này bật được route không-đuôi mà không vỡ ngầm.
+
+### Ý tưởng cốt lõi: khoá trang = tên file BỎ ĐUÔI
+
+Không phát minh hệ tên mới. Khoá của một trang chính là basename bỏ `.html`:
+
+| URL | `currentPageKey()` |
+|---|---|
+| `/cart.html` | `cart` |
+| `/cart` | `cart` |
+| `/cart/` | `cart` |
+| `/CART.HTML` | `cart` |
+| `/` | `index` |
+| `/index.html` | `index` |
+| `/product.html?id=5` | `product` |
+
+Chọn cách này vì mọi khoá nhóm B hiện có chỉ cần **bỏ 5 ký tự `.html`** — diff nhỏ nhất
+có thể, và tự động đúng cho cả hai dạng URL. 21 tên file hiện tại đều là slug hợp lệ,
+không trùng nhau, không cần bảng ánh xạ phụ.
+
+### API đề xuất
+
+```js
+window.BreezeRoutes = {
+  PATHS: { index:'index.html', cart:'cart.html', /* … 21 trang … */ },
+  to(key, query),        // 'cart' -> 'cart.html' ; ('login',{redirect:'checkout'}) -> 'login.html?redirect=checkout'
+  product(id),           // -> 'product.html?id=5'
+  currentPageKey(),      // khoá của trang đang mở, không phụ thuộc đuôi
+  keyOf(hrefOrPath),     // 'checkout.html' | 'checkout' | '/checkout/' -> 'checkout'
+  is(key),               // currentPageKey() === key
+};
+```
+
+`to()` là chỗ DUY NHẤT biết đuôi `.html`. Khi migrate EJS chỉ cần sửa `PATHS` (hoặc bỏ
+đuôi trong đó) là toàn site đổi theo — đó chính là mục tiêu "trung tâm hoá".
+
+### Cả 6 cơ chế nhóm B được thay thế thế nào
+
+Đây là phần chính của TASK 7, không phải 382 link nhóm A.
+
+| # | File | Hiện tại | Sau khi dùng routes.js |
+|---|---|---|---|
+| B1 | `i18n.js` | `EXCLUDED = ['index.html','']` + `EXCLUDED.indexOf(currentPage())` | `EXCLUDED = ['index']` + `EXCLUDED.indexOf(BreezeRoutes.currentPageKey())`. Bỏ luôn phần tử `''` vì `currentPageKey()` đã quy `/` về `index` |
+| B2 | `i18n.js` | `t.page['sanpham-ao.html']` … (6 khoá × 2 ngôn ngữ) | Bỏ `.html` khỏi 12 khoá, tra bằng `currentPageKey()` |
+| B3 | `i18n.js` | `t.policy[currentPage()]` (3 khoá) | Bỏ `.html` khỏi 3 khoá, tra bằng `currentPageKey()` |
+| B4 | `i18n.js` | `currentPage() === 'cart.html'` → gọi `renderCart()` | `BreezeRoutes.is('cart')` |
+| B5 | `account-menu.js` | `NO_GREET_PAGES` 6 khoá + `location.pathname.split('/').pop().toLowerCase()` | Khoá bỏ `.html`, bỏ luôn phần tử `''`; tra bằng `currentPageKey()` |
+| B6 | `auth.js` | `redirect === 'checkout.html'` | `BreezeRoutes.keyOf(redirect) === 'checkout'` — chấp nhận cả `?redirect=checkout` lẫn `?redirect=checkout.html` |
+
+Sau bước này, **hàm `currentPage()` trong `i18n.js` bị xoá hẳn** — không còn nơi nào tự
+cắt `location.pathname` nữa.
+
+### Nhóm A xử lý tới đâu
+
+| Nhóm A ở đâu | Số | Xử lý ở TASK 7 |
+|---|---|---|
+| `location.href/replace/assign` trong JS | 19 | **CÓ** — thay bằng `BreezeRoutes.to(...)` |
+| Chuỗi `href="..."` do JS sinh | 27 | **CÓ** — thay bằng `BreezeRoutes.to(...)` / `.product(id)` |
+| `href` tĩnh trong HTML | 336 | **KHÔNG** — xem dưới |
+
+**Đề xuất để 336 link HTML lại cho lần migrate EJS.** Không có template engine thì chỉ có
+hai cách: (a) viết JS sửa `href` lúc chạy — gây nháy link, hỏng khi tắt JS, hại SEO;
+(b) sửa tay 336 chỗ rồi vài tuần nữa sửa lại lần hai khi lên EJS. Cả hai đều tệ hơn là
+để partial EJS render bằng `ROUTES` ngay từ đầu. Phần lớn 336 link nằm trong drawer menu
+và footer — vốn sẽ thành partial.
+
+### Vị trí nạp
+
+`routes.js` không phụ thuộc gì, nhưng `account-menu.js` gọi `currentPageKey()` **ngay lúc
+parse** (tính `hideGreeting` trong IIFE). Nên đặt vào **nhóm 2 (cấu hình)** của thứ tự
+chuẩn TASK 5: `firebase-config.js` → `api-config.js` → **`routes.js`**. Như vậy chắc chắn
+đứng trước mọi file dùng nó.
+
+### Rủi ro và cách chặn
+
+| Rủi ro | Cách chặn |
+|---|---|
+| Sót một khoá `.html` → hỏng ngầm, không lỗi console | Sau khi sửa, grep chặn: không được còn `'*.html'` nào làm **khoá object** hay vế **so sánh** trong `client/js/` |
+| `currentPageKey()` sai ở dạng URL lạ | Viết test bảng trước, phủ 10 dạng URL gồm `/`, đuôi hoa, dấu `/` cuối, query, hash |
+| Đổi khoá i18n làm mất bản dịch | Test khoá `t.page`/`t.policy` khớp đúng cho cả 6 trang danh mục + 3 trang chính sách, ở cả VI và EN |
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
