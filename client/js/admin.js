@@ -443,7 +443,7 @@
             // Mở trang in hoá đơn ở TAB MỚI (trang tự xác thực admin rồi gọi API lấy dữ liệu đơn).
             $('order-body').querySelectorAll('[data-invoice]').forEach(function (b) {
                 b.addEventListener('click', function () {
-                    window.open('invoice.html?orderId=' + encodeURIComponent(b.getAttribute('data-invoice')), '_blank');
+                    window.open(window.BreezeRoutes.to('invoice', { orderId: b.getAttribute('data-invoice') }), '_blank');
                 });
             });
         }
@@ -1183,7 +1183,7 @@
             $('prod-modal').addEventListener('click', function (e) { if (e.target === $('prod-modal')) closeModal(); });
             $('btn-logout').addEventListener('click', function () {
                 if (window.firebase && firebase.auth) firebase.auth().signOut();
-                setTimeout(function () { window.location.href = 'login.html'; }, 200);
+                setTimeout(function () { window.location.href = window.BreezeRoutes.to('login'); }, 200);
             });
 
             if (window.AuthHelper) window.AuthHelper.onChange(onAuth);

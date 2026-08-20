@@ -56,14 +56,14 @@
       '<li>' +
         '<div class="product-item reveal in' + (soldOut ? ' is-soldout' : '') + '" data-id="' + p.id + '" data-stock="' + stockAttr + '">' +
           '<div class="product-top">' +
-            '<a href="product.html?id=' + p.id + '" class="product-thumb">' +
+            '<a href="' + window.BreezeRoutes.product(p.id) + '" class="product-thumb">' +
               '<img class="thumb-default" src="' + esc(imgDefault) + '" alt="' + nameEsc + '">' +
               '<img class="thumb-hover thumb-fill" src="' + esc(imgHover) + '" alt="' + nameEsc + '">' +
               soldOutBadge +
             '</a>' +
           '</div>' +
           '<div class="product-info">' +
-            '<a href="product.html?id=' + p.id + '" class="product-name">' + nameEsc + '</a>' +
+            '<a href="' + window.BreezeRoutes.product(p.id) + '" class="product-name">' + nameEsc + '</a>' +
             priceHTML +
           '</div>' +
         '</div>' +

@@ -21,7 +21,7 @@ function setup(search, res) {
   const acts = [];
   let onChangeCb = null;
   const r = load('page-invoice.js', {
-    deps: ['utils-format.js', 'utils-i18n.js'],
+    deps: ['routes.js', 'utils-format.js', 'utils-i18n.js'],
     doc: doc,
     window: {
       location: { search: search },

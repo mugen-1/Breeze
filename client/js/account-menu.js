@@ -67,14 +67,13 @@
   //   - index (hero): giữ header thoáng
   //   - search: nhường chỗ cho thanh tìm kiếm ngay cạnh icon tài khoản
   //   - 3 trang chính sách: chỉ giữ thanh tìm kiếm + icon tài khoản, bỏ lời chào
+  // Khoá là KHOÁ TRANG (tên file bỏ đuôi) chứ không phải tên file — xem js/routes.js.
+  // Nhờ vậy vẫn đúng khi URL đổi sang dạng không đuôi (/search thay cho /search.html).
   var NO_GREET_PAGES = {
-    '': true, 'index.html': true, 'search.html': true,
-    'chinhsachbaomat.html': true, 'chinhsachdoitra.html': true, 'chinhsachgiaohang.html': true,
+    index: true, search: true,
+    chinhsachbaomat: true, chinhsachdoitra: true, chinhsachgiaohang: true,
   };
-  var hideGreeting = (function () {
-    var p = (location.pathname.split('/').pop() || '').toLowerCase();
-    return !!NO_GREET_PAGES[p];
-  })();
+  var hideGreeting = !!NO_GREET_PAGES[window.BreezeRoutes.currentPageKey()];
 
   trigger.setAttribute('aria-haspopup', 'menu');
   trigger.setAttribute('aria-expanded', 'false');
@@ -123,10 +122,11 @@
 
   // ---- hành động 2 nút ----
   // Đích của các mục điều hướng — CHỈ trỏ tới trang có sẵn, không sửa gì trong các trang đó.
+  // Giá trị là KHOÁ TRANG; đường dẫn thật do js/routes.js quyết định.
   var NAV_TARGETS = {
-    profile: 'profile.html',   // Thông tin tài khoản
-    cart: 'cart.html',         // Giỏ hàng
-    orders: 'orders.html',     // Đơn hàng ("Đơn Hàng Của Tôi")
+    profile: 'profile',   // Thông tin tài khoản
+    cart: 'cart',         // Giỏ hàng
+    orders: 'orders',     // Đơn hàng ("Đơn Hàng Của Tôi")
   };
 
   pop.addEventListener('click', function (e) {
@@ -135,11 +135,11 @@
     var act = btn.getAttribute('data-act');
     close();
     if (act === 'login') {
-      window.location.href = 'login.html';
+      window.location.href = window.BreezeRoutes.to('login');
     } else if (act === 'logout') {
       doLogout();
     } else if (NAV_TARGETS[act]) {
-      window.location.href = NAV_TARGETS[act];
+      window.location.href = window.BreezeRoutes.to(NAV_TARGETS[act]);
     }
   });
 
@@ -256,7 +256,7 @@
 
   function doLogout() {
     if (!isLoggedIn()) {
-      window.location.href = 'login.html?notice=need-login';
+      window.location.href = window.BreezeRoutes.to('login', { notice: 'need-login' });
       return;
     }
     var fb = (window.firebase && firebase.auth) ? firebase.auth() : null;
@@ -264,7 +264,7 @@
     var done = function () {
       try { localStorage.removeItem('userName'); } catch (e) {}
       toast(_t('acc.signedOut'));
-      setTimeout(function () { window.location.href = 'index.html'; }, 1000);
+      setTimeout(function () { window.location.href = window.BreezeRoutes.to('index'); }, 1000);
     };
     p.then(done).catch(done); // dù signOut lỗi vẫn dọn + điều hướng
   }

@@ -46,7 +46,7 @@ function dangKy() {
         })
         .then(() => {
             showMessage('signup-msg', t('au.signupOk'), false);
-            setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+            setTimeout(() => { window.location.href = window.BreezeRoutes.to('login'); }, 1500);
         })
         .catch((error) => {
             showMessage('signup-msg', authError(error), true);
@@ -80,16 +80,16 @@ function dangNhap() {
             const isAdmin = !!(me && me.role === 'admin');
             // Luồng thanh toán: login.html?redirect=checkout.html
             const redirect = new URLSearchParams(window.location.search).get('redirect');
-            if (redirect === 'checkout.html') {
+            if (window.BreezeRoutes.keyOf(redirect) === 'checkout') {
                 if (isAdmin) {
                     // Admin không được đặt đơn -> báo lỗi, ở lại trang login.
                     showMessage('login-msg', t('au.errBadAccount'), true);
                     return;
                 }
-                window.location.href = 'checkout.html';
+                window.location.href = window.BreezeRoutes.to('checkout');
                 return;
             }
-            window.location.href = isAdmin ? 'admin.html' : 'index.html';
+            window.location.href = window.BreezeRoutes.to(isAdmin ? 'admin' : 'index');
         })
         .catch((error) => {
             showMessage('login-msg', authError(error), true);
@@ -99,7 +99,7 @@ function dangNhap() {
 function dangXuat() {
     auth.signOut().then(() => {
         localStorage.removeItem('userName');
-        window.location.href = 'login.html';
+        window.location.href = window.BreezeRoutes.to('login');
     });
 }
 
@@ -110,6 +110,6 @@ auth.onAuthStateChanged((user) => {
         const ten = user.displayName || user.email;
         navLogin.innerHTML = `<a href="javascript:void(0);" onclick="dangXuat()" style="color:#fff">${ten} | Dang xuat</a>`;
     } else {
-        navLogin.innerHTML = `<a href="login.html">Dang nhap / Dang ky</a>`;
+        navLogin.innerHTML = `<a href="${window.BreezeRoutes.to('login')}">Dang nhap / Dang ky</a>`;
     }
 });

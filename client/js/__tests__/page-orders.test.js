@@ -5,7 +5,7 @@ const { load, wait } = require('./helpers/sandbox');
 function setup(loggedIn, orders) {
   const log = [];
   const r = load('page-orders.js', {
-    deps: ['utils-format.js'],
+    deps: ['routes.js', 'utils-format.js'],
     window: {
       __i18n: { current: 'vi', T: { vi: { orders: {
         heading: 'Don Hang Cua Toi', empty: 'Chua co don', orderNo: 'Don hang #',

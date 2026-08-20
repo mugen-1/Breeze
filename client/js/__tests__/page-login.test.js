@@ -5,6 +5,7 @@ const { load } = require('./helpers/sandbox');
 function setup(search) {
   const calls = [];
   const r = load('page-login.js', {
+    deps: ['routes.js'],
     window: { location: { search: search }, __i18n: { t: function (k) { return 'DICH(' + k + ')'; } } },
     globals: { showMessage: function (id, msg, isErr) { calls.push([id, msg, isErr]); } },
   });

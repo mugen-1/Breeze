@@ -9,7 +9,7 @@
             megaItems: { shirt: 'Áo', pants: 'Quần', shoes: 'Giày & Dép', accessory: 'Phụ Kiện' },
             sidebar: { title: 'Danh Mục', men: 'Sản phẩm', women: 'Nữ', gold: 'Phụ Kiện', handbags: 'Túi Xách', sale: 'Khuyến Mãi' },
             filter: { price: 'Khoảng Giá', all: 'Tất cả', u50: 'Dưới 200.000đ', r5010: '200.000đ – 400.000đ', r10020: '400.000đ – 700.000đ', o200: 'Trên 700.000đ', sort: 'Sắp Xếp', newest: 'Mới nhất', asc: 'Giá tăng dần', desc: 'Giá giảm dần' },
-            page: { 'sanpham-ao.html': 'Áo', 'gold-jewellery.html': 'Phụ Kiện', 'handbags.html': 'Túi Xách', 'sanpham-quan.html': 'Quần', 'sanpham-giay.html': 'Giày & Dép', 'sale.html': 'Khuyến Mãi' },
+            page: { 'sanpham-ao': 'Áo', 'gold-jewellery': 'Phụ Kiện', 'handbags': 'Túi Xách', 'sanpham-quan': 'Quần', 'sanpham-giay': 'Giày & Dép', 'sale': 'Khuyến Mãi' },
             footer: { home: 'Trang chủ', ret: 'Chính sách đổi trả', ship: 'Chính sách giao hàng', priv: 'Chính sách bảo mật', cart: 'Giỏ Hàng Của Tôi', helpTitle: 'Chúng Tôi Có Thể Giúp Bạn?', companyTitle: 'Về Chúng Tôi', langTitle: 'Ngôn Ngữ', countryTitle: 'Quốc Gia/Khu Vực', countryName: 'Việt Nam' },
             fd: { title: 'Lọc & Sắp Xếp', clear: 'Xoá tất cả', price: 'Khoảng Giá', sort: 'Sắp Xếp', newest: 'Mới nhất', asc: 'Giá tăng dần', desc: 'Giá giảm dần', all: 'Tất cả', u50: 'Dưới 200.000đ', r5010: '200.000đ – 400.000đ', r10020: '400.000đ – 700.000đ', o200: 'Trên 700.000đ', btn: 'Lọc & Sắp Xếp', showItems: function (n) { return 'Hiện ' + n + ' sản phẩm →'; }, noProduct: 'Không tìm thấy sản phẩm, xin lỗi vì sự bất tiện này' },
             cart: { add: 'Thêm vào giỏ', added: '✓ Đã thêm' },
@@ -57,7 +57,7 @@
             megaItems: { shirt: 'Shirt', pants: 'Pants', shoes: 'Shoes & Sandals', accessory: 'Accessories' },
             sidebar: { title: 'Categories', men: 'Products', women: 'Women', gold: 'Accessories', handbags: 'Handbags', sale: 'Sale' },
             filter: { price: 'Price Range', all: 'All', u50: 'Under 200,000đ', r5010: '200,000đ – 400,000đ', r10020: '400,000đ – 700,000đ', o200: 'Over 700,000đ', sort: 'Sort By', newest: 'Newest', asc: 'Price: Low to High', desc: 'Price: High to Low' },
-            page: { 'sanpham-ao.html': 'Shirt', 'gold-jewellery.html': 'Accessories', 'handbags.html': 'Handbags', 'sanpham-quan.html': 'Pants', 'sanpham-giay.html': 'Shoes & Sandals', 'sale.html': 'Sale' },
+            page: { 'sanpham-ao': 'Shirt', 'gold-jewellery': 'Accessories', 'handbags': 'Handbags', 'sanpham-quan': 'Pants', 'sanpham-giay': 'Shoes & Sandals', 'sale': 'Sale' },
             footer: { home: 'Home', ret: 'Return Policy', ship: 'Shipping Policy', priv: 'Privacy Policy', cart: 'My Cart', helpTitle: 'May We Help You?', companyTitle: 'About Us', langTitle: 'Language', countryTitle: 'Country/Region', countryName: 'Vietnam' },
             fd: { title: 'Filter & Sort', clear: 'Clear All', price: 'Price Range', sort: 'Sort By', newest: 'Newest', asc: 'Price: Low to High', desc: 'Price: High to Low', all: 'All', u50: 'Under 200,000đ', r5010: '200,000đ – 400,000đ', r10020: '400,000đ – 700,000đ', o200: 'Over 700,000đ', btn: 'Filter & Sort', showItems: function (n) { return 'Show ' + n + ' items →'; }, noProduct: 'No products found, sorry for the inconvenience' },
             cart: { add: 'Add to cart', added: '✓ Added' },
@@ -99,7 +99,7 @@
             },
             drawer: { signin: 'Sign In', orders: 'My Orders' },
             policy: {
-                'chinhsachdoitra.html': {
+                'chinhsachdoitra': {
                     title: 'Return Policy',
                     body: `<section>
                 <h2>1. Return Conditions</h2>
@@ -136,7 +136,7 @@
                 </p>
             </section>`
                 },
-                'chinhsachgiaohang.html': {
+                'chinhsachgiaohang': {
                     title: 'Shipping Policy',
                     body: `<section>
                 <h2>1. Home Delivery and Cash Collection</h2>
@@ -159,7 +159,7 @@
                 <p>The list of Bookstore addresses will be updated on the homepage.</p>
             </section>`
                 },
-                'chinhsachbaomat.html': {
+                'chinhsachbaomat': {
                     title: 'Privacy Policy',
                     body: `<section>
                 <p>
@@ -1283,12 +1283,12 @@
         document.documentElement.setAttribute('lang', lang);
     }
 
-    var EXCLUDED = ['index.html', ''];
+    // Khoá trang (tên file bỏ đuôi) do js/routes.js cung cấp — xem file đó để biết vì sao.
+    // Trước đây hàm currentPage() tự cắt location.pathname và trả 'index.html', khiến mọi
+    // bảng tra cứu bên dưới phải dùng tên file làm khoá; đổi route là hỏng ngầm.
+    var EXCLUDED = ['index'];
 
-    function currentPage() {
-        var parts = location.pathname.split('/');
-        return parts[parts.length - 1] || 'index.html';
-    }
+    function currentPage() { return window.BreezeRoutes.currentPageKey(); }
 
     function applyLang(lang) {
         window.__i18n.current = lang;
@@ -1301,10 +1301,13 @@
 
         // Nav (áp dụng cho MỌI trang)
         document.querySelectorAll('.menu li a').forEach(function (a) {
-            var href = a.getAttribute('href') || '';
-            if (href === 'index.html') a.textContent = t.nav.home;
+            // So bằng KHOÁ TRANG chứ không phải tên file, để nhãn vẫn dịch đúng khi
+            // link đổi sang dạng không đuôi (/cart thay cho /cart.html).
+            var raw = a.getAttribute('href');
+            var href = raw ? window.BreezeRoutes.keyOf(raw) : '';
+            if (href === 'index') a.textContent = t.nav.home;
             else if (a.classList.contains('mega-trigger')) a.innerHTML = t.nav.cat + ' <span class="mega-arrow">&#9660;</span>';
-            else if (href === 'login.html') a.textContent = t.nav.staff;
+            else if (href === 'login') a.textContent = t.nav.staff;
         });
 
         // Header trang chính sách: nhãn "Danh Mục"
@@ -1336,13 +1339,16 @@
 
         // Mega links (áp dụng cho MỌI trang)
         document.querySelectorAll('.mega-col ul li a').forEach(function (a) {
-            var href = a.getAttribute('href') || '';
-            if (href === 'sanpham-ao.html') a.textContent = t.megaItems.shirt;
-            else if (href === 'sanpham-quan.html') a.textContent = t.megaItems.pants;
-            else if (href === 'sanpham-giay.html') a.textContent = t.megaItems.shoes;
-            else if (href === 'gold-jewellery.html') a.textContent = t.megaItems.accessory;
-            else if (href === 'handbags.html') a.textContent = t.mega.handbags;
-            else if (href === 'sale.html') a.textContent = t.mega.sale;
+            // So bằng KHOÁ TRANG chứ không phải tên file, để nhãn vẫn dịch đúng khi
+            // link đổi sang dạng không đuôi (/cart thay cho /cart.html).
+            var raw = a.getAttribute('href');
+            var href = raw ? window.BreezeRoutes.keyOf(raw) : '';
+            if (href === 'sanpham-ao') a.textContent = t.megaItems.shirt;
+            else if (href === 'sanpham-quan') a.textContent = t.megaItems.pants;
+            else if (href === 'sanpham-giay') a.textContent = t.megaItems.shoes;
+            else if (href === 'gold-jewellery') a.textContent = t.megaItems.accessory;
+            else if (href === 'handbags') a.textContent = t.mega.handbags;
+            else if (href === 'sale') a.textContent = t.mega.sale;
         });
 
         // Footer (áp dụng cho MỌI trang, kể cả index)
@@ -1350,11 +1356,14 @@
         document.querySelectorAll('.footer-content a').forEach(function (a) {
             var fk = a.getAttribute('data-fk');
             if (fk) { if (t.footer[fk]) a.textContent = t.footer[fk]; return; }
-            var href = a.getAttribute('href') || '';
-            if (href === 'index.html') a.textContent = t.footer.home;
-            else if (href === 'chinhsachdoitra.html') a.textContent = t.footer.ret;
-            else if (href === 'chinhsachgiaohang.html') a.textContent = t.footer.ship;
-            else if (href === 'chinhsachbaomat.html') a.textContent = t.footer.priv;
+            // So bằng KHOÁ TRANG chứ không phải tên file, để nhãn vẫn dịch đúng khi
+            // link đổi sang dạng không đuôi (/cart thay cho /cart.html).
+            var raw = a.getAttribute('href');
+            var href = raw ? window.BreezeRoutes.keyOf(raw) : '';
+            if (href === 'index') a.textContent = t.footer.home;
+            else if (href === 'chinhsachdoitra') a.textContent = t.footer.ret;
+            else if (href === 'chinhsachgiaohang') a.textContent = t.footer.ship;
+            else if (href === 'chinhsachbaomat') a.textContent = t.footer.priv;
         });
         var fEl;
         fEl = document.getElementById('footer-help-title'); if (fEl) fEl.textContent = t.footer.helpTitle;
@@ -1375,11 +1384,14 @@
 
         // Sidebar links
         document.querySelectorAll('.sidebar-links a').forEach(function (a) {
-            var href = a.getAttribute('href') || '';
-            if (href === 'sanpham-ao.html') a.textContent = t.sidebar.men;
-            else if (href === 'gold-jewellery.html') a.textContent = t.sidebar.gold;
-            else if (href === 'handbags.html') a.textContent = t.sidebar.handbags;
-            else if (href === 'sale.html') a.textContent = t.sidebar.sale;
+            // So bằng KHOÁ TRANG chứ không phải tên file, để nhãn vẫn dịch đúng khi
+            // link đổi sang dạng không đuôi (/cart thay cho /cart.html).
+            var raw = a.getAttribute('href');
+            var href = raw ? window.BreezeRoutes.keyOf(raw) : '';
+            if (href === 'sanpham-ao') a.textContent = t.sidebar.men;
+            else if (href === 'gold-jewellery') a.textContent = t.sidebar.gold;
+            else if (href === 'handbags') a.textContent = t.sidebar.handbags;
+            else if (href === 'sale') a.textContent = t.sidebar.sale;
         });
 
         // Sidebar filter headings
@@ -1456,7 +1468,7 @@
             ths[4].textContent = cp.colSubtotal;
         }
         document.querySelectorAll('.btn-remove').forEach(function(btn) { btn.title = cp.removeTitle; });
-        if (currentPage() === 'cart.html' && typeof window.renderCart === 'function') window.renderCart();
+        if (window.BreezeRoutes.is('cart') && typeof window.renderCart === 'function') window.renderCart();
 
         // Drawer
         refreshDrawer(t);
@@ -1486,19 +1498,25 @@
         });
 
         d.querySelectorAll('.drawer-sub li a').forEach(function (a) {
-            var href = a.getAttribute('href') || '';
-            if (href === 'sanpham-ao.html') a.textContent = t.megaItems.shirt;
-            else if (href === 'sanpham-quan.html') a.textContent = t.megaItems.pants;
-            else if (href === 'sanpham-giay.html') a.textContent = t.megaItems.shoes;
-            else if (href === 'gold-jewellery.html') a.textContent = t.megaItems.accessory;
-            else if (href === 'handbags.html') a.textContent = t.mega.handbags;
-            else if (href === 'sale.html') a.textContent = t.mega.sale;
+            // So bằng KHOÁ TRANG chứ không phải tên file, để nhãn vẫn dịch đúng khi
+            // link đổi sang dạng không đuôi (/cart thay cho /cart.html).
+            var raw = a.getAttribute('href');
+            var href = raw ? window.BreezeRoutes.keyOf(raw) : '';
+            if (href === 'sanpham-ao') a.textContent = t.megaItems.shirt;
+            else if (href === 'sanpham-quan') a.textContent = t.megaItems.pants;
+            else if (href === 'sanpham-giay') a.textContent = t.megaItems.shoes;
+            else if (href === 'gold-jewellery') a.textContent = t.megaItems.accessory;
+            else if (href === 'handbags') a.textContent = t.mega.handbags;
+            else if (href === 'sale') a.textContent = t.mega.sale;
         });
 
         d.querySelectorAll('.drawer-links li a').forEach(function (a) {
-            var href = a.getAttribute('href') || '';
-            if (href === 'login.html') a.textContent = t.drawer.signin;
-            else if (href === 'orders.html') a.textContent = t.drawer.orders;
+            // So bằng KHOÁ TRANG chứ không phải tên file, để nhãn vẫn dịch đúng khi
+            // link đổi sang dạng không đuôi (/cart thay cho /cart.html).
+            var raw = a.getAttribute('href');
+            var href = raw ? window.BreezeRoutes.keyOf(raw) : '';
+            if (href === 'login') a.textContent = t.drawer.signin;
+            else if (href === 'orders') a.textContent = t.drawer.orders;
         });
     }
 

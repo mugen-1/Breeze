@@ -10,7 +10,7 @@ function setup(cart) {
   const log = [];
   const r = load('page-cart.js', {
     doc: doc,
-    deps: ['utils-format.js'],
+    deps: ['routes.js', 'utils-format.js'],
     globals: {
       getCart: function () { return cart; },
       updateQty: function (id, d) { log.push(['updateQty', id, d]); },
