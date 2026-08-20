@@ -458,6 +458,19 @@ Vẫn đặt đầu tiên cho đúng ý nghĩa, không phải vì bắt buộc.
 
 Việc gộp `sale.css` vào `global.css` **để task riêng sau TASK 10**, không làm ở đây.
 
+## TASK 6.3 — đã áp dụng
+
+20/21 trang đổi thứ tự CSS về chuẩn; `invoice.html` vốn đã đúng nên không đổi, và ngoại
+lệ "không nạp `global.css`" của nó giữ nguyên.
+
+**Kiểm chứng bằng ảnh:** chụp 21 trang × 2 chế độ sáng/tối, trước và sau →
+**40/42 ảnh giống hệt từng pixel**. 2 ảnh khác đều của `index.html`, đã xác minh là
+**bất định do animation slider**: chụp 3 lần liên tiếp mà không sửa gì cũng ra 3 hash
+khác nhau. Đã xem mắt ảnh sau — hero, nút, dots đều bình thường.
+
+**Lưu ý cho ai đo lại sau này:** đừng dùng `index.html` làm mốc so pixel, nó không tất
+định. Dùng trang tĩnh bất kỳ khác.
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
@@ -496,7 +509,7 @@ không. Chi tiết và giới hạn: xem `client/js/__tests__/README.md`.
 | 3 — Tách JS inline (8 trang) | ✅ xong | `f1821e6` → `c362f01` |
 | 4 — Gom hàm trùng | ✅ xong | `1c8f359` → `b8ddc62` |
 | 5 — Chuẩn hoá thứ tự script | ✅ xong | `6908e92` (5.3), `2231944` (5.4) |
-| 6 — Chuẩn hoá CSS | chưa làm | |
+| 6 — Chuẩn hoá CSS | ✅ xong (6.2–6.3) | `1da43f3`, `e524cc3` |
 | 7 — Bỏ hardcode `.html` | chưa làm | |
 | 8 — Đồng bộ partial | chưa làm | |
 | 9 — Gộp 6 trang danh mục | chưa làm | |
