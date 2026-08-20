@@ -9,10 +9,13 @@ function _op() {
     var lang = (window.__i18n && window.__i18n.current) || 'vi';
     return (window.__i18n && window.__i18n.T[lang] && window.__i18n.T[lang].orders) || {};
 }
-function _lang() { return (window.__i18n && window.__i18n.current) || 'vi'; }
+// Ten co tien to 'orders' de KHONG dam vao global _lang cua cart.js — hai file
+// cung nap tren orders.html, ban nao nap sau se de ban kia. Ban cua cart.js day
+// du hon (co nhanh doc localStorage 'ql_lang').
+function _ordersLang() { return (window.__i18n && window.__i18n.current) || 'vi'; }
 
 function fmtDate(iso) {
-    try { return new Date(iso).toLocaleString(_lang() === 'en' ? 'en-GB' : 'vi-VN'); }
+    try { return new Date(iso).toLocaleString(_ordersLang() === 'en' ? 'en-GB' : 'vi-VN'); }
     catch (e) { return iso; }
 }
 
