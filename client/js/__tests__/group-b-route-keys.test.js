@@ -97,4 +97,50 @@ fs.readdirSync(JS).filter(f => f.endsWith('.js') && f !== 'routes.js').forEach(f
 });
 eq('Khong file nao ngoai routes.js con dung ten file .html lam khoa/ve so sanh', viPham, []);
 
+/* ===== B6 — chan open redirect =====
+   Tham so ?redirect= do NGUOI DUNG kiem soat. Cau hoi: no co bao gio tro thanh DICH
+   dieu huong khong?
+
+   KHONG. auth.js chi dung no lam DIEU KIEN mo nhanh:
+       if (BreezeRoutes.keyOf(redirect) === 'checkout') { ... to('checkout') }
+       else { ... to(isAdmin ? 'admin' : 'index') }
+   Dich den luon la mot KHOA HANG SO truyen vao to(). Gia tri tu URL khong bao gio
+   duoc gan thang vao location.href.
+
+   Luu y: keyOf() KHONG phai ham xac thuc. keyOf('http://evil.com/checkout') tra ve
+   'checkout' vi no chi lay doan cuoi duong dan. Dieu do vo hai o day, nhung ai dung
+   keyOf() de "kiem tra hop le" roi dieu huong toi CHINH input thi se thung. */
+function dichDenCua(redirect, isAdmin) {
+  // Mo phong dung logic auth.js dong 82-92
+  if (R.keyOf(redirect) === 'checkout') return R.to('checkout');
+  return R.to(isAdmin ? 'admin' : 'index');
+}
+const DUONG_DAN_HOP_LE = Object.keys(R.PATHS).map(k => R.PATHS[k]);
+[
+  ['//evil.com',               'giao thuc tuong doi'],
+  ['https://evil.com/x',       'URL tuyet doi'],
+  ['http://evil.com/checkout', 'URL ngoai co doan cuoi la checkout'],
+  ['javascript:alert(1)',      'javascript:'],
+  ['../../etc/passwd',         'path traversal'],
+  ['evil.com/checkout.html',   'ten mien gia dang'],
+  [null,                       'khong co tham so'],
+].forEach(function (pair) {
+  [true, false].forEach(function (isAdmin) {
+    const dich = dichDenCua(pair[0], isAdmin);
+    check('B6 redirect doc hai -> dich VAN la trang cua minh: ' + pair[1] +
+          (isAdmin ? ' [admin]' : '') + ' -> ' + dich,
+          DUONG_DAN_HOP_LE.indexOf(dich) !== -1);
+  });
+});
+
+/* Chan hoi quy o muc source: auth.js khong duoc gan bien redirect vao location. */
+check('B6 auth.js KHONG gan redirect thang vao location',
+      !/location\.(href|replace|assign)\s*[=(]\s*redirect/.test(au));
+
+/* to() hien CHO QUA khoa la nguyen van (PATHS[key] || key). Moi noi goi to() deu
+   truyen HANG SO nen khong khai thac duoc. Case duoi ghim hanh vi hien tai, de neu
+   sau nay ai do siet lai thi phai lam co y — xem muc S-1 trong CLEANUP.md. */
+eq('to() voi khoa la tra ve chinh no (hanh vi hien tai — xem S-1 trong CLEANUP.md)',
+   R.to('//evil.com'), '//evil.com');
+
 note('routes.js la file DUY NHAT biet duoi .html — migrate EJS chi sua PATHS trong do.');

@@ -662,6 +662,41 @@ thêm lại sẽ bị test chặn ngay.
 
 Ghi ở đây để không trôi mất qua các task sau.
 
+### S-1 — `BreezeRoutes.to()` cho qua khoá lạ nguyên văn (bẫy open redirect tiềm ẩn)
+
+- **Ở đâu:** `client/js/routes.js`, hàm `to()`: `var p = PATHS[key] || key;`
+- **Hiện tại KHÔNG khai thác được.** Đã rà toàn bộ **22 lệnh điều hướng** trong
+  `client/js/` — tất cả đều gọi `BreezeRoutes.to()` và **mọi đối số đều là hằng số**
+  hoặc `NAV_TARGETS[act]` (map cục bộ 3 phần tử, có guard `else if (NAV_TARGETS[act])`).
+  Không nơi nào truyền giá trị từ URL vào `to()`.
+- **Rủi ro:** nếu về sau ai viết `to(thamSoTuURL)` thì `to('//evil.com')` trả
+  `'//evil.com'`, gán vào `location.href` là **open redirect**; `to('javascript:...')`
+  là XSS. Đã xác minh `to()` cho qua nguyên văn cả 5 dạng độc hại.
+- **Vì sao để vậy:** thiết kế ban đầu chọn "khoá lạ → trả về chính nó, không ném lỗi"
+  để một chỗ gõ sai tên trang không làm chết cả trang. Với hàm mà đầu ra đi thẳng vào
+  `location.href` thì đánh đổi này đáng xem lại.
+- **Đề xuất khi xử lý:** trong `to()`, từ chối giá trị chứa `:` hoặc bắt đầu bằng `//`
+  hoặc `..` — chặn đúng vector open redirect mà vẫn giữ hành vi "gõ sai thì thấy ngay".
+  Cả 22 chỗ gọi hiện tại không bị ảnh hưởng.
+- **Đã có test ghim:** `group-b-route-keys.test.js` ghim hành vi hiện tại của `to()`, nên
+  nếu siết lại thì phải sửa test — tức là phải làm có chủ đích.
+- **Mức độ:** thấp (chưa khai thác được), nhưng là bẫy do chính TASK 7 tạo ra.
+
+### Về câu hỏi open redirect qua `?redirect=` — ĐÃ KIỂM, KHÔNG CÓ LỖ
+
+`auth.js` dòng 82–92: giá trị `?redirect=` **chỉ dùng làm điều kiện mở nhánh**
+(`keyOf(redirect) === 'checkout'`), **không bao giờ được gán vào `location.href`**.
+Đích đến luôn là một khoá hằng truyền vào `to()`.
+
+Đã ghim bằng 15 assertion: với 7 giá trị độc hại (`//evil.com`,
+`http://evil.com/checkout`, `javascript:alert(1)`, path traversal, tên miền giả dạng…)
+× 2 vai trò (admin / user thường), **đích đến luôn nằm trong 21 đường dẫn hợp lệ**.
+
+Lưu ý cho người đọc sau: `keyOf()` **không phải hàm xác thực**.
+`keyOf('http://evil.com/checkout')` trả `'checkout'` vì nó chỉ lấy đoạn cuối đường dẫn.
+Vô hại ở cách dùng hiện tại, nhưng đừng dùng `keyOf()` để "kiểm tra hợp lệ" rồi điều
+hướng tới chính input đó.
+
 ### N-1 — Hoá đơn hiện "Giảm giá: −0đ" với voucher giảm 0đ
 
 - **Ở đâu:** `client/js/page-invoice.js`, điều kiện `if (discount > 0 || o.voucher_code)`
