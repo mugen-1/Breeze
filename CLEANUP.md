@@ -139,6 +139,99 @@ Cơ chế in thật: nút "In hoá đơn" gọi `window.print()` của trình du
 người dùng bấm (không auto-print), bố cục bản in do khối `@media print` trong `<style>`
 của `invoice.html` lo. Việc tách JS không ảnh hưởng gì tới in.
 
+## TASK 5.1 — Bản đồ phụ thuộc script (đo bằng máy, không đọc bằng mắt)
+
+Cách đo: nạp từng file `client/js/*.js` vào sandbox rỗng, gặp `ReferenceError` thì ghi
+lại tên còn thiếu rồi chạy lại với sandbox MỚI. Riêng phần DOM thì bọc
+`getElementById`/`querySelector` để đếm số lần gọi **trong lúc parse**.
+
+### A. File nào tạo ra global nào
+
+| File | Global tạo ra |
+|---|---|
+| `api-config.js` | `API_BASE` |
+| `firebase-config.js` | `firebaseConfig`, **`auth`** (const top-level) |
+| `auth-helper.js` | `window.AuthHelper` |
+| `theme.js` | `window.BreezeTheme` |
+| `i18n.js` | `window.__i18n`, `window.__policyVI` |
+| `utils-format.js` | `money`, `esc` |
+| `utils-i18n.js` | `t` |
+| `filter-ui.js` | `toggleFilter` |
+| `cart.js` | ~30 global, gồm `getCart`, `addToCart`, `updateQty`, `removeFromCart`, `_updateAllBadges`, `_injectAddToCartButtons`, `window.startCheckout`, `window.refreshCart` |
+| `cart-drawer.js` | `window.CartDrawer`, và **bọc đè `window.addToCart`** |
+| `account-menu.js` | `window.__acctMenuInit` |
+| `payment-methods.js` | `window.PaymentMethods` |
+| `voucher.js` | `window.BreezeVoucher` |
+| `auth.js` | `dangNhap`, `dangKy`, `dangXuat`, `showMessage`, `authError` |
+| `page-cart.js` | `window.renderCart`, `changeQty`, `removeItem`, `checkout` |
+| `page-index-slider.js` | `window.currentSlide` |
+| `page-orders.js` | `render`, `fmtDate`, `loadOrders`, `_lang`, `_op`… |
+
+### B. Ràng buộc CỨNG — phụ thuộc lúc parse
+
+Chỉ có **3** ràng buộc kiểu này. Sai thứ tự ở đây là vỡ ngay, có lỗi console:
+
+| Phải nạp trước | Rồi mới tới | Vì |
+|---|---|---|
+| Firebase SDK (CDN) | `firebase-config.js` | cần `firebase` |
+| `firebase-config.js` | `auth.js` | `auth.js:106` gọi `auth.onAuthStateChanged()` ở top-level |
+| `utils-i18n.js` | `page-search.js` | gọi `t('sr.enterKeyword')` ngay lúc parse |
+
+### C. Ràng buộc CỨNG — phải đứng sau markup
+
+7 file đọc DOM **ngay lúc parse**, không chờ `DOMContentLoaded`:
+
+| File | Số lần đọc DOM lúc parse | Phần tử đầu tiên |
+|---|---|---|
+| `page-profile.js` | 19 | `.theme-seg`, `#ad-dob`, `#ad-save` |
+| `page-product.js` | 11 | `#pd-root`, `#pd-name`, `#pd-price` |
+| `voucher.js` | 8 | `#voucher-block`, `#voucher-line` |
+| `drawer-menu.js` | 4 | `#drawer-menu`, `#drawer-backdrop` |
+| `page-index-slider.js` | 4 | `.mySlides`, `.dot`, `.hero` |
+| `page-search.js` | 4 | `#search-input`, `#search-title` |
+| `account-menu.js` | 1 | `a[aria-label="Tài khoản"]` |
+
+Đáng chú ý: `account-menu.js` và `drawer-menu.js` **dùng chung ở 18–19 trang** và đọc DOM
+lúc parse. Khi lên EJS, partial chứa chúng bắt buộc phải nằm CUỐI `<body>`.
+
+### D. Mọi thứ còn lại KHÔNG ràng buộc thứ tự
+
+Các file khác chỉ dùng global của nhau **bên trong hàm hoặc event handler**, nên nạp
+trước hay sau đều được. Cụ thể vài chỗ dễ hiểu nhầm là nguy hiểm nhưng thật ra an toàn:
+
+- `cart-drawer.js` bọc đè `window.addToCart` của `cart.js`. Nhìn thì tưởng phải nạp sau
+  `cart.js`, nhưng việc bọc nằm trong `init()` chạy ở `DOMContentLoaded` — lúc đó mọi
+  script đã xong. **Thứ tự 2 file này tự do.**
+- `account-menu.js` gọi `window._updateAllBadges()` của `cart.js` — có bọc `typeof`, và
+  gọi trong handler.
+- `page-profile.js` dùng `window.BreezeTheme` (theme.js nạp `defer`) và
+  `window.PaymentMethods` (nạp sau nó) — đều gọi trong hàm.
+
+### E. Hiện trạng: 13 kiểu thứ tự khác nhau trên 21 trang
+
+| Nhóm | Số trang | Ví dụ lệch |
+|---|---|---|
+| Kiểu 1 | 5 | `i18n` gần cuối, sau `drawer-menu` |
+| Kiểu 2 | 3 | `drawer-menu`, `i18n`, `reveal` nằm **trước cả Firebase SDK** |
+| Kiểu 3 | 2 | `i18n` đứng **đầu tiên** |
+| Kiểu 4 | 2 | `reveal` đứng đầu, `i18n` đứng cuối |
+| 9 kiểu còn lại | mỗi kiểu 1 trang | mỗi trang một kiểu riêng |
+
+`i18n.js` lúc đứng thứ 1, lúc thứ 10. `reveal.js` lúc đầu lúc cuối. May mắn là theo
+mục D, không chỗ nào trong số này thật sự vỡ — nhưng khi gom vào MỘT partial dùng chung
+thì buộc phải chọn một thứ tự, nên cần bảng này để chọn cho đúng.
+
+### F. Số liệu dùng chung / riêng (cho việc tách partial EJS)
+
+- **Dùng chung 21/21 trang:** Firebase SDK, `firebase-config`, `api-config`, `auth-helper`,
+  `utils-format`, `i18n`
+- **Gần hết (18–19 trang):** `account-menu`, `cart`, `cart-drawer`, `drawer-menu`, `reveal`
+- **Riêng vài trang:** `utils-i18n` (7), `filter` + `filter-ui` + `products-render` (6 trang
+  danh mục), `auth` (2)
+- **Riêng 1 trang:** `theme`, `admin`, `checkout`, `voucher`, `payment-methods`, và toàn bộ `page-*`
+
+Lưu ý: `theme.js` mới chỉ có ở `profile.html` (1/21) — mục 5.4 phải thêm vào 20 trang còn lại.
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
