@@ -385,6 +385,79 @@ Lệch thứ tự: 14 trang để `tokens` trước Font Awesome, 7 trang danh m
 nạp `global.css`** — trong file có ghi rõ lý do (rule `section{padding-block}` của
 global làm hỏng bản in). Không được "sửa" chỗ này.
 
+## TASK 6.2 — Thứ tự CSS chuẩn đề xuất (CHƯA áp dụng, chờ duyệt)
+
+### Ràng buộc thứ tự CSS THẬT — đo, không giả định
+
+Quét mọi cặp file CSS cùng nạp trên ít nhất 1 trang, tìm cặp (selector, thuộc tính)
+trùng nhau với **cùng specificity** → thứ tự nạp quyết định. Tìm được **12 va chạm**
+tĩnh, nhưng phải kiểm từng cái bằng trình duyệt vì specificity của rule KHÁC trong
+cùng file có thể che mất.
+
+| Cặp file | Va chạm tĩnh | Đảo thứ tự có đổi hiển thị? |
+|---|---|---|
+| `global` + `admin` | `body{color}` | **CÓ — đổi hoàn toàn** |
+| `global` + `auth` | `body{color,background-color}` | Không |
+| `global` + `profile` | `body{color}` | Không |
+| `global` + `checkout` | `header{display}`, `.cart-badge` | Không |
+| `global` + `chinhsach-doitra` | 5 selector `.policy-header*` | Không |
+| `global` + `index-slide` | `.mySlides img{width}`, `.slideshow-container{margin}` | chưa đo (xem ghi chú) |
+| `tokens` + mọi file | **0 va chạm** | — |
+| Font Awesome + mọi file | `.sr-only` (profile) | Không |
+
+**Ràng buộc thật duy nhất đo được: `global.css` phải nạp TRƯỚC `admin.css`.**
+
+Bằng chứng đo bằng `getComputedStyle`, trang không có class trên `<body>`:
+
+| Thứ tự | `body` color | `body` background |
+|---|---|---|
+| `tokens → global → admin` (hiện tại) | `rgb(14,14,14)` | `rgb(255,255,255)` |
+| `tokens → admin → global` (đảo) | **`rgb(255,255,255)`** | **`rgb(14,14,14)`** |
+
+Đảo là trang quản trị lộn ngược sang nền tối dù đang ở chế độ sáng.
+
+### Vì sao 11 va chạm còn lại KHÔNG đổi gì
+
+`global.css` có `body.sitehdr { color: var(--c-ink) }` ở rule 212 — specificity (0,1,1),
+cao hơn `body` trần (0,0,1) nên **thắng bất kể thứ tự**. Mọi trang có
+`class="sitehdr"` hoặc `category-page` đều được rule này che. Chỉ `admin.html` (không có
+class nào trên `<body>`) là phơi ra.
+
+Đây đúng là lý do không được suy luận: danh sách va chạm tĩnh có **11/12 dương tính giả**,
+chỉ lộ ra khi đo thật.
+
+### Về `tokens.css`
+
+Không va chạm với file nào. `tokens.css` định nghĩa biến màu (`--c-*`), còn
+`global.css`/`sale.css` định nghĩa biến chữ và layout (`--font-*`, `--ease`,
+`--pad-section`) — **hai tập rời nhau**. Biến CSS lại được phân giải lúc tính giá trị
+chứ không phải lúc parse, nên vị trí `tokens.css` so với Font Awesome không ảnh hưởng gì.
+Vẫn đặt đầu tiên cho đúng ý nghĩa, không phải vì bắt buộc.
+
+### Thứ tự chuẩn đề xuất
+
+| # | Nhóm | File |
+|---|---|---|
+| 1 | Design token | `tokens.css` |
+| 2 | Vendor | Font Awesome, Google Fonts |
+| 3 | Base | `global.css` **hoặc** `sale.css` (7 trang danh mục giữ `sale.css`) |
+| 4 | Riêng trang | `admin`, `auth`, `checkout`, `chinhsach-doitra`, `index-slide`, `profile` |
+
+**Ngoại lệ giữ nguyên:** `invoice.html` chỉ nạp `tokens` + Font Awesome, cố ý bỏ
+`global.css` (rule `section{padding-block}` làm hỏng bản in — lý do ghi ngay trong file).
+
+### Bảng đối chiếu ràng buộc
+
+| Ràng buộc | Số trang | Thứ tự chuẩn |
+|---|---|---|
+| `global.css` trước `admin.css` (đã đo, có thật) | 1 | **PASS** — nhóm 3 trước nhóm 4 |
+| `global.css` trước mọi CSS riêng trang (giữ đúng ý đồ hiện tại) | 13 | **PASS** |
+| `tokens.css` đứng đầu | 21 | **PASS** |
+| `invoice.html` không nạp `global.css` | 1 | **PASS** — không đụng |
+| Không đổi nội dung file `.css` nào | — | **PASS** — chỉ đổi thứ tự thẻ `<link>` |
+
+Việc gộp `sale.css` vào `global.css` **để task riêng sau TASK 10**, không làm ở đây.
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
