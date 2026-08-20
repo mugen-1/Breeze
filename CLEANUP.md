@@ -332,6 +332,59 @@ Trước 5.4 chỉ `profile.html` có. Nhưng **không trang nào đang hỏng**
 - `search.html`: ảnh chụp trước TASK 5 và sau 5.3+5.4 **giống hệt từng pixel**
   (cùng sha256 `1a9407be`).
 
+## TASK 6.1 — Phân tích `sale.css` vs `global.css` (CHƯA sửa, chờ duyệt)
+
+### Kết luận: `sale.css` ĐÚNG là bản copy của `global.css` rồi sửa
+
+| Phép đo | Kết quả |
+|---|---|
+| Kích thước | `global.css` 39.693 B / 1.851 dòng · `sale.css` 39.724 B / 1.709 dòng |
+| Dòng trùng nhau (diff) | **1.388 dòng** — 75,0% của global, 81,2% của sale |
+| Độ tương đồng tổng thể | **78,0%** |
+| Selector có ở cả hai | **250** (88,3% của global, 85,6% của sale) |
+| Trong 250 đó: giống hệt từng ký tự | **200 (80%)** |
+| Trong 250 đó: khác nội dung | 50 — trong đó 35 chỉ đổi giá trị, 15 bị bớt thuộc tính |
+| Chỉ có ở `global.css` | 33 selector |
+| Chỉ có ở `sale.css` | 42 selector |
+
+### Hai file phân kỳ ở đâu
+
+**Chỉ `sale.css` có (42):** gần như trọn bộ **`.fd-*`** — 26 rule của drawer bộ lọc
+(`.fd-drawer`, `.fd-chip`, `.fd-group`, `.fd-overlay`…), cộng biến thể thẻ sản phẩm
+(`.product-item`, `.price-sale`, `.price-default`, `.soldout-badge`, `.btn-soldout`).
+
+**Chỉ `global.css` có (33):** slideshow trang chủ (`.mySlides`, `.slideshow-container`),
+nhóm `body.home`, và **19 rule scoped `body.category-page`**.
+
+### Điểm mấu chốt: hai đường tạo kiểu song song cho cùng một loại trang
+
+Cả 7 trang dùng `sale.css` đều có `<body class="category-page sitehdr">`, nhưng **không
+nạp `global.css`** — nên 19 rule `body.category-page` trong `global.css` không chạm tới
+chúng. Ngược lại `search.html` **có** nạp `global.css` và **cũng có** `body.category-page`.
+
+Nghĩa là: `search.html` và 6 trang danh mục trông giống nhau nhưng được tạo kiểu bằng
+**hai đường hoàn toàn khác nhau** — search dùng nhánh `body.category-page` trong
+`global.css`, còn 6 trang kia dùng selector không scope trong `sale.css`. Đây là rủi ro
+chính khi gộp: đổi 6 trang sang `global.css` là chúng nhảy sang nhánh vốn chỉ được chỉnh
+cho search.
+
+### Hiện trạng nạp CSS — 9 kiểu khác nhau trên 21 trang
+
+| CSS | Số trang |
+|---|---|
+| `tokens.css`, Font Awesome | 21/21 |
+| `global.css` | 13 |
+| `sale.css` | 7 |
+| `chinhsach-doitra.css`, `auth.css` | 3 mỗi file |
+| `admin`, `checkout`, `index-slide`, `profile` | 1 mỗi file |
+
+Lệch thứ tự: 14 trang để `tokens` trước Font Awesome, 7 trang danh mục thì ngược lại.
+`profile.html` để `profile.css` **sau** Font Awesome, các trang khác để CSS riêng trước.
+
+**Ngoại lệ có chủ đích:** `invoice.html` chỉ nạp `tokens` + Font Awesome, **cố ý không
+nạp `global.css`** — trong file có ghi rõ lý do (rule `section{padding-block}` của
+global làm hỏng bản in). Không được "sửa" chỗ này.
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
