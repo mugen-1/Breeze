@@ -12,8 +12,8 @@ repo để chỉ tiêu không bị hỏi lại hay tranh cãi lúc review TASK 1
 | Biến thể drawer menu | 2 | 1 | TASK 8 |
 | Biến thể footer | 1 | 1 | TASK 8 |
 | Biến thể policy-header | 2 | 1, hoặc 2 có chủ đích | TASK 8 |
-| Thứ tự script | mỗi trang một kiểu | 1 thứ tự chuẩn | TASK 5 |
-| Trang thiếu `theme.js` | 19 | 0 | 20 |
+| Thứ tự script | mỗi trang một kiểu | 1 thứ tự chuẩn | **1 thứ tự, 21/21** ✅ |
+| Trang thiếu `theme.js` | 20 (khảo sát ghi 19) | 0 | **0** ✅ |
 | File JS chết | 4 | 0 | **0** ✅ |
 | File có BOM | 13 | 0 | **0** ✅ |
 | Link `.html` hardcode trong JS | 113 | dùng module routes | TASK 7 |
@@ -304,6 +304,34 @@ Kết luận: 3 trang này **không cần ngoại lệ**, áp thứ tự chuẩn
 rơi về giá trị mặc định `'light'`), nhưng vẫn là đổi hành vi — cần kiểm lại nút đổi
 sáng/tối ở trang profile khi áp dụng.
 
+## TASK 5.3 / 5.4 — đã áp dụng
+
+### Ngoại lệ được ghi nhận: `page-index-slider.js`
+
+Giữ nguyên vị trí **giữa trang** (index.html dòng 123), KHÔNG gom xuống cuối body.
+Lý do: `.hero .mySlides` mặc định `opacity: 0; visibility: hidden`, chỉ JS gắn
+`.is-active` mới hiện. Dời xuống cuối thì hero trắng trơn cho tới khi Firebase SDK +
+`i18n.js` (95KB) + `cart.js` nạp xong. Khi lên EJS, script này thuộc về thân trang chứ
+không thuộc partial script dùng chung.
+
+### `theme.js` — thêm là chuẩn bị, không phải vá lỗi
+
+Trước 5.4 chỉ `profile.html` có. Nhưng **không trang nào đang hỏng**: chỉ profile có nút
+đổi theme (`.theme-seg` / `[data-theme-choice]`) và chỉ `page-profile.js` gọi
+`BreezeTheme`. Thêm vào 20 trang còn lại là để partial dùng chung của EJS có sẵn nó.
+
+Đã kiểm bằng trình duyệt: nạp cả 21 trang trong iframe, đọc `window.BreezeTheme` →
+21/21 đều có. `invoice.html` và `admin.html` trả `'light'` vì dùng snippet FOUC rút gọn
+ép sáng — khác biệt có chủ đích, TASK 8 xử lý.
+
+### Bằng chứng không đổi giao diện
+
+- `profile.html` (nơi `theme.js` chuyển từ `<head defer>` xuống body): chụp ở
+  300ms/900ms/8000ms cho cả hai chế độ, độ sáng **không đổi giữa các mốc**
+  (dark 19.8 / light 245.2) → không nháy sai theme.
+- `search.html`: ảnh chụp trước TASK 5 và sau 5.3+5.4 **giống hệt từng pixel**
+  (cùng sha256 `1a9407be`).
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
@@ -341,7 +369,7 @@ không. Chi tiết và giới hạn: xem `client/js/__tests__/README.md`.
 | 2 — Line ending + BOM | ✅ xong | `c43a7e8`, `c665c63` |
 | 3 — Tách JS inline (8 trang) | ✅ xong | `f1821e6` → `c362f01` |
 | 4 — Gom hàm trùng | ✅ xong | `1c8f359` → `b8ddc62` |
-| 5 — Chuẩn hoá thứ tự script | chưa làm | |
+| 5 — Chuẩn hoá thứ tự script | ✅ xong | `6908e92` (5.3), `2231944` (5.4) |
 | 6 — Chuẩn hoá CSS | chưa làm | |
 | 7 — Bỏ hardcode `.html` | chưa làm | |
 | 8 — Đồng bộ partial | chưa làm | |
