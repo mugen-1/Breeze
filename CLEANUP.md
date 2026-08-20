@@ -16,8 +16,8 @@ repo để chỉ tiêu không bị hỏi lại hay tranh cãi lúc review TASK 1
 | Trang thiếu `theme.js` | 20 (khảo sát ghi 19) | 0 | **0** ✅ |
 | File JS chết | 4 | 0 | **0** ✅ |
 | File có BOM | 13 | 0 | **0** ✅ |
-| Link `.html` hardcode trong JS | 113 | dùng module routes | TASK 7 |
-| Key tra cứu phụ thuộc `.html` | 2 chỗ | 0 | TASK 7 |
+| Link `.html` hardcode trong JS | 113 (thật: 46) | dùng module routes | **0 ngoài routes.js** ✅ |
+| Key tra cứu phụ thuộc `.html` | 2 chỗ (thật: **30**) | 0 | **0** ✅ |
 
 ### Vì sao chỉ tiêu "JS inline" đổi từ "< 5.000 chars" thành "chỉ còn snippet FOUC"
 
@@ -633,6 +633,31 @@ trang. Dùng nó khi render partial thay vì gõ lại đường dẫn.
 
 Phần nhóm A trong JS (19 redirect + 27 chuỗi `href` do JS sinh) thì ĐÃ xử lý ở TASK 7.
 
+## TASK 7.4 — đã áp dụng
+
+`client/js/routes.js` là **file duy nhất trong client biết đuôi `.html`**. Nạp ở nhóm cấu
+hình (sau `api-config.js`) vì `account-menu.js` gọi `currentPageKey()` ngay lúc parse.
+
+### Kiểm kê 7.1 bỏ sót 24 chỗ nhóm B
+
+Ngoài 6 cơ chế đã liệt kê, `i18n.js` còn **24 chỗ so `href` đọc từ DOM với tên file**
+để chọn nhãn dịch cho nav / mega menu / footer / sidebar / drawer:
+
+```js
+var href = a.getAttribute('href') || '';
+if (href === 'sanpham-ao.html') a.textContent = t.megaItems.shirt;
+```
+
+Cùng loại hỏng ngầm: link đổi sang dạng không đuôi thì nhãn ngừng dịch, không báo lỗi.
+Nay dùng `BreezeRoutes.keyOf(href)`. Tổng nhóm B thật: **30 chỗ**, không phải 2 như kế
+hoạch ghi.
+
+### Chốt chặn hồi quy
+
+`group-b-route-keys.test.js` có một assertion quét toàn bộ `client/js/`: **không file nào
+ngoài `routes.js` được dùng tên file `.html` làm khoá object hay vế so sánh**. Ai vô tình
+thêm lại sẽ bị test chặn ngay.
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
@@ -672,7 +697,7 @@ không. Chi tiết và giới hạn: xem `client/js/__tests__/README.md`.
 | 4 — Gom hàm trùng | ✅ xong | `1c8f359` → `b8ddc62` |
 | 5 — Chuẩn hoá thứ tự script | ✅ xong | `6908e92` (5.3), `2231944` (5.4) |
 | 6 — Chuẩn hoá CSS | ✅ xong (6.2–6.3) | `1da43f3`, `e524cc3` |
-| 7 — Bỏ hardcode `.html` | chưa làm | |
+| 7 — Bỏ hardcode `.html` | ✅ xong | `6a5eb87` |
 | 8 — Đồng bộ partial | chưa làm | |
 | 9 — Gộp 6 trang danh mục | chưa làm | |
 | 10 — Kiểm tra tổng thể | chưa làm | |
