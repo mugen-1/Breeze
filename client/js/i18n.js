@@ -7,7 +7,6 @@
             nav: { home: 'Trang Chủ', cat: 'Danh Mục', feedback: 'Phản Hồi', staff: 'Quản Lý NV' },
             mega: { men: 'Sản phẩm', women: 'Nữ', gold: 'Phụ Kiện', handbags: 'Túi Xách', sale: 'Khuyến Mãi' },
             megaItems: { shirt: 'Áo', pants: 'Quần', shoes: 'Giày & Dép', accessory: 'Phụ Kiện' },
-            sidebar: { title: 'Danh Mục', men: 'Sản phẩm', women: 'Nữ', gold: 'Phụ Kiện', handbags: 'Túi Xách', sale: 'Khuyến Mãi' },
             filter: { price: 'Khoảng Giá', all: 'Tất cả', u50: 'Dưới 200.000đ', r5010: '200.000đ – 400.000đ', r10020: '400.000đ – 700.000đ', o200: 'Trên 700.000đ', sort: 'Sắp Xếp', newest: 'Mới nhất', asc: 'Giá tăng dần', desc: 'Giá giảm dần' },
             page: { 'sanpham-ao': 'Áo', 'gold-jewellery': 'Phụ Kiện', 'handbags': 'Túi Xách', 'sanpham-quan': 'Quần', 'sanpham-giay': 'Giày & Dép', 'sale': 'Khuyến Mãi' },
             footer: { home: 'Trang chủ', ret: 'Chính sách đổi trả', ship: 'Chính sách giao hàng', priv: 'Chính sách bảo mật', cart: 'Giỏ Hàng Của Tôi', helpTitle: 'Chúng Tôi Có Thể Giúp Bạn?', companyTitle: 'Về Chúng Tôi', langTitle: 'Ngôn Ngữ', countryTitle: 'Quốc Gia/Khu Vực', countryName: 'Việt Nam' },
@@ -55,7 +54,6 @@
             nav: { home: 'Home', cat: 'Categories', feedback: 'Feedback', staff: 'Staff Login' },
             mega: { men: 'Products', women: 'Women', gold: 'Accessories', handbags: 'Handbags', sale: 'Sale' },
             megaItems: { shirt: 'Shirt', pants: 'Pants', shoes: 'Shoes & Sandals', accessory: 'Accessories' },
-            sidebar: { title: 'Categories', men: 'Products', women: 'Women', gold: 'Accessories', handbags: 'Handbags', sale: 'Sale' },
             filter: { price: 'Price Range', all: 'All', u50: 'Under 200,000đ', r5010: '200,000đ – 400,000đ', r10020: '400,000đ – 700,000đ', o200: 'Over 700,000đ', sort: 'Sort By', newest: 'Newest', asc: 'Price: Low to High', desc: 'Price: High to Low' },
             page: { 'sanpham-ao': 'Shirt', 'gold-jewellery': 'Accessories', 'handbags': 'Handbags', 'sanpham-quan': 'Pants', 'sanpham-giay': 'Shoes & Sandals', 'sale': 'Sale' },
             footer: { home: 'Home', ret: 'Return Policy', ship: 'Shipping Policy', priv: 'Privacy Policy', cart: 'My Cart', helpTitle: 'May We Help You?', companyTitle: 'About Us', langTitle: 'Language', countryTitle: 'Country/Region', countryName: 'Vietnam' },
@@ -1379,45 +1377,9 @@
             return;
         }
 
-        // Sidebar title
-        document.querySelectorAll('.sidebar-category-title').forEach(function (el) { el.textContent = t.sidebar.title; });
-
-        // Sidebar links
-        document.querySelectorAll('.sidebar-links a').forEach(function (a) {
-            // So bằng KHOÁ TRANG chứ không phải tên file, để nhãn vẫn dịch đúng khi
-            // link đổi sang dạng không đuôi (/cart thay cho /cart.html).
-            var raw = a.getAttribute('href');
-            var href = raw ? window.BreezeRoutes.keyOf(raw) : '';
-            if (href === 'sanpham-ao') a.textContent = t.sidebar.men;
-            else if (href === 'gold-jewellery') a.textContent = t.sidebar.gold;
-            else if (href === 'handbags') a.textContent = t.sidebar.handbags;
-            else if (href === 'sale') a.textContent = t.sidebar.sale;
-        });
-
-        // Sidebar filter headings
-        document.querySelectorAll('.sidebar-filter-heading').forEach(function (el) {
-            var icon = el.querySelector('.toggle-icon');
-            var raw = el.textContent.replace('▾', '').replace('▸', '').trim();
-            if (raw === 'Khoảng Giá' || raw === 'Price Range') { if (el.firstChild) el.firstChild.textContent = t.filter.price + ' '; }
-            else if (raw === 'Sắp Xếp' || raw === 'Sort By' || raw === 'Sort') { if (el.firstChild) el.firstChild.textContent = t.filter.sort + ' '; }
-        });
-
-        // Sidebar filter labels
-        document.querySelectorAll('.sidebar-filter-list label').forEach(function (label) {
-            var cb = label.querySelector('input[type="checkbox"]');
-            var radio = label.querySelector('input[type="radio"]');
-            if (cb) {
-                var min = cb.dataset.min;
-                var txt = min === '0' ? t.filter.u50 : min === '50000' ? t.filter.r5010 : min === '100001' ? t.filter.r10020 : t.filter.o200;
-                if (label.lastChild) label.lastChild.textContent = ' ' + txt;
-            }
-            if (radio) {
-                var cur = label.textContent.trim();
-                if (cur === 'Mới nhất' || cur === 'Newest') { if (label.lastChild) label.lastChild.textContent = ' ' + t.filter.newest; }
-                else if (cur === 'Giá tăng dần' || cur === 'Price: Low to High') { if (label.lastChild) label.lastChild.textContent = ' ' + t.filter.asc; }
-                else if (cur === 'Giá giảm dần' || cur === 'Price: High to Low') { if (label.lastChild) label.lastChild.textContent = ' ' + t.filter.desc; }
-            }
-        });
+        // Sidebar cũ (.sidebar-*) đã bị xoá khỏi 6 trang danh mục ở TASK 9 vì luôn
+        // display:none — bộ lọc thật là #fd-drawer do filter.js tự dựng. Phần dịch
+        // cho sidebar cũng bỏ theo. Xem mục D-1 trong CLEANUP.md.
 
         // Page headline
         var pg = currentPage();
