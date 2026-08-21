@@ -1707,3 +1707,50 @@ body.cart-drawer-open { overflow: hidden; }
     .cart-drawer-body { padding: 4px 20px; }
     .cart-drawer-foot { padding: 18px 20px calc(18px + env(safe-area-inset-bottom)); }
 }
+
+
+/* ===== Riêng trang Áo (sanpham-ao.html) ==================================
+   Trước đây khối này nằm inline trong <style> của sanpham-ao.html. Chuyển vào đây
+   để trang đó không còn CSS riêng, chuẩn bị gộp 6 trang danh mục thành một template.
+
+   BẮT BUỘC scope bằng body[data-category="sanpham-ao"]: bản inline dùng selector
+   chung .product-item, nếu để không scope thì áp cho cả 7 trang dùng sale.css và
+   làm đổi giao diện 6 trang kia. Specificity (0,3,1) thắng rule (0,2,0) tương ứng
+   ở trên, không cần !important.
+
+   LƯU Ý: đây cũng là nơi DUY NHẤT toàn site tạo kiểu cho .thumb-hover/.thumb-fill,
+   nên hiệu ứng rê chuột đổi ảnh hiện chỉ chạy ở trang này. Đọc mục H-1 trong
+   CLEANUP.md trước khi định "sửa" chỗ đó. */
+/* Giữ hiệu ứng hover đổi ảnh + object-fit:contain riêng cho trang này.
+    Selector prefix .product-item để thắng style card chung trong sale.css. */
+body[data-category="sanpham-ao"] .product-item .product-thumb {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    aspect-ratio: 3 / 4;
+}
+body[data-category="sanpham-ao"] .product-item .product-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;   /* sách: không cắt bìa */
+    display: block;
+}
+body[data-category="sanpham-ao"] .product-item .product-thumb .thumb-hover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+body[data-category="sanpham-ao"] .product-item .product-thumb:hover .thumb-hover {
+    opacity: 1;
+}
+body[data-category="sanpham-ao"] .product-item .product-thumb .thumb-fill {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+/* huỷ zoom-chung 1.04 khi hover để hiệu ứng đổi ảnh mượt, không giật */
+body[data-category="sanpham-ao"] .product-item:hover .product-thumb img {
+    transform: none;
+}
