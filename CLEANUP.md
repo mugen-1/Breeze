@@ -9,8 +9,8 @@ repo để chỉ tiêu không bị hỏi lại hay tranh cãi lúc review TASK 1
 |---|---|---|---|
 | JS inline trong HTML | ~90.000 chars | **chỉ còn snippet FOUC** | **6.048 — đúng bằng FOUC** ✅ |
 | Hàm định nghĩa trùng | 8 hàm (số này SAI, xem dưới) | 0, hoặc đã đổi tên rõ ràng | **0** ✅ |
-| Biến thể drawer menu | 2 | 1 | TASK 8 |
-| Biến thể footer | 1 | 1 | TASK 8 |
+| Biến thể drawer menu | 2 | 1 | **1** ✅ |
+| Biến thể footer | 1 | 1 | **1** ✅ |
 | Biến thể policy-header | 2 | 1, hoặc 2 có chủ đích | TASK 8 |
 | Thứ tự script | mỗi trang một kiểu | 1 thứ tự chuẩn | **1 thứ tự, 21/21** ✅ |
 | Trang thiếu `theme.js` | 20 (khảo sát ghi 19) | 0 | **0** ✅ |
@@ -658,6 +658,41 @@ hoạch ghi.
 ngoài `routes.js` được dùng tên file `.html` làm khoá object hay vế so sánh**. Ai vô tình
 thêm lại sẽ bị test chặn ngay.
 
+## TASK 8 — Kết quả đồng bộ partial
+
+| Khối | Biến thể | Kết luận |
+|---|---|---|
+| `<footer>` | **1** / 18 trang | Đồng bộ sẵn, không đụng |
+| Drawer menu | **1** / 18 trang | Đã sửa `&` → `&amp;` ở `product.html` (8.1) |
+| `policy-header` | **2** / 17 trang | Lệch CÓ CHỦ ĐÍCH — xem dưới |
+| Snippet FOUC theme | **2** / 21 trang | Lệch CÓ CHỦ ĐÍCH — xem dưới |
+
+### 8.2 — `policy-header`: chốt PHƯƠNG ÁN A, giữ 2 biến thể
+
+16 trang dùng bản 510 ký tự có **icon kính lúp** trỏ sang trang tìm kiếm.
+`search.html` dùng bản 1.041 ký tự, thay icon bằng **form tìm kiếm thật**
+(`<form class="ph-search" action="search.html" method="get">`).
+
+**Khi làm partial EJS: `header.ejs` nhận tham số `showSearchBox` (mặc định `false`),
+chỉ `search.html` truyền `true`.**
+
+Vì sao không thống nhất về một bản: trang tìm kiếm cần ô nhập ngay tại chỗ, các trang
+khác thì icon là đủ. Đưa form vào cả 17 trang là **đổi UX 16 trang** và làm chật header
+trên mobile, chỉ để partial bớt một nhánh điều kiện — không đáng.
+
+### 8.3 — Snippet theme ở `admin.html` + `invoice.html`: GIỮ NGUYÊN ép light
+
+Không phải thiếu sót. Đã dựng thử bản đầy đủ, bật chế độ tối rồi chụp lại:
+
+| Trang | Kết quả ở chế độ tối | Kết luận |
+|---|---|---|
+| `invoice.html` | **Hỏng thật.** `<style>` trộn 16 biến token với 21 màu cứng → chữ đổi theo token còn nền giấy vẫn trắng, link gần như không đọc được. Thêm nữa đây là trang để IN | Ép light là ĐÚNG |
+| `admin.html` | Khung trang ổn (`admin.css` dùng token 137 lần, chỉ 12 màu cứng). **Nhưng `admin.js` đặt cứng 11 màu Chart.js** (`#FCFCFB`, `#E5E3DE`, `#D6D3D1`, `#A8A29E`…) cho nền sáng → biểu đồ tương phản kém | Ép light là ĐÚNG |
+
+Muốn admin hỗ trợ tối thật thì phải cho Chart.js đọc token trước — việc thiết kế riêng,
+không phải đổi một dòng snippet. **Đã thêm comment giải thích vào cả 2 file** để sau này
+không ai "đồng bộ nhầm".
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
@@ -733,7 +768,7 @@ không. Chi tiết và giới hạn: xem `client/js/__tests__/README.md`.
 | 5 — Chuẩn hoá thứ tự script | ✅ xong | `6908e92` (5.3), `2231944` (5.4) |
 | 6 — Chuẩn hoá CSS | ✅ xong (6.2–6.3) | `1da43f3`, `e524cc3` |
 | 7 — Bỏ hardcode `.html` | ✅ xong | `6a5eb87` |
-| 8 — Đồng bộ partial | chưa làm | |
+| 8 — Đồng bộ partial | ✅ xong | `3492631`, `+1` |
 | 9 — Gộp 6 trang danh mục | chưa làm | |
 | 10 — Kiểm tra tổng thể | chưa làm | |
 

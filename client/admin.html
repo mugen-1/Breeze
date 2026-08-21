@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Quản Trị - BREEZE</title>
     <!-- Trang quản trị LUÔN ở chế độ Sáng: bỏ qua breeze-theme của user (toggle Sáng/Tối chỉ áp cho storefront). -->
+    <!-- CỐ Ý ép light, KHÔNG dùng snippet chống FOUC đầy đủ như 19 trang kia.
+         Khung trang thì sẵn sàng cho chế độ tối (admin.css dùng biến token 137 lần,
+         chỉ 12 màu cứng), NHƯNG admin.js đặt cứng 11 màu cho biểu đồ Chart.js
+         (#FCFCFB, #E5E3DE, #D6D3D1, #A8A29E...) — bảng màu cho nền sáng. Bật tối thì
+         biểu đồ doanh thu và donut trạng thái tương phản kém.
+         Muốn hỗ trợ tối thật thì phải cho Chart.js đọc token trước — việc thiết kế
+         riêng, không phải đổi một dòng snippet. -->
     <script>document.documentElement.setAttribute('data-theme','light');</script>
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
