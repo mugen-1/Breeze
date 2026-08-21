@@ -62,7 +62,7 @@ bị nhiễu vì các bản chỉ khác chỗ xuống dòng — đừng lặp l�
 | `esc` / `escapeHtml` | 4 | **1** | Gom. `escapeHtml` (invoice) giống hệt `esc`, chỉ khác tên |
 | `t` / `tr` | 4 | **1** | Gom. Bản invoice chỉ khác **tên tham số** (`k,p` vs `key,params`) — thân hàm hoàn toàn tương đương |
 | `money` / `formatPrice` | 4 | **2** | Gom về bản an toàn, xem dưới. `formatPrice` (search) giống hệt `money` |
-| `toggleFilter` | 6 | **1** | Gom. 6 bản giống hệt nhau từng byte |
+| `toggleFilter` | 6 | **1** | ~~Gom~~ → **ĐÃ XOÁ HẲN Ở TASK 9** (D-1): hàm nằm trong sidebar `display:none`, không bao giờ gọi được |
 | `fmtDate` / `fmtDateVN` | 3 | **3** | KHÔNG gom — khác hẳn nhau |
 | `lang` / `_lang` / `locale` | 3 | **3** | KHÔNG gom — khác hẳn nhau |
 | `render` | 4 | **4** | KHÔNG gom — đổi tên. Kích thước 252/639/1682/2632 ký tự |
@@ -156,7 +156,7 @@ lại tên còn thiếu rồi chạy lại với sandbox MỚI. Riêng phần DO
 | `i18n.js` | `window.__i18n`, `window.__policyVI` |
 | `utils-format.js` | `money`, `esc` |
 | `utils-i18n.js` | `t` |
-| `filter-ui.js` | `toggleFilter` |
+| ~~`filter-ui.js`~~ | ~~`toggleFilter`~~ — đã xoá ở TASK 9 |
 | `cart.js` | ~30 global, gồm `getCart`, `addToCart`, `updateQty`, `removeFromCart`, `_updateAllBadges`, `_injectAddToCartButtons`, `window.startCheckout`, `window.refreshCart` |
 | `cart-drawer.js` | `window.CartDrawer`, và **bọc đè `window.addToCart`** |
 | `account-menu.js` | `window.__acctMenuInit` |
@@ -791,7 +791,7 @@ Lưu ý cho người đọc sau: `keyOf()` **không phải hàm xác thực**.
 Vô hại ở cách dùng hiện tại, nhưng đừng dùng `keyOf()` để "kiểm tra hợp lệ" rồi điều
 hướng tới chính input đó.
 
-### D-1 — Toàn bộ `<aside class="sidebar">` ở 6 trang danh mục là MARKUP CHẾT
+### D-1 — Toàn bộ `<aside class="sidebar">` ở 6 trang danh mục là MARKUP CHẾT  ✅ ĐÃ XOÁ
 
 - **Ở đâu:** `client/css/sale.css:607` → `.sidebar { display: none !important; }`
   **Không kèm media query** — sidebar không bao giờ hiện, ở mọi độ rộng. Đã đo computed
@@ -807,9 +807,11 @@ hướng tới chính input đó.
   nhưng KHÔNG kiểm phần tử gọi nó có hiển thị không.
 - **Còn một dấu vết nữa:** class `.sidebar-hidden-ref` (sale.css:609) chỉ tồn tại trong
   CSS, không HTML hay JS nào dùng.
-- **Đề xuất:** xoá cả khối `<aside class="sidebar">` ở 6 trang + `filter-ui.js` + 2 rule
-  CSS mồ côi. Nhưng đây là xoá 186 dòng markup nên cần duyệt riêng, dù đã chứng minh là
-  vô hình.
+- **ĐÃ XỬ LÝ (TASK 9):** xoá 192 dòng markup (32 × 6 trang), `filter-ui.js` + test của nó
+  (8 assertion), 6 thẻ `<script>`, **24 rule CSS** mồ côi trong `sale.css`, 39 dòng dịch
+  sidebar trong `i18n.js`, và 2 dòng từ điển `sidebar:` đã thành dữ liệu chết.
+  Kiểm chứng: ảnh 9 trang × 2 chế độ, **16/18 giống hệt pixel** — 2 ảnh khác đều là
+  `index` (trang bất định do slider, vốn không có sidebar).
 - **Mức độ:** không gây lỗi, nhưng làm 6 trang phình lên và đánh lừa người đọc code —
   đúng thứ đợt dọn dẹp này sinh ra để loại bỏ.
 
@@ -876,7 +878,7 @@ không. Chi tiết và giới hạn: xem `client/js/__tests__/README.md`.
 | 6 — Chuẩn hoá CSS | ✅ xong (6.2–6.3) | `1da43f3`, `e524cc3` |
 | 7 — Bỏ hardcode `.html` | ✅ xong | `6a5eb87` |
 | 8 — Đồng bộ partial | ✅ xong | `3492631`, `+1` |
-| 9 — Gộp 6 trang danh mục | chưa làm | |
+| 9 — Gộp 6 trang danh mục (Hướng 2) | ✅ xong | `80d5786` + D-1 |
 | 10 — Kiểm tra tổng thể | chưa làm | |
 
 Checkpoint trước cả đợt: `5397db8`.
@@ -887,7 +889,7 @@ Checkpoint trước cả đợt: `5397db8`.
 |---|---|---|
 | `client/js/utils-format.js` | `money`, `esc` | 8 bản money (3 tên) + 9 bản esc (2 tên) |
 | `client/js/utils-i18n.js` | `t` | 8 bản y hệt nhau |
-| `client/js/filter-ui.js` | `toggleFilter` | 6 bản giống nhau từng byte |
+| ~~`client/js/filter-ui.js`~~ | ~~`toggleFilter`~~ | ~~6 bản giống nhau từng byte~~ — **ĐÃ XOÁ Ở TASK 9**, xem D-1 |
 
 **KHÔNG gộp, cố ý:** `fmtDate`/`fmtDateVN` (3 bản khác hẳn), `lang`/`_lang`/`locale`
 (3 bản khác hẳn), `render` (4 bản khác hẳn — cần đổi tên, chưa làm),
