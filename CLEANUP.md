@@ -884,6 +884,83 @@ vẫn còn** — cố ý để lại cho migrate, dùng `BreezeRoutes.PATHS` khi
   "Việc còn nợ".
 - **`ROADMAP.md`**: thêm mục ghi nhận đợt dọn dẹp đã xong.
 
+## TASK 10.5 — Báo cáo tổng kết
+
+**46 commit**, từ checkpoint `5397db8` tới `c4e5e50`. 72 file đổi, +4.805 / −2.812 dòng.
+
+### Code trùng lặp đã loại bỏ
+
+| Thứ | Trước | Sau |
+|---|---|---|
+| Hàm định dạng tiền | **10 bản**, 3 tên (`money`/`formatPrice`/…) | 1 bản trong `utils-format.js` |
+| Hàm escape HTML | **9 bản**, 2 tên (`esc`/`escapeHtml`) | 1 bản |
+| Hàm dịch `t()` | **8 bản** y hệt | 1 bản trong `utils-i18n.js` |
+| `toggleFilter` | 6 bản | **xoá hẳn** — code chết (D-1) |
+| JS inline trong HTML | ~90.000 chars | 6.048 (chỉ snippet FOUC) |
+| Markup sidebar chết | 192 dòng × — | 0 |
+| Rule CSS mồ côi | 24 | 0 |
+
+### File đã xoá (10)
+
+`js.js`, `js1.js`, `mega-menu.js`, `search-data.js` (data dự án bán sách cũ),
+`filter-ui.js`, `fix-voucher-orders.js`, `orders.js.bak`, 6 file `.log`,
+`filter-ui.test.js`.
+
+### File mới (15, chưa tính test)
+
+`routes.js`, `utils-format.js`, `utils-i18n.js`, 8 file `page-*.js`,
+`.gitattributes`, `.gitignore`, `CLAUDE.md`, `CLEANUP.md`.
+
+### Bug THẬT phát hiện trong quá trình dọn
+
+| # | Bug | Trạng thái |
+|---|---|---|
+| 1 | `money()` cho `null` ra **`NaN₫`** hiện lên giao diện; bản ở `cart.js` còn ném `TypeError` | ✅ đã sửa |
+| 2 | Site dùng **lẫn 2 ký hiệu tiền** — `₫` ở thanh toán/voucher, `đ` ở giỏ/đơn/hoá đơn/admin | ✅ thống nhất `₫` |
+| 3 | 8/9 bản `esc()` **không escape dấu nháy đơn** → lọt XSS qua thuộc tính `title='...'` | ✅ lấy bản an toàn nhất |
+| 4 | Xung đột global `_lang`: `page-orders.js` đè bản của `cart.js`, làm mất nhánh đọc `localStorage` | ✅ đã sửa |
+| 5 | `toggleFilter` thiếu guard `if (list)` → ném lỗi nếu không có phần tử kế tiếp | ✅ (rồi xoá hẳn ở D-1) |
+| 6 | `product.html` viết `&` trần thay vì `&amp;` | ✅ đã sửa |
+| 7 | `sanpham-ao` có **2 mục menu trùng nhau**, và nhãn sai so với ý đồ thiết kế | ✅ đã sửa |
+| 8 | `showMsg` (login) và `toggleFilter` (index) là hàm chết | ✅ đã xoá |
+
+### Phát hiện thêm — cố ý CHƯA sửa
+
+**N-1** hoá đơn hiện `−0₫` với voucher giảm 0đ · **S-1** `BreezeRoutes.to()` cho qua khoá
+lạ nguyên văn (bẫy open redirect nếu ai đó truyền tham số URL vào) · **H-1** hiệu ứng rê
+chuột đổi ảnh chỉ chạy 1/6 trang danh mục, 5 trang kia vẫn tải ảnh thừa · **Jost thiếu
+subset `vietnamese`** nên chữ Việt có dấu rơi về font hệ thống · **`global.css` trùng
+`sale.css` 78%**, chưa gộp.
+
+### Khảo sát ban đầu sai ở đâu
+
+Đáng ghi lại, vì mọi con số trong kế hoạch đều phải đo lại:
+
+| Kế hoạch ghi | Thực tế |
+|---|---|
+| 8 hàm trùng | Bảng sinh bằng regex bắt cả `var X =`; 4/8 không phải hàm |
+| `money` trùng 3 chỗ | **10 chỗ** |
+| `esc` trùng 3 chỗ | **9 chỗ** |
+| Khoá tra cứu `.html`: 2 chỗ | **30 chỗ** |
+| 52 CRLF / 23 LF | Đo working tree; **repo vốn đã 100% LF** |
+| 19 trang thiếu `theme.js` | **20** |
+| `invoice.html` dùng html2pdf.js | **Không có html2pdf ở bất kỳ đâu** — dùng `window.print()` |
+| 13 kiểu thứ tự script | Đúng 13, nhưng CSS thì 9 kiểu (không được nhắc) |
+
+### Cách kiểm chứng đã dùng
+
+Không tin phân tích tĩnh cho những chỗ quan trọng:
+
+- **Harness nạp cả bộ script theo thứ tự** + fuzz **400 hoán vị** → chứng minh chỉ có 1
+  ràng buộc thứ tự thật trong bộ dùng chung. Có **negative control** để chứng minh
+  harness bắt được lỗi.
+- **Đo `getComputedStyle` bằng Chrome** cho va chạm CSS → 11/12 va chạm tĩnh là dương
+  tính giả.
+- **Pixel-diff** trước/sau ở mỗi task đụng giao diện, 21 trang × 2 chế độ sáng/tối.
+- **Giải nén PDF, đọc bảng `ToUnicode`** để chứng minh ký hiệu `₫` vào được bản in.
+- **Bộ test 315 assertion**, mỗi lần thêm test quan trọng đều kiểm ngược bằng cách cố ý
+  phá code xem test có đỏ không.
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
