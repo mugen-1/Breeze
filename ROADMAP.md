@@ -172,3 +172,25 @@ HOG/
 `categories 1—n products`, `users 1—n orders`, `orders 1—n order_items`,
 `products 1—n order_items`, `users 1—n cart_items`, `products 1—n cart_items`.
 Đơn hàng **snapshot** tên + giá sản phẩm để lịch sử không đổi khi giá/tên sản phẩm thay đổi về sau.
+
+---
+
+## Đợt dọn dẹp trước khi migrate EJS ✅ DONE (2026-08)
+
+10 task dọn codebase frontend, chuẩn bị cho EJS master layout. Nhật ký đầy đủ, các quyết
+định đã chốt kèm lý do, và việc còn nợ: xem [CLEANUP.md](CLEANUP.md).
+Quy ước codebase (thứ tự nạp script/CSS, module dùng chung, cách thêm trang mới):
+xem [CLAUDE.md](CLAUDE.md).
+
+Kết quả chính:
+- JS inline trong HTML: ~90.000 → **6.048 chars** (chỉ còn snippet chống FOUC)
+- Thứ tự nạp script: 13 kiểu → **1 chuẩn duy nhất** cho 21 trang
+- Thứ tự nạp CSS: 9 kiểu → **1 chuẩn duy nhất**
+- Hàm trùng lặp: gộp vào `utils-format.js`, `utils-i18n.js`
+- Đường dẫn: trung tâm hoá vào `js/routes.js` — **0** chỗ hardcode `.html` ngoài file đó
+- Xoá: 4 file JS chết, 192 dòng markup chết, 24 rule CSS mồ côi
+- Thêm bộ test tự động: **12 file / 315 assertion**, chạy bằng
+  `node client/js/__tests__/run-all.js`
+
+**Chưa làm, cố ý:** gộp `global.css` với `sale.css` (trùng 78%) — để thành task riêng;
+336 link `.html` tĩnh trong HTML — để chính lần migrate EJS xử lý bằng `BreezeRoutes.PATHS`.

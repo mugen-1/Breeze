@@ -814,6 +814,76 @@ Các mục sau cần đăng nhập Firebase thật, không tự động hoá đ�
 động phủ (`page-profile.test.js` 30 assertion, `page-invoice.test.js` 31, v.v.) nhưng đó
 là test trên DOM giả, không thay được việc bấm thật.
 
+## TASK 10.3 — 7 câu hỏi về mức độ sẵn sàng cho EJS
+
+**1. Toàn bộ script dùng chung đã có MỘT thứ tự chuẩn chưa?**
+Rồi. 21/21 trang theo đúng một thứ tự (kiểm bằng cách dò nghịch đảo thứ tự tương đối,
+không so nguyên tuple vì mỗi trang nạp tập con khác nhau). 3 ràng buộc cứng + 7 file đọc
+DOM lúc parse đã ghi trong `CLAUDE.md`. Một ngoại lệ: `page-index-slider.js` giữ giữa trang.
+
+**2. Danh sách script "dùng chung mọi trang" vs "riêng từng trang" đã rõ chưa?**
+Rồi.
+
+| Phạm vi | File |
+|---|---|
+| **21/21 — vào partial** | Firebase SDK, `firebase-config`, `api-config`, `routes`, `auth-helper`, `theme`, `i18n`, `utils-format` |
+| **18–19/21 — partial + điều kiện** | `cart` (19), `account-menu` (19), `reveal` (18), `cart-drawer` (18), `drawer-menu` (18) |
+| **Riêng — truyền qua `pageJs`** | `utils-i18n` (7), `products-render` (6), `filter` (6), `auth` (2), và 11 file dùng ở đúng 1 trang |
+
+3 trang không có drawer/footer là `admin`, `checkout`, `invoice` — chính là 3 trang ở câu 6.
+
+**3. Danh sách CSS "dùng chung" vs "riêng từng trang" đã rõ chưa?**
+Rồi. Dùng chung 21/21: `tokens.css` + Font Awesome. Base: `global.css` (13 trang) hoặc
+`sale.css` (7 trang) — **loại trừ nhau**, partial cần một tham số chọn. Riêng trang:
+`chinhsach-doitra` (3), `auth` (3), `admin`/`checkout`/`index-slide`/`profile` (1 mỗi file).
+`invoice.html` chỉ có tokens + Font Awesome.
+
+**4. Header / drawer / footer đã đồng bộ đủ để tách partial chưa?**
+
+| Khối | Biến thể | Sẵn sàng? |
+|---|---|---|
+| `<footer>` | **1** / 18 trang | ✅ copy thẳng |
+| Drawer menu | **1** / 18 trang | ✅ copy thẳng |
+| `policy-header` | **2** / 17 trang | ✅ partial nhận `showSearchBox` (chỉ `search.html` = true) |
+| Header trang chủ | riêng | `index.html` dùng `<header>` riêng có slider — **biến thể thứ 3**, không dùng `policy-header` |
+
+**5. Còn chỗ nào phụ thuộc vào đuôi `.html` trong URL không?**
+Không. `routes.js` là file duy nhất biết đuôi; `currentPageKey()` xử lý cả `/cart.html`
+lẫn `/cart`. Có assertion quét toàn `client/js/` chặn hồi quy. **336 link tĩnh trong HTML
+vẫn còn** — cố ý để lại cho migrate, dùng `BreezeRoutes.PATHS` khi render partial.
+
+**6. Trang nào KHÔNG nên migrate sang layout chung, và vì sao?**
+
+| Trang | Lý do |
+|---|---|
+| `invoice.html` | Không drawer/footer/header. **Không nạp `global.css`** (cố ý — làm hỏng bản in). Snippet theme rút gọn ép light. Là tài liệu để in, không phải trang web thường |
+| `admin.html` | Không drawer/footer. Dùng `<header class="adm-topbar">` riêng, `admin.css` riêng, snippet ép light. Là bảng điều khiển, khác hẳn storefront |
+| `checkout.html` | Không drawer/footer. Dùng `<header class="co-hero">` riêng — luồng thanh toán tối giản **có chủ đích**, bỏ điều hướng để giảm thoát trang |
+
+`index.html` migrate được nhưng **cần biến thể header riêng**.
+
+**7. Còn rủi ro nào chưa xử lý mà tôi nên biết trước khi migrate?**
+
+1. **`global.css` vs `sale.css` trùng 78%** — chưa gộp, đã chốt để thành task riêng sau
+   TASK 10. Rủi ro thật: `search.html` được tạo kiểu bằng nhánh `body.category-page`
+   trong `global.css`, còn 6 trang danh mục dùng selector không scope trong `sale.css` —
+   **hai đường hoàn toàn khác nhau cho cùng một loại trang**. Đừng coi việc gộp là thao
+   tác cơ học.
+2. **3 mục còn nợ**: N-1, S-1, H-1 — xem mục dưới.
+3. **Chưa test tay** toàn bộ luồng cần đăng nhập (checkout, admin, in hoá đơn PDF).
+4. **`index.html` không tất định** khi chụp ảnh so sánh (animation slider) — đừng dùng
+   làm mốc pixel-diff.
+5. **Font Jost không có subset `vietnamese`** — chữ Việt có dấu thanh đang rơi về font hệ
+   thống. Có từ trước, chưa xử lý.
+
+## TASK 10.4 — Tài liệu đã cập nhật
+
+- **`CLAUDE.md`** (mới tạo): thứ tự nạp script/CSS chuẩn, 3 ràng buộc cứng, 7 file đọc DOM
+  lúc parse, module dùng chung, quy tắc đường dẫn, quy ước khi thêm trang mới, cách chạy test.
+- **`CLEANUP.md`**: toàn bộ nhật ký 10 task, các quyết định đã chốt kèm lý do, và mục
+  "Việc còn nợ".
+- **`ROADMAP.md`**: thêm mục ghi nhận đợt dọn dẹp đã xong.
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
@@ -941,7 +1011,7 @@ không. Chi tiết và giới hạn: xem `client/js/__tests__/README.md`.
 | 7 — Bỏ hardcode `.html` | ✅ xong | `6a5eb87` |
 | 8 — Đồng bộ partial | ✅ xong | `3492631`, `+1` |
 | 9 — Gộp 6 trang danh mục (Hướng 2) | ✅ xong | `80d5786` + D-1 |
-| 10 — Kiểm tra tổng thể | chưa làm | |
+| 10 — Kiểm tra tổng thể | ✅ xong | `3fb0cec` + `+1` |
 
 Checkpoint trước cả đợt: `5397db8`.
 
