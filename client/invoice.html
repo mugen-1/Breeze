@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hoá đơn - BREEZE</title>
     <!-- Hoá đơn LUÔN nền sáng (in ra giấy), bỏ qua breeze-theme của user. -->
+    <!-- CỐ Ý ép light, KHÔNG dùng snippet chống FOUC đầy đủ như 19 trang kia.
+         Hai lý do: (1) đây là trang để IN — nền tối tốn mực và khó đọc;
+         (2) <style> của trang trộn 16 biến token với 21 màu cứng, nên ở chế độ tối
+         chữ đổi theo token còn nền giấy vẫn trắng -> tương phản hỏng, gần như không
+         đọc được (đã dựng thử và chụp lại ở TASK 8.3).
+         ĐỪNG "đồng bộ" chỗ này với các trang khác. -->
     <script>document.documentElement.setAttribute('data-theme','light');</script>
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
