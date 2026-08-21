@@ -791,6 +791,54 @@ Lưu ý cho người đọc sau: `keyOf()` **không phải hàm xác thực**.
 Vô hại ở cách dùng hiện tại, nhưng đừng dùng `keyOf()` để "kiểm tra hợp lệ" rồi điều
 hướng tới chính input đó.
 
+### D-1 — Toàn bộ `<aside class="sidebar">` ở 6 trang danh mục là MARKUP CHẾT
+
+- **Ở đâu:** `client/css/sale.css:607` → `.sidebar { display: none !important; }`
+  **Không kèm media query** — sidebar không bao giờ hiện, ở mọi độ rộng. Đã đo computed
+  style tại 1280 / 1440 / 1600px: `display=none`, `width=0px` ở cả ba.
+- **Quy mô:** 31 dòng × 6 trang = **186 dòng markup** không render gì.
+- **Không JS nào đọc nó.** `filter.js` và `products-render.js` chỉ truy vấn `#fd-drawer`
+  (dòng 144, 152, 179, 182 của products-render.js), mà `#fd-drawer` do `filter.js` **tự
+  dựng bằng JS** — HTML có **0** chỗ nhắc tới `fd-drawer`.
+- **Hệ quả tới TASK 4:** cả **12** lời gọi `onclick="toggleFilter(this)"` (2 mỗi trang)
+  đều nằm **bên trong** khối ẩn này → **`toggleFilter` không bao giờ kích hoạt được**
+  (không click được phần tử `display:none`). Nghĩa là `client/js/filter-ui.js` mà TASK 4
+  tạo ra là **code chết**. Lúc gộp tôi có xác minh 6 bản giống hệt nhau và có người gọi,
+  nhưng KHÔNG kiểm phần tử gọi nó có hiển thị không.
+- **Còn một dấu vết nữa:** class `.sidebar-hidden-ref` (sale.css:609) chỉ tồn tại trong
+  CSS, không HTML hay JS nào dùng.
+- **Đề xuất:** xoá cả khối `<aside class="sidebar">` ở 6 trang + `filter-ui.js` + 2 rule
+  CSS mồ côi. Nhưng đây là xoá 186 dòng markup nên cần duyệt riêng, dù đã chứng minh là
+  vô hình.
+- **Mức độ:** không gây lỗi, nhưng làm 6 trang phình lên và đánh lừa người đọc code —
+  đúng thứ đợt dọn dẹp này sinh ra để loại bỏ.
+
+### H-1 — Hiệu ứng rê chuột đổi ảnh chỉ chạy ở 1/6 trang danh mục
+
+- **Ở đâu:** `products-render.js:60-61` sinh `<img class="thumb-hover thumb-fill">` cho
+  **mọi** card ở cả 6 trang. Nhưng CSS cho `.thumb-hover`/`.thumb-fill` chỉ tồn tại
+  trong khối scope `body[data-category="sanpham-ao"]` của `sale.css`.
+  `global.css` cũng có **0** rule → `search.html` cũng không có hiệu ứng.
+- **Bằng chứng đo được** (computed style của ảnh thứ hai trong card đầu):
+
+| Trang | `position` | `opacity` | Kết quả |
+|---|---|---|---|
+| sanpham-ao | `absolute` | `0` | ✅ hiệu ứng chạy |
+| sanpham-quan | `static` | `1` | ❌ |
+| sanpham-giay | `static` | `1` | ❌ |
+| handbags | `static` | `1` | ❌ |
+| gold-jewellery | `static` | `0.55` | ❌ (0.55 do card đầu hết hàng) |
+| sale | `static` | `1` | ❌ |
+| search | `static` | `1` | ❌ |
+
+- **Vì sao không ai thấy:** `.product-thumb` có `overflow:hidden` + `aspect-ratio` cố
+  định nên ảnh thứ hai bị cắt sạch. Nhìn thì bình thường.
+- **Chi phí thật:** mỗi card vẫn **tải và dựng bố cục cho một ảnh thừa** không dùng đến.
+- **Khi xử lý, cân nhắc cả hai hướng:** bật hiệu ứng cho 5 trang còn lại + `search.html`,
+  HOẶC bỏ hẳn ảnh hover thứ hai nếu phần lớn trang không cần. Hướng thứ hai giảm được
+  băng thông.
+- **Mức độ:** thấp về giao diện, nhưng là tính năng đang hỏng âm thầm.
+
 ### N-1 — Hoá đơn hiện "Giảm giá: −0đ" với voucher giảm 0đ
 
 - **Ở đâu:** `client/js/page-invoice.js`, điều kiện `if (discount > 0 || o.voucher_code)`
