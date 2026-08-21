@@ -693,6 +693,65 @@ Muốn admin hỗ trợ tối thật thì phải cho Chart.js đọc token trư�
 không phải đổi một dòng snippet. **Đã thêm comment giải thích vào cả 2 file** để sau này
 không ai "đồng bộ nhầm".
 
+## TASK 9.1 — Diff 6 trang danh mục (CHƯA sửa, chờ duyệt)
+
+### Bảng đối chiếu
+
+| Điểm | sanpham-ao | sanpham-quan | sanpham-giay | handbags | gold-jewellery | sale |
+|---|---|---|---|---|---|---|
+| `<title>` | Áo | Quần | Giày & Dép | Túi Xách | Phụ Kiện | Khuyến Mãi |
+| `data-category` | sanpham-ao | sanpham-quan | sanpham-giay | handbags | gold-jewellery | **— không có** |
+| `data-onsale` | — | — | — | — | — | **`"1"`** |
+| `data-i18n-doctitle` | title.shirt | title.pants | title.shoes | title.handbags | title.accessories | title.sale |
+| `body class` | \<đều `category-page sitehdr`\> | | | | | |
+| Chữ trong `<h4>` | Áo | Quần | Giày &amp; Dép | **Handbags** | Phụ Kiện | Khuyến Mãi |
+| `<h4>` có `data-i18n` | không | không | không | không | không | không |
+| Số nhóm lọc | 2 | 2 | 2 | 2 | 2 | 2 |
+| Số ô lọc giá | 4 | 4 | 4 | 4 | 4 | 4 |
+| Số radio sắp xếp | 3 | 3 | 3 | 3 | 3 | 3 |
+| `<ul class="products">` | có | có | có | có | có | có |
+| Số dòng file | **210** | 172 | 172 | 171 | 168 | 171 |
+
+**Tin tốt: bộ lọc giống hệt nhau ở cả 6 trang** — 2 nhóm, 4 ô giá, 3 radio sắp xếp.
+Khảo sát gốc lo `sanpham-ao` có filter riêng (size áo); **không có**.
+
+### Mô hình tham số hoá ĐÃ TỒN TẠI sẵn
+
+`products-render.js` dòng 191-194 đọc thẳng từ `<body>`:
+
+```js
+category   = (document.body.getAttribute('data-category') || '').trim();
+onsaleMode =  document.body.getAttribute('data-onsale') === '1';
+if (!listEl || (!category && !onsaleMode)) return;
+```
+
+Nghĩa là **không cần phát minh mô hình mới** — chỉ cần bổ sung chỗ thiếu và thống nhất.
+`sale.html` đúng là trường hợp đặc biệt (gom hàng giảm giá từ mọi danh mục), và nó đã
+được xử lý bằng cờ riêng chứ không phải slug.
+
+### 4 lệch THẬT tìm được (không phải chuyện gộp template)
+
+**L-1. `sanpham-ao.html` có link sidebar TRÙNG.** Hai thẻ cùng trỏ `sanpham-ao.html`:
+```html
+<li><a href="sanpham-ao.html" class="active">Áo</a></li>
+<li><a href="sanpham-ao.html">Áo</a></li>
+```
+Menu hiện 2 mục giống hệt nhau. Đây là lỗi nhìn thấy được, không phải khác biệt có chủ đích.
+
+**L-2. `sanpham-quan` và `sanpham-giay` KHÔNG có link tự trỏ về mình** trong sidebar, nên
+cũng không có mục nào được đánh dấu `class="active"`. 4 trang kia đều có.
+
+**L-3. Nhãn link đầu tiên không nhất quán.** Cùng trỏ `sanpham-ao.html` nhưng
+`sanpham-ao` ghi "Áo", 5 trang kia ghi "Sản phẩm".
+
+**L-4. `sanpham-ao.html` có khối `<style>` inline 34 dòng** ghi đè kiểu ảnh thumbnail
+(`object-fit: contain` thay vì `cover`). Comment bên trong còn sót chữ *"sách: không cắt
+bìa"* — di sản từ dự án bán sách cũ. Đây là lý do file dài hơn 40 dòng.
+
+**Ghi chú:** `<h4>` tiêu đề không trang nào có `data-i18n`; bản dịch đi qua bảng
+`t.page[khoá trang]` trong `i18n.js` — chính là cơ chế B2 đã sửa ở TASK 7. Chữ gốc
+trong HTML lẫn lộn Việt/Anh (`Handbags` vs `Túi Xách`) nhưng không ảnh hưởng vì i18n ghi đè.
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
