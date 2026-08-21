@@ -752,6 +752,68 @@ bìa"* — di sản từ dự án bán sách cũ. Đây là lý do file dài hơ
 `t.page[khoá trang]` trong `i18n.js` — chính là cơ chế B2 đã sửa ở TASK 7. Chữ gốc
 trong HTML lẫn lộn Việt/Anh (`Handbags` vs `Túi Xách`) nhưng không ảnh hưởng vì i18n ghi đè.
 
+## TASK 10 — Kiểm tra tổng thể (10.1 + 10.2)
+
+### 10.1 Bảng chỉ số — đo lại thật, không phỏng đoán
+
+| Chỉ số | Trước dọn dẹp | Mục tiêu | **Thực tế** |
+|---|---|---|---|
+| JS inline trong HTML | ~90.000 chars | chỉ còn snippet FOUC | **6.048 — đúng bằng FOUC, phần dư 0** ✅ |
+| Tên global bị trùng | 8 hàm (số sai) | 0 | **1 — `addToCart`, CÓ CHỦ ĐÍCH** ✳️ |
+| Biến thể drawer menu | 2 | 1 | **1** ✅ |
+| Biến thể footer | 1 | 1 | **1** ✅ |
+| Biến thể policy-header | 2 | 1 hoặc 2 có chủ đích | **2 — có chủ đích** ✅ |
+| Thứ tự script | mỗi trang một kiểu (13) | 1 thứ tự chuẩn | **1** ✅ |
+| Trang thiếu `theme.js` | 20 | 0 | **0** ✅ |
+| File JS chết | 4 | 0 | **0** ✅ |
+| File có BOM | 13 | 0 | **0** ✅ |
+| Link `.html` cứng trong JS | 113 (thật: 46) | dùng module routes | **0 ngoài `routes.js`** ✅ |
+| Khoá tra cứu theo `.html` | 2 chỗ (thật: 30) | 0 | **0** ✅ |
+
+✳️ `addToCart` xuất hiện ở `cart.js` (bản gốc) và `cart-drawer.js` (bọc đè để mở drawer
+khi thêm giỏ). Đây là monkey-patch **có chủ đích**, đã phân tích ở TASK 5.1: việc bọc nằm
+trong `init()` chạy ở `DOMContentLoaded` nên thứ tự nạp không ảnh hưởng.
+
+**Cảnh báo về phép đo:** lần đầu tôi đo "3 kiểu thứ tự script" — SAI, do so nguyên tuple
+trong khi các trang nạp **tập con** khác nhau. Cách đo đúng là kiểm thứ tự **tương đối**
+có nghịch đảo không. Đo lại: 21/21 trang đều theo đúng thứ tự chuẩn.
+
+### 10.2 Regression test — phần tự động hoá được
+
+| Hạng mục | Kết quả |
+|---|---|
+| 21/21 trang trả HTTP 200 | ✅ |
+| Asset nội bộ (`.js`/`.css`) gãy | **0** trên cả 21 trang |
+| Lỗi console khi tải | **0** trên cả 21 trang |
+| `window.BreezeRoutes` / `BreezeTheme` / `__i18n` / `money` | có đủ trên 21/21 |
+| `currentPageKey()` trả đúng khoá | 21/21 |
+| Đổi VI/EN bằng nút thật | **12/12 trang đổi đúng**, `document.title` dịch chuẩn |
+| Khoá i18n thô lọt ra giao diện | **0** |
+| API công khai (`/api/health`, `/api/products`, lọc theo category, `onsale=1`) | 200, có dữ liệu |
+| API cần quyền (`/api/orders`, `/api/me`, `/api/admin/orders`, `/api/account/addresses`) | **401** đúng như mong đợi |
+| Trang danh mục render card | 6 card |
+| Trang khuyến mãi render card | 14 card |
+| Tìm kiếm `?q=quan` | 10 kết quả |
+| Chi tiết sản phẩm: tên + giá | có |
+| Trang chủ: slide active | 1 |
+| Nút FILTER & SORT + nút thêm giỏ | có |
+| Bộ test tự động | **12 file / 315 assertion, 0 fail** |
+
+### CHƯA test được — nói rõ, không giả định
+
+Các mục sau cần đăng nhập Firebase thật, không tự động hoá được trong phiên này:
+
+- Đăng ký / đăng nhập / đăng xuất / quên mật khẩu
+- Trang profile: sửa thông tin, upload avatar, sổ địa chỉ, phương thức thanh toán, privacy
+- Checkout: đặt hàng, áp voucher
+- Lịch sử đơn hàng, xuất hoá đơn PDF
+- Xoá tài khoản khi còn đơn pending (chặn 409)
+- Toàn bộ trang admin: dashboard, KPI, biểu đồ, quản lý sản phẩm/đơn/user, audit log
+
+**Người dùng cần tự chạy checklist này trước khi migrate.** Logic của chúng có test tự
+động phủ (`page-profile.test.js` 30 assertion, `page-invoice.test.js` 31, v.v.) nhưng đó
+là test trên DOM giả, không thay được việc bấm thật.
+
 ## Việc còn nợ (phát hiện trong lúc dọn, CỐ Ý chưa sửa)
 
 Ghi ở đây để không trôi mất qua các task sau.
