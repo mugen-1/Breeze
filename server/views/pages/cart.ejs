@@ -1,0 +1,42 @@
+<%
+/* cart.ejs — CHỈ phần thân riêng của trang. Header / drawer / footer / scripts do
+   layouts/main.ejs lo.
+
+   cart.js và cart-drawer.js: cart-drawer.js CỐ Ý bọc đè window.addToCart trong init() chạy ở DOMContentLoaded, nên thứ tự 2 file này tự do — ĐỪNG "sửa". i18n.js gọi window.renderCart() khi BreezeRoutes.is("cart") — giữ nguyên. 158 dòng <style> ở partials/cart-style.ejs. */
+-%>
+
+    <div id="cart-wrapper">
+        <div class="cart-heading">Giỏ Hàng</div>
+
+        <div class="cart-empty" id="cart-empty" style="display:none;">
+            <i class="fa fa-shopping-cart"></i>
+            Giỏ hàng của bạn đang trống.
+            <br><br>
+            <a href="index.html">Tiếp tục mua sắm</a>
+        </div>
+
+        <div id="cart-content">
+            <table class="cart-table">
+                <thead>
+                    <tr>
+                        <th style="width:70px"></th>
+                        <th>Sản phẩm</th>
+                        <th>Đơn giá</th>
+                        <th>Số lượng</th>
+                        <th>Thành tiền</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="cart-body"></tbody>
+            </table>
+
+            <div class="cart-summary">
+                <div class="cart-total">Tổng cộng: <span id="cart-total-price">0đ</span></div>
+                <div id="checkout-msg" class="checkout-msg" style="display:none; font-size:14px; font-weight:600; text-align:right;"></div>
+                <button class="btn-checkout" onclick="checkout()">Thanh Toán</button>
+                <a href="orders.html" id="view-orders-link" class="cart-continue" style="display:none;">Xem đơn hàng của tôi →</a>
+                <a href="index.html" class="cart-continue">← Tiếp tục mua sắm</a>
+            </div>
+        </div>
+    </div>
+

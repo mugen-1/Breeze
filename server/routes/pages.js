@@ -101,6 +101,38 @@ const PAGES = {
     bodyClass: 'category-page sitehdr', bodyData: { category: 'gold-jewellery' },
     pageJs: ['filter.js', 'products-render.js'], closeHtml: false,
   },
+  /* --- Nhóm cần đăng nhập -------------------------------------------------------
+     Không đụng gì tới luồng auth: auth.js / auth-helper.js / page-*.js giữ nguyên,
+     server chỉ trả markup. auth.js có nhánh keyOf(redirect) === 'checkout' — logic
+     redirect KHÔNG đổi (xem S-1). */
+  login: {
+    view: 'login', title: 'Đăng Nhập - BREEZE', i18nTitle: 'au.loginDocTitle',
+    bodyClass: 'sitehdr', pageCss: ['auth.css'],
+    useUtilsI18n: true, pageJs: ['auth.js', 'page-login.js'],
+  },
+  signup: {
+    view: 'signup', title: 'Tạo Tài Khoản - BREEZE', i18nTitle: 'au.signupDocTitle',
+    bodyClass: 'sitehdr', pageCss: ['auth.css'],
+    useUtilsI18n: true, pageJs: ['auth.js'],
+  },
+  'forgot-password': {
+    view: 'forgot-password', title: 'Quên Mật Khẩu - BREEZE', i18nTitle: 'au.forgotDocTitle',
+    bodyClass: 'sitehdr', pageCss: ['auth.css'],
+  },
+  profile: {
+    view: 'profile', title: 'Cài Đặt Tài Khoản - BREEZE', i18nTitle: 'pf.docTitle',
+    bodyClass: 'sitehdr', pageCss: ['profile.css'],
+    useUtilsI18n: true, pageJs: ['payment-methods.js', 'page-profile.js'],
+  },
+  orders: {
+    view: 'orders', title: 'Đơn Hàng Của Tôi - BREEZE', i18nTitle: 'title.orders',
+    bodyClass: 'sitehdr', headExtra: 'orders-style', pageJs: ['page-orders.js'],
+  },
+  cart: {
+    view: 'cart', title: 'Giỏ Hàng - BREEZE', i18nTitle: 'title.cart',
+    bodyClass: 'sitehdr', headExtra: 'cart-style', pageJs: ['page-cart.js'],
+  },
+
   /* --- Trang chủ ----------------------------------------------------------------
      Biến thể header thứ 3: <header> riêng có slider, KHÔNG dùng policy-header.
      page-index-slider.js KHÔNG nằm trong pageJs — nó ở giữa pages/index.ejs, ngay sau
