@@ -1,0 +1,96 @@
+    <style>
+        body { display: flex; flex-direction: column; min-height: 100vh; background-color: #fff; color: #111; }
+
+        #orders-wrapper {
+            flex: 1;
+            max-width: 900px;
+            margin: 40px auto 60px;
+            width: 100%;
+            padding: 32px;
+            box-sizing: border-box;
+        }
+        .orders-heading {
+            font-size: 20px;
+            font-weight: 700;
+            color: #111;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #e5e5e5;
+            padding-bottom: 16px;
+            margin-bottom: 28px;
+        }
+        .orders-notice {
+            text-align: center;
+            padding: 80px 20px;
+            color: #888;
+            font-size: 15px;
+        }
+        .orders-notice i { font-size: 52px; display: block; margin-bottom: 16px; color: #ccc; }
+        .orders-notice a { color: #555; text-decoration: underline; }
+
+        .order-card {
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            margin-bottom: 22px;
+            overflow: hidden;
+        }
+        .order-head {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 24px;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: #f7f7f7;
+            border-bottom: 1px solid #eee;
+        }
+        .order-head .oh-id { font-weight: 700; color: #111; font-size: 15px; }
+        .order-head .oh-meta { color: #777; font-size: 13px; }
+        .order-status {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: #fff3cd;
+            color: #8a6d00;
+            border: 1px solid #f0e0a0;
+        }
+        .order-status.paid { background: #d4edda; color: #1c6b2c; border-color: #b5dfbf; }
+        .order-status.shipped { background: #d6e4ff; color: #1a49b8; border-color: #b6ccf5; }
+        .order-status.cancelled { background: #f8d7da; color: #a12833; border-color: #f0b6bc; }
+
+        .order-items { width: 100%; border-collapse: collapse; }
+        .order-items th {
+            text-align: left;
+            font-size: 11px;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: #999;
+            padding: 10px 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .order-items th.num, .order-items td.num { text-align: right; }
+        .order-items td {
+            padding: 12px 20px;
+            border-bottom: 1px solid #f4f4f4;
+            font-size: 14px;
+            color: #333;
+        }
+        .order-items tr:last-child td { border-bottom: none; }
+        .order-foot {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 14px 20px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #111;
+            border-top: 1px solid #eee;
+        }
+        .order-foot span:last-child { color: #e84118; }
+
+        .orders-continue { display: inline-block; margin-top: 8px; color: #888; font-size: 13px; text-decoration: underline; }
+        .orders-continue:hover { color: #555; }
+    </style>

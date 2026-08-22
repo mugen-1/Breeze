@@ -1,0 +1,99 @@
+<%
+/* signup.ejs — CHỈ phần thân riêng của trang. Header / drawer / footer / scripts do
+   layouts/main.ejs lo.
+
+   auth.js phụ thuộc firebase-config.js (RB2). Trang này không có page-signup.js riêng, auth.js lo cả form đăng ký. */
+-%>
+
+    <div class="auth-body">
+        <div class="auth-container">
+
+            <!-- =====================================================
+                 LOGO PLACEHOLDER — thêm logo của bạn vào đây
+                 Xóa dòng comment và thay bằng:
+                 <img src="img/TEN_FILE_LOGO.png" alt="Logo" class="auth-logo-img">
+                 ===================================================== -->
+            <div class="auth-logo">
+                <!-- ADD LOGO HERE -->
+            </div>
+
+            <!-- TABS: Sign in | Create Account -->
+            <div class="auth-tabs">
+                <a href="login.html" class="auth-tab" data-i18n="au.tabSignin">Sign in</a>
+                <span class="auth-tab active" data-i18n="au.tabSignup">Create Account</span>
+            </div>
+
+            <!-- FORM DANG KY -->
+            <form onsubmit="event.preventDefault(); dangKy();">
+
+                <!-- HO VA TEN -->
+                <div class="auth-input-group">
+                    <input id="reg-name"
+                           class="auth-input"
+                           type="text"
+                           placeholder="* FULL NAME" data-i18n-ph="au.phFullname"
+                           required/>
+                </div>
+
+                <!-- EMAIL -->
+                <div class="auth-input-group">
+                    <input id="reg-email"
+                           class="auth-input"
+                           type="email"
+                           placeholder="* EMAIL ADDRESS" data-i18n-ph="au.phEmail"
+                           required/>
+                </div>
+
+                <!-- PASSWORD -->
+                <div class="auth-input-group">
+                    <input id="reg-password"
+                           class="auth-input"
+                           type="password"
+                           placeholder="* PASSWORD (At least 6 characters)" data-i18n-ph="au.phPassword6"
+                           required/>
+                </div>
+
+                <!-- XAC NHAN PASSWORD -->
+                <div class="auth-input-group">
+                    <input id="reg-confirm"
+                           class="auth-input"
+                           type="password"
+                           placeholder="* CONFIRM PASSWORD" data-i18n-ph="au.phConfirm"
+                           required/>
+                </div>
+
+                <!-- REQUIRED NOTE -->
+                <div class="auth-meta-row">
+                    <span></span>
+                    <span class="auth-required" data-i18n="au.required">* Required</span>
+                </div>
+
+                <!-- THONG BAO LOI / THANH CONG -->
+                <p id="signup-msg" class="auth-msg"></p>
+
+                <!-- NUT CREATE ACCOUNT -->
+                <button type="submit" class="auth-btn" data-i18n="au.btnSignup">CREATE ACCOUNT</button>
+
+            </form>
+
+            <!-- OR DIVIDER -->
+            <div class="auth-divider">
+                <hr><span data-i18n="au.or">OR</span><hr>
+            </div>
+
+            <!-- SOCIAL BUTTONS (trang tri) -->
+            <div class="auth-socials">
+                <button class="auth-social-btn" type="button" title="Facebook">
+                    <i class="fa fa-facebook" style="color:#1877f2;"></i>
+                </button>
+                <button class="auth-social-btn" type="button" title="Google">
+                    <i class="fa fa-google" style="color:#ea4335;"></i>
+                </button>
+                <button class="auth-social-btn" type="button" title="Apple">
+                    <i class="fa fa-apple" style="color:#000;"></i>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
