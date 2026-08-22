@@ -1114,3 +1114,127 @@ Ba file có **ràng buộc vị trí bắt buộc** (đã ghi comment cảnh bá
 đọc DOM / gắn listener ngay lúc parse, không chờ `DOMContentLoaded`:
 `page-search.js`, `page-product.js`, `page-index-slider.js`. TASK 5 không được dời
 chúng lên trước phần markup tương ứng.
+
+---
+
+# Đợt migrate EJS master layout
+
+Nối tiếp 10 TASK dọn dẹp ở trên. Nhánh `refactor/ejs-master-layout`, checkpoint
+`859a175`.
+
+## Kết quả
+
+| | Trước | Sau |
+|---|---|---|
+| File HTML trong `client/` | 21 | 3 (`invoice`, `admin`, `checkout`) + 18 file cũ **chờ duyệt xoá** |
+| View EJS | 0 | 1 layout + 7 partial + 13 view trang |
+| Markup header/drawer/footer lặp lại | 18 bản | 1 bản |
+| 6 trang danh mục | 6 file gần giống hệt | 1 `category.ejs` + 6 mục tham số |
+| Dòng HTML trùng lặp loại bỏ | — | ~1.900 dòng (18 trang × ~105 dòng chrome) |
+
+## Cách kiểm chứng đã dùng — và vì sao KHÔNG pixel-diff
+
+Kế hoạch gốc yêu cầu pixel-diff 2 chế độ. **Máy này không có headless browser**
+(`client/node_modules` chỉ có `firebase`, không puppeteer/playwright). Thay bằng phép
+kiểm mạnh hơn và tất định:
+
+`server/tools/domdiff.js` tách HTML thành **chuỗi token DOM** — mỗi thẻ thành
+`<tên attr1="v1" attr2="v2">` với attribute **sắp xếp theo tên**, khoảng trắng gom về
+một dấu cách, entity giải mã, text gom khoảng trắng. Token trùng + CSS/JS không đổi ⇒
+pixel bằng nhau **theo định nghĩa**, không cần chụp ảnh. Nó cũng tránh được bẫy 3.2:
+`index.html` chạy animation nên ảnh chụp không bao giờ tất định.
+
+**Negative control (`domdiff.js --selftest`)** cố tình phá 5 kiểu — đổi class, mất
+`data-`, đảo thứ tự thẻ, đổi chữ, mất `aria-` — và phải bắt được cả 5, đồng thời trả 0
+cho bản giống hệt. Không có bước này thì "0 khác biệt" chẳng chứng minh được gì.
+
+Nó **đã bắt lỗi thật** trong lúc làm: `headline: 'Giày &amp; Dép'` bị `<%= %>` escape
+thành `&amp;amp;`.
+
+### Kết quả cuối
+
+18/18 trang khớp DOM contract. Token: policy 293/304/332 · danh mục 257×6 ·
+product 463 · search 277 · index 443 · login 321 · signup 313 · forgot 273 ·
+profile 1008 · orders 288 · cart 312.
+
+## Khác biệt CÓ CHỦ Ý so với bản cũ
+
+**8 comment HTML bị bỏ** (`Header trên cùng kiểu Breeze`, `Nội dung chính sách`,
+`Footer nhiều cột kiểu index` ×3 trang chính sách; `Firebase SDK` ×3 trang auth; ghi chú
+kỹ thuật cuối `search.html`). Comment không phải `class`/`id`/`data-`/`aria-`, không JS
+nào query, không ảnh hưởng render. Ghi chú của `search.html` được chuyển vào
+`views/pages/search.ejs` dưới dạng chú thích server — kiến thức giữ lại, không gửi ra
+trình duyệt nữa.
+
+**7 chuẩn hoá ở `<head>`, cả 7 đều là trang lẻ loi so với số đông:**
+
+| Trang | Cũ | Mới | Vì sao vô hại |
+|---|---|---|---|
+| `index` | `<html>` | `<html lang="vi">` | 13 trang kia đều có; `i18n.js` gọi `documentElement.setAttribute('lang', …)` ngay lúc tải nên sau khi JS chạy hai bản giống hệt |
+| `index` | `<title>` trước `<meta viewport>` | sau | thứ tự 2 thẻ này trong `<head>` không ảnh hưởng gì |
+| `profile` | `<link href="css/profile.css" rel="stylesheet">` | thêm `type="text/css"` | HTML5 coi `text/css` là mặc định; 20 trang kia đều có |
+| `profile` | `<script src="js/theme.js" defer>` | bỏ `defer` | **đã kiểm**: `theme.js` chỉ định nghĩa `window.BreezeTheme`, không đọc DOM, không có tác dụng phụ lúc nạp; mọi chỗ dùng nó chạy từ `DOMContentLoaded` trở đi, mà script `defer` chạy TRƯỚC `DOMContentLoaded` |
+
+`server/tools/domdiff.js` giữ danh sách này trong hằng `KNOWN`, kèm lý do từng mục.
+Muốn thêm mục mới vào đó thì phải viết được lý do — không thì đừng thêm.
+
+## Bẫy đã tránh đúng như dự báo
+
+- **3.1** — 6 trang danh mục + `product` vẫn nạp `sale.css`, KHÔNG đổi sang `global.css`.
+- **3.2** — không dùng ảnh chụp cho `index.html`; kiểm bằng DOM + đếm phần tử slider.
+- **3.3 / S-1** — server KHÔNG đọc query string. `product.html?id=` và `search.html?q=`
+  vẫn do client tự đọc từ `location.search`. Không có tham số URL nào chạm vào `to()`.
+- **D-1** — không dựng lại `<aside class="sidebar">`.
+- **3.4** — tham số Google Fonts giữ nguyên, kể cả `subset=vietnamese` vô dụng với Jost.
+
+## Phát hiện thêm — CỐ Ý chưa sửa
+
+### Q-1 — 7 trang chạy quirks mode, không có `<meta viewport>`
+
+`sanpham-ao`, `sanpham-quan`, `sanpham-giay`, `handbags`, `gold-jewellery`, `sale`,
+`product` **không có `<!DOCTYPE>`, `<html>`, `<head>`, `<meta charset>`, `<meta viewport>`** —
+file bắt đầu thẳng bằng `<link>`. Không doctype ⇒ **quirks mode**. Không viewport ⇒
+điện thoại không scale theo chiều rộng thiết bị.
+
+CLAUDE.md và CLEANUP.md trước đây **không ghi điều này**. Đợt migrate giữ nguyên hiện
+trạng qua tham số `headVariant: 'fragment'`, vì thêm doctype là đổi chế độ render giữa
+chừng — phải đo lại toàn bộ giao diện, không phải việc của đợt này.
+
+Đã đo phần giảm nhẹ: `sale.css` và `global.css` đều có `* { box-sizing: border-box }`,
+nên khác biệt lớn nhất của quirks mode (box model) đã bị trung hoà sẵn.
+`Content-Type: text/html; charset=utf-8` do server gửi nên tiếng Việt vẫn đúng.
+
+Muốn sửa: đổi 7 mục đó sang `headVariant: 'standard'` trong `routes/pages.js` — một
+dòng mỗi trang — rồi kiểm lại giao diện 7 trang × 2 chế độ × 2 cỡ màn hình.
+
+### C-1 — trang EJS không gửi `Cache-Control`
+
+`express.static` gửi `Cache-Control: public, max-age=0` + `Last-Modified`; `res.render`
+chỉ gửi `ETag`. Chưa thấy hệ quả (không có `Last-Modified` thì trình duyệt hầu như không
+cache theo phỏng đoán), nhưng nếu muốn chắc chắn thì thêm `res.set('Cache-Control',
+'public, max-age=0')` trong handler của `routes/pages.js`.
+
+### X-1 — 4 khối `<style>` inline vẫn nằm trong `<head>`
+
+`product` 250 dòng, `cart` 158, `search` 92, `orders` 96 — tổng ~596 dòng CSS viết thẳng
+trong HTML, nay ở `views/partials/*-style.ejs`. Giữ inline có chủ ý: đổi `<style>` thành
+`<link>` là đổi DOM **và** đổi thứ tự thắng thua của CSS (chúng đang đứng sau `sale.css`/
+`global.css`). Tách ra file được, nhưng phải kiểm lại giao diện 4 trang đó.
+
+### `handbags` có `<h4>Handbags</h4>` bằng tiếng Anh
+
+5 trang danh mục kia để tiếng Việt. Giữ nguyên vì `i18n.js` ghi đè ngay lúc chạy
+(`querySelector('.headline h4')` + `t.page[currentPage()]`), nên người dùng không thấy
+khác biệt — nhưng nếu JS chưa chạy xong thì chớp một nhịp chữ Anh.
+
+### `handbags.html` và `sale.html` cũ có `</body>` hai lần
+
+Trình duyệt bỏ qua thẻ thứ hai. Bản EJS chỉ có một — đúng hơn, không đổi gì.
+
+## DEL-1 — 18 file `.html` chờ duyệt xoá
+
+Chưa xoá file nào. 18 file cũ còn nguyên trong `client/` làm bản đối chiếu:
+comment một dòng trong bảng `PAGES` là `express.static` trả lại bản cũ, không cần
+rollback git. Route `/ejs-healthcheck` cũng còn.
+
+Xoá sau khi tick xong [CHECKLIST-EJS.md](CHECKLIST-EJS.md).

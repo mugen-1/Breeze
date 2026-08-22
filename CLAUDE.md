@@ -3,10 +3,15 @@
 Web bán hàng thời trang. Node.js/Express + SQL Server + Firebase Auth; frontend
 HTML/CSS/JS thuần, không build step.
 
-`client/` — 21 trang `.html` tĩnh + `client/js/` + `client/css/`
-`server/` — Express API
+18/21 trang render bằng **EJS master layout**; 3 trang còn lại vẫn là `.html` tĩnh.
+
+`client/js/`, `client/css/` — frontend, không đổi gì trong đợt migrate
+`client/*.html` — `invoice`, `admin`, `checkout` (cố ý không migrate)
+`server/views/` — layout + partial + view từng trang
+`server/routes/pages.js` — bảng `PAGES`: mỗi trang là một mục tham số
 
 Tài liệu đợt dọn dẹp trước khi migrate EJS: xem [CLEANUP.md](CLEANUP.md).
+Checklist test tay sau migrate: [CHECKLIST-EJS.md](CHECKLIST-EJS.md).
 
 ---
 
@@ -86,33 +91,104 @@ Khoá trang = tên file bỏ đuôi. Có test chặn hồi quy: không file nào
 
 ---
 
+## EJS master layout
+
+**URL giữ nguyên đuôi `.html`.** Route EJS đăng ký **trước** `express.static` nên nó
+thắng; 336 link tĩnh trong markup không phải sửa, `PATHS` không phải đổi.
+
+```
+server/views/
+  layouts/main.ejs          <- include 6 khối theo đúng thứ tự, KHÔNG được đảo
+  partials/head.ejs         <- <head> + thẻ <body> mở
+  partials/header.ejs       <- 3 biến thể: policy | home | none
+  partials/drawer-menu.ejs  <- giống hệt trên 18 trang, không tham số
+  partials/footer.ejs       <- giống hệt trên 18 trang, không tham số
+  partials/scripts.ejs      <- nhóm 1–5 + pageJs cho nhóm 6, LUÔN cuối <body>
+  partials/*-style.ejs      <- 4 khối <style> inline giữ nguyên (product/search/orders/cart)
+  pages/                    <- 13 view; riêng category.ejs dùng chung cho 6 trang danh mục
+server/lib/client-routes.js <- nạp ngược PATHS từ client/js/routes.js bằng vm
+server/tools/               <- domdiff · pagecheck · regression · verify-all
+```
+
+`client-routes.js` đọc `client/js/routes.js` trong sandbox `vm` thay vì chép lại bảng.
+Giữ đúng lời chốt "`routes.js` là nơi DUY NHẤT biết đuôi `.html`" — đổi route chỉ sửa
+một chỗ. Sửa `routes.js` thì phải khởi động lại server.
+
+### Tham số của layout
+
+| Tham số | Mặc định | Dùng để |
+|---|---|---|
+| `view` | — | tên file trong `pages/` |
+| `title` | `'BREEZE'` | `<title>` |
+| `i18nTitle` | `''` | `data-i18n-doctitle` trên `<body>` |
+| `bodyClass` | `''` | class của `<body>` |
+| `bodyData` | `{}` | `{category:'x'}` → `data-category="x"` |
+| `baseCss` | `'global.css'` | `'sale.css'` cho 6 trang danh mục + product |
+| `pageCss` | `[]` | CSS riêng trang, nạp sau base |
+| `headExtra` | `null` | partial nạp thêm cuối `<head>` (khối `<style>` inline) |
+| `headVariant` | `'standard'` | `'fragment'` cho 7 trang không có doctype |
+| `headerVariant` | `'policy'` | `'home'` cho index, `'none'` nếu trang tự dựng |
+| `showSearchBox` | `false` | **chỉ `search` truyền `true`** |
+| `useUtilsI18n` | `false` | bật `utils-i18n.js` (7 trang cần) |
+| `pageJs` | `[]` | script nhóm 6 |
+| `closeHtml` | `true` | `false` cho biến thể fragment |
+
+### Ba chỗ dễ vấp khi sửa view
+
+1. **Đừng viết cú pháp thẻ EJS nguyên văn trong khối chú thích** — bộ quét EJS không
+   phân biệt chú thích, gặp dấu đóng là cắt khối ngay tại đó.
+2. **Trong chú thích JS, đừng viết `data-` rồi dấu sao rồi `/`** — nó đóng chú thích sớm.
+3. **Đừng escape sẵn HTML entity trong tham số**: `<%= %>` tự escape, truyền
+   `'Giày &amp; Dép'` sẽ ra `&amp;amp;`. Truyền `'Giày & Dép'`.
+
+---
+
 ## Khi thêm một trang mới
 
-1. Copy `<head>` từ một trang cùng loại — **giữ nguyên snippet chống FOUC inline**
-2. Đặt `<body class="…" data-i18n-doctitle="title.xxx">`; trang danh mục thêm `data-category="<slug>"`
-3. Nạp CSS theo thứ tự chuẩn ở trên
-4. Nạp script theo thứ tự chuẩn; script riêng của trang đặt tên `page-<tên>.js`
-5. Thêm đường dẫn vào `PATHS` trong `js/routes.js`
-6. Thêm khoá dịch vào `js/i18n.js` (từ điển phẳng, tiền tố theo trang)
-7. Viết test trong `client/js/__tests__/` nếu trang có JS riêng
+1. Thêm đường dẫn vào `PATHS` trong `client/js/routes.js` — **bước này trước tiên**,
+   `routes/pages.js` ném lỗi lúc boot nếu khoá không có ở đó
+2. Tạo `server/views/pages/<tên>.ejs` — **chỉ phần thân riêng**, không header/footer/script
+3. Thêm một mục vào bảng `PAGES` trong `server/routes/pages.js` (xem bảng tham số ở trên)
+4. Thêm khoá dịch vào `client/js/i18n.js` — **cả VI lẫn EN**, `regression.js` báo đỏ nếu
+   thiếu một bên
+5. Script riêng trang đặt tên `page-<tên>.js`, khai qua `pageJs` (tự vào nhóm 6, cuối `<body>`)
+6. Viết test trong `client/js/__tests__/` nếu trang có JS riêng
+7. Chạy `node server/tools/regression.js`
+
+Không phải copy `<head>`, không phải nhớ thứ tự CSS/script, không phải dán lại drawer và
+footer — layout lo hết. Snippet chống FOUC nằm trong `partials/head.ejs`.
 
 ---
 
 ## Test
 
 ```bash
-node client/js/__tests__/run-all.js
+node client/js/__tests__/run-all.js   # 12 file / 315 assertion
+node server/tools/regression.js       # 12 hạng mục toàn site (cần server đang chạy)
+node server/tools/verify-all.js       # so DOM 18 trang với file .html cũ
+node server/tools/domdiff.js --selftest   # negative control
 ```
 
-Không cần cài gì thêm. **12 file / 315 assertion.** Chi tiết và giới hạn:
+`client/js/__tests__/` không cần cài gì thêm; chi tiết và giới hạn ở
 `client/js/__tests__/README.md`.
 
+`server/tools/domdiff.js` so **chuỗi token DOM** (thẻ + attribute đã sắp xếp + text đã
+gom khoảng trắng), không so ảnh: máy này không có headless browser, mà token trùng +
+CSS/JS không đổi thì pixel bằng nhau theo định nghĩa — và tất định, khác với ảnh chụp
+`index.html` (slider chạy animation nên chụp lúc nào cũng lệch).
+
+**Luôn chạy `--selftest` trước khi tin một kết quả "0 khác biệt".** Nó cố tình phá 5
+kiểu (đổi class, mất `data-`, đảo thứ tự thẻ, đổi chữ, mất `aria-`) và phải bắt được cả 5.
+
 DOM giả **không** kiểm được giao diện, dark mode, việc in, hay thứ tự thực thi thật giữa
-các thẻ `<script>` — những thứ đó phải mở trình duyệt.
+các thẻ `<script>` — những thứ đó phải mở trình duyệt: xem [CHECKLIST-EJS.md](CHECKLIST-EJS.md).
 
 ---
 
 ## Việc còn nợ
 
 Xem mục "Việc còn nợ" trong [CLEANUP.md](CLEANUP.md): **N-1** (hoá đơn hiện `−0₫`),
-**S-1** (`to()` cho qua khoá lạ), **H-1** (hiệu ứng hover chỉ chạy 1/6 trang danh mục).
+**S-1** (`to()` cho qua khoá lạ), **H-1** (hiệu ứng hover chỉ chạy 1/6 trang danh mục),
+**Q-1** (7 trang chạy quirks mode, thiếu `<meta viewport>`), **C-1** (trang EJS không
+gửi `Cache-Control`, khác `express.static`), **X-1** (4 khối `<style>` inline chưa tách
+ra file CSS), **DEL-1** (18 file `.html` đã được thay thế, chờ duyệt để xoá).
