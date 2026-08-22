@@ -27,6 +27,10 @@ var bodyData     = _v('bodyData', {});
 var baseCss      = _v('baseCss', 'global.css');
 var pageCss      = _v('pageCss', []);
 var themeSnippet = _v('themeSnippet', 'auto');
+/* headExtra: tên một partial nạp thêm vào cuối <head>. Hiện chỉ product dùng — nó có
+   250 dòng <style> viết thẳng trong file. Giữ inline thay vì tách ra css/product.css:
+   đổi <style> thành <link> là đổi DOM và đổi cả thứ tự thắng thua của CSS. */
+var headExtra    = _v('headExtra', null);
 
 /* Thuộc tính data-* của <body>, giữ đúng thứ tự: class -> data-* riêng trang ->
    data-i18n-doctitle (đúng thứ tự trong 21 file cũ). */
@@ -60,6 +64,9 @@ if (i18nTitle) bodyAttrs += ' data-i18n-doctitle="' + i18nTitle + '"';
 <% }); -%>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<% if (headExtra) { -%>
+<%- include("./" + headExtra) -%>
+<% } -%>
 </head>
 
 <body class="<%= bodyClass %>"<%- bodyAttrs %>>
@@ -74,6 +81,9 @@ if (i18nTitle) bodyAttrs += ' data-i18n-doctitle="' + i18nTitle + '"';
 <script>(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<% if (headExtra) { -%>
+<%- include("./" + headExtra) -%>
+<% } -%>
 
 <title><%= title %></title>
 <body class="<%= bodyClass %>"<%- bodyAttrs %>>

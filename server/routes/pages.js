@@ -101,6 +101,28 @@ const PAGES = {
     bodyClass: 'category-page sitehdr', bodyData: { category: 'gold-jewellery' },
     pageJs: ['filter.js', 'products-render.js'], closeHtml: false,
   },
+  /* --- Trang có tham số URL ----------------------------------------------------
+     Server KHÔNG đọc query string: page-product.js / page-search.js vẫn tự lấy từ
+     location.search y như cũ. Cố ý — đưa tham số URL vào to() là kịch bản biến S-1
+     (to() cho qua khoá lạ nguyên văn) thành open redirect thật. */
+  product: {
+    view: 'product', headVariant: 'fragment', baseCss: 'sale.css',
+    headExtra: 'product-style',
+    title: 'Sản phẩm - BREEZE', i18nTitle: 'pd.docTitle',
+    bodyClass: 'category-page sitehdr',
+    useUtilsI18n: true, pageJs: ['page-product.js'], closeHtml: false,
+  },
+  search: {
+    view: 'search',
+    title: 'Kết quả tìm kiếm - BREEZE', i18nTitle: 'sr.docTitle',
+    headExtra: 'search-style',
+    bodyClass: 'category-page sitehdr',
+    /* Trang DUY NHẤT bật ô tìm kiếm thật trong header. Mặc định của header.ejs là
+       false, nên quên truyền ở trang khác thì hỏng về phía 'hiện icon'. */
+    showSearchBox: true,
+    useUtilsI18n: true, pageJs: ['page-search.js'],
+  },
+
   sale: {
     view: 'category', headVariant: 'fragment', baseCss: 'sale.css',
     title: 'Khuyến Mãi - BREEZE', i18nTitle: 'title.sale', headline: 'Khuyến Mãi',

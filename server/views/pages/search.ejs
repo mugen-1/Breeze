@@ -1,0 +1,30 @@
+<%
+/* search.ejs — CHỈ phần thân trang kết quả tìm kiếm.
+
+   Đây là trang DUY NHẤT truyền showSearchBox: true cho partials/header.ejs (phương án A,
+   TASK 8.2) — 16 trang kia hiện icon kính lúp link sang đây.
+
+   RÀNG BUỘC CỨNG RB3: page-search.js gọi t() ngay lúc parse nên utils-i18n.js phải nạp
+   trước nó -> useUtilsI18n: true trong bảng PAGES.
+
+   Ghi chú kỹ thuật vốn là comment HTML cuối file cũ, chuyển vào đây (không cần gửi ra
+   trình duyệt): lấy sản phẩm THẬT từ /api/products rồi lọc phía client. page-search.js
+   đặt SAU cart.js để dùng lại _injectAddToCartButtons(), sau api-config.js để có
+   API_BASE. Catalog ~50 sản phẩm (~16KB) nên lọc client là đủ; nếu sau này hàng nhiều
+   lên thì chuyển sang tham số ?q= ở /api/products. */
+-%>
+
+    <div id="wrapper">
+        <p class="search-title" id="search-title"></p>
+        <!-- .main-content: mượn nguyên grid + card của trang danh mục trong global.css -->
+        <div class="main-content">
+            <ul class="products" id="results"></ul>
+        </div>
+        <div class="no-result" id="no-result" style="display:none;">
+            <i class="fa fa-search"></i>
+            <span data-i18n="sr.noResult">Không tìm thấy sản phẩm nào phù hợp với từ khóa.</span>
+            <br><br>
+            <a href="index.html" style="color:#a0a3a1;" data-i18n="sr.backHome">Quay về trang chủ</a>
+        </div>
+    </div>
+
