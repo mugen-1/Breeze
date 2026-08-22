@@ -61,6 +61,52 @@ const PAGES = {
     bodyClass: 'policy-page',
     pageCss: ['chinhsach-doitra.css'],
   },
+
+  /* --- 6 trang danh mục: CÙNG MỘT view 'category', chỉ khác tham số -------------
+     headVariant 'fragment' vì 6 file cũ không có <!DOCTYPE>/<html>/<head>/<meta>.
+     Giữ nguyên để không đổi chế độ render (quirks -> standards) giữa đợt migrate;
+     xem ghi chú trong partials/head.ejs.
+     'sale' không có slug danh mục nên dùng cờ onsale thay cho category. */
+  'sanpham-ao': {
+    view: 'category', headVariant: 'fragment', baseCss: 'sale.css',
+    title: 'Áo - BREEZE', i18nTitle: 'title.shirt', headline: 'Áo',
+    bodyClass: 'category-page sitehdr', bodyData: { category: 'sanpham-ao' },
+    pageJs: ['filter.js', 'products-render.js'], closeHtml: false,
+  },
+  'sanpham-quan': {
+    view: 'category', headVariant: 'fragment', baseCss: 'sale.css',
+    title: 'Quần - BREEZE', i18nTitle: 'title.pants', headline: 'Quần',
+    bodyClass: 'category-page sitehdr', bodyData: { category: 'sanpham-quan' },
+    pageJs: ['filter.js', 'products-render.js'], closeHtml: false,
+  },
+  'sanpham-giay': {
+    view: 'category', headVariant: 'fragment', baseCss: 'sale.css',
+    title: 'Giày & Dép - BREEZE', i18nTitle: 'title.shoes', headline: 'Giày & Dép',
+    bodyClass: 'category-page sitehdr', bodyData: { category: 'sanpham-giay' },
+    pageJs: ['filter.js', 'products-render.js'], closeHtml: false,
+  },
+  handbags: {
+    view: 'category', headVariant: 'fragment', baseCss: 'sale.css',
+    title: 'Túi Xách - BREEZE', i18nTitle: 'title.handbags',
+    /* 'Handbags' (tiếng Anh) là chữ có sẵn trong handbags.html cũ — 5 trang kia để
+       tiếng Việt. Giữ nguyên để không đổi DOM; i18n.js ghi đè ngay lúc chạy nên
+       người dùng không thấy khác biệt. Ghi vào mục "Phát hiện thêm". */
+    headline: 'Handbags',
+    bodyClass: 'category-page sitehdr', bodyData: { category: 'handbags' },
+    pageJs: ['filter.js', 'products-render.js'], closeHtml: false,
+  },
+  'gold-jewellery': {
+    view: 'category', headVariant: 'fragment', baseCss: 'sale.css',
+    title: 'Phụ Kiện - BREEZE', i18nTitle: 'title.accessories', headline: 'Phụ Kiện',
+    bodyClass: 'category-page sitehdr', bodyData: { category: 'gold-jewellery' },
+    pageJs: ['filter.js', 'products-render.js'], closeHtml: false,
+  },
+  sale: {
+    view: 'category', headVariant: 'fragment', baseCss: 'sale.css',
+    title: 'Khuyến Mãi - BREEZE', i18nTitle: 'title.sale', headline: 'Khuyến Mãi',
+    bodyClass: 'category-page sitehdr', bodyData: { onsale: '1' },
+    pageJs: ['filter.js', 'products-render.js'], closeHtml: false,
+  },
 };
 
 /* Đăng ký route theo đúng URL cũ trong PATHS. Không tự chế đường dẫn: khoá nào không

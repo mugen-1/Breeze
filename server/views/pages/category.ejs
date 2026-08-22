@@ -1,0 +1,42 @@
+<%
+/* category.ejs — MỘT template cho 6 trang danh mục.
+
+   Đây là lợi ích lớn nhất của cả đợt migrate: sanpham-ao / sanpham-quan / sanpham-giay /
+   handbags / gold-jewellery / sale trước đây là 6 file HTML gần như giống hệt nhau
+   (đã đo: chỉ khác <title>, data-category, data-i18n-doctitle, chữ trong <h4>, và
+   khoảng trắng). Toàn bộ khác biệt đó nay là tham số.
+
+   MÔ HÌNH THAM SỐ HOÁ ĐÃ TỒN TẠI SẴN, không phát minh mới — products-render.js đọc
+   thẳng từ <body>:
+       category   = document.body.getAttribute('data-category')
+       onsaleMode = document.body.getAttribute('data-onsale') === '1'
+   sale gộp chung được vì nó gom hàng giảm giá từ mọi danh mục nên không có slug,
+   dùng cờ data-onsale="1" thay thế. Hai thuộc tính đó do partials/head.ejs sinh ra
+   từ tham số bodyData.
+
+   HAI ĐIỀU KHÔNG ĐƯỢC ĐỘNG:
+   1. Trang này nạp sale.css, KHÔNG phải global.css. 6 trang danh mục được tạo kiểu
+      bằng selector KHÔNG scope trong sale.css, còn nhánh body.category-page trong
+      global.css chỉ được chỉnh riêng cho search.html. Đổi sang global.css là đẩy 6
+      trang sang nhánh style của trang khác.
+   2. CSS riêng của sanpham-ao vẫn scope bằng body[data-category="sanpham-ao"]
+      (specificity 0,3,1 thắng rule 0,2,0 trong sale.css, không cần !important).
+      data-category do head.ejs sinh nên cơ chế scope này chạy y như cũ.
+
+   <aside class="sidebar"> đã bị xoá ở TASK 9 (D-1) vì luôn display:none — bộ lọc thật
+   là #fd-drawer do filter.js tự dựng. ĐỪNG dựng lại.
+
+   Chữ trong <h4> chỉ là bản tiếng Việt mặc định; i18n.js ghi đè theo khoá trang lúc
+   chạy (querySelector('.headline h4') + t.page[currentPage()]). */
+-%>
+    <div id="wrapper">
+        <div class="page-layout">
+            <div class="main-content">
+                <div class="headline reveal">
+                    <h4><%= headline %></h4>
+                </div>
+                <ul class="products"></ul>
+            </div>
+        </div>
+    </div>
+
