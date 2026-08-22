@@ -1,0 +1,25 @@
+<%
+/* main.ejs — master layout. Mọi trang EJS render qua đây:
+
+     res.render('layouts/main', { page: 'chinhsachgiaohang', ...locals })
+
+   EJS không có 'extends'. Cách dùng ở đây: layout tự include view của trang theo
+   biến `page`. include() của EJS là hàm chạy lúc render nên đường dẫn động hợp lệ,
+   và locals tự truyền xuống mọi partial — không cần khai báo lại.
+
+   Mỗi dòng dưới đây đóng thẻ EJS bằng dấu gạch nối, để NUỐT ký tự xuống dòng của
+   chính thẻ đó. Nhờ vậy output = nối đúng 6 khối partial, không chèn thêm dòng
+   trống nào — điều kiện để so output mới với file .html cũ ở mức byte.
+
+   (Đừng viết cú pháp thẻ EJS nguyên văn trong khối chú thích này: bộ quét của EJS
+   không phân biệt chú thích, gặp dấu đóng là nó cắt khối ngay tại đó.)
+
+   THỨ TỰ KHÔNG ĐƯỢC ĐỔI: scripts phải là khối cuối cùng trong <body> (xem lý do
+   trong partials/scripts.ejs). */
+-%>
+<%- include('../partials/head') -%>
+<%- include('../partials/header') -%>
+<%- include('../partials/drawer-menu') -%>
+<%- include('../pages/' + page) -%>
+<%- include('../partials/footer') -%>
+<%- include('../partials/scripts') -%>
