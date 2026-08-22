@@ -101,6 +101,16 @@ const PAGES = {
     bodyClass: 'category-page sitehdr', bodyData: { category: 'gold-jewellery' },
     pageJs: ['filter.js', 'products-render.js'], closeHtml: false,
   },
+  /* --- Trang chủ ----------------------------------------------------------------
+     Biến thể header thứ 3: <header> riêng có slider, KHÔNG dùng policy-header.
+     page-index-slider.js KHÔNG nằm trong pageJs — nó ở giữa pages/index.ejs, ngay sau
+     markup hero (xem lý do trong file đó). */
+  index: {
+    view: 'index', headerVariant: 'home',
+    title: 'BREEZE - Thời trang', i18nTitle: 'title.index',
+    bodyClass: 'home', pageCss: ['index-slide.css'],
+  },
+
   /* --- Trang có tham số URL ----------------------------------------------------
      Server KHÔNG đọc query string: page-product.js / page-search.js vẫn tự lấy từ
      location.search y như cũ. Cố ý — đưa tham số URL vào to() là kịch bản biến S-1
@@ -138,9 +148,14 @@ Object.keys(PAGES).forEach((key) => {
   const urlPath = R.PATHS[key];
   if (!urlPath) throw new Error('[pages] khoá "' + key + '" không có trong PATHS của routes.js');
 
-  router.get('/' + urlPath, (req, res) => {
+  const handler = (req, res) => {
     res.render('layouts/main', Object.assign({ page: cfg.view, pageKey: key }, cfg));
-  });
+  };
+  router.get('/' + urlPath, handler);
+  /* express.static đang serve index.html ở '/'. Route EJS đứng trước nó nên phải nhận
+     luôn '/', nếu không '/' sẽ trả file cũ còn '/index.html' trả bản EJS — hai bản khác
+     nhau trên cùng một trang. keyOf('/') vốn đã trả 'index' nên client không đổi gì. */
+  if (key === 'index') router.get('/', handler);
 });
 
 module.exports = router;
