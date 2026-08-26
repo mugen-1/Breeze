@@ -5,9 +5,13 @@ cần máy in. Mọi thứ tự động hoá được đã chạy rồi (xem cu�
 
 **Trước khi bắt đầu:** `cd server && node server.js`, mở `http://localhost:3000`.
 
-**Cách đối chiếu nhanh khi thấy nghi ngờ:** 18 file `.html` cũ **vẫn còn nguyên** trong
-`client/`. Muốn xem bản cũ, mở `server/routes/pages.js`, comment dòng khoá đó trong bảng
-`PAGES`, khởi động lại — `express.static` sẽ trả lại đúng file cũ. Không cần rollback git.
+**Cách đối chiếu khi thấy nghi ngờ:** 18 file `.html` cũ đã xoá khỏi `client/`, nhưng
+vẫn lấy ra được từ git:
+
+```bash
+git show 21ca387:client/cart.html > /tmp/cart-cu.html   # bản trước khi migrate
+node server/tools/verify-all.js                          # so DOM cả 18 trang
+```
 
 ---
 
@@ -70,19 +74,26 @@ Với **mỗi** trang dưới đây, xem ở **cả chế độ Sáng và Tối*
 | API công khai / cần quyền | 200 / 401 |
 | Số card danh mục / khuyến mãi / tìm kiếm | 6 / 14 / 10 |
 | 3 trang không migrate vẫn qua static | ✅ |
-| Bộ test client | 12 file, 315 assertion, 0 fail |
+| Bộ test client | 12 file, 319 assertion, 0 fail |
 
 Chạy lại bất cứ lúc nào:
 
 ```bash
 node server/tools/regression.js    # bảng trên
-node server/tools/verify-all.js    # so DOM 18 trang với file .html cũ
+node server/tools/verify-all.js    # so DOM 18 trang, bản gốc lấy từ git
 ```
 
 ---
 
-## Sau khi bạn tick xong
+## Nếu có trang nào hỏng
 
-Báo tôi để làm nốt **phase dọn dẹp**: xoá 18 file `.html` đã được thay thế (giữ lại
-`invoice.html`, `admin.html`, `checkout.html`) và gỡ route `/ejs-healthcheck`.
-**Chưa xoá gì cả** cho tới khi bạn xác nhận.
+18 file `.html` đã xoá nhưng còn trong git. Lấy lại một trang:
+
+```bash
+git checkout 21ca387 -- client/cart.html
+```
+
+Rồi comment mục `cart` trong bảng `PAGES` ở `server/lib/pages-config.js` và khởi động
+lại — `express.static` trả lại bản cũ. (Để cả hai cùng lúc mà không comment thì route
+EJS vẫn thắng và file `.html` không có tác dụng gì — `routes.test.js` sẽ báo đỏ đúng
+tình huống đó.)

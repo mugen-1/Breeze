@@ -4,11 +4,13 @@ Web bán hàng thời trang. Node.js/Express + SQL Server + Firebase Auth; front
 HTML/CSS/JS thuần, không build step.
 
 18/21 trang render bằng **EJS master layout**; 3 trang còn lại vẫn là `.html` tĩnh.
+18 file `.html` cũ **đã xoá** — sửa 18 trang đó nghĩa là sửa `server/views/`.
 
 `client/js/`, `client/css/` — frontend, không đổi gì trong đợt migrate
-`client/*.html` — `invoice`, `admin`, `checkout` (cố ý không migrate)
+`client/*.html` — CHỈ còn `invoice`, `admin`, `checkout` (cố ý không migrate)
 `server/views/` — layout + partial + view từng trang
-`server/routes/pages.js` — bảng `PAGES`: mỗi trang là một mục tham số
+`server/lib/pages-config.js` — bảng `PAGES`: mỗi trang là một mục tham số
+`server/routes/pages.js` — đăng ký route từ bảng đó, TRƯỚC `express.static`
 
 Tài liệu đợt dọn dẹp trước khi migrate EJS: xem [CLEANUP.md](CLEANUP.md).
 Checklist test tay sau migrate: [CHECKLIST-EJS.md](CHECKLIST-EJS.md).
@@ -106,6 +108,7 @@ server/views/
   partials/scripts.ejs      <- nhóm 1–5 + pageJs cho nhóm 6, LUÔN cuối <body>
   partials/*-style.ejs      <- 4 khối <style> inline giữ nguyên (product/search/orders/cart)
   pages/                    <- 13 view; riêng category.ejs dùng chung cho 6 trang danh mục
+server/lib/pages-config.js  <- bảng PAGES (dữ liệu thuần, test require được)
 server/lib/client-routes.js <- nạp ngược PATHS từ client/js/routes.js bằng vm
 server/tools/               <- domdiff · pagecheck · regression · verify-all
 ```
@@ -148,7 +151,7 @@ một chỗ. Sửa `routes.js` thì phải khởi động lại server.
 1. Thêm đường dẫn vào `PATHS` trong `client/js/routes.js` — **bước này trước tiên**,
    `routes/pages.js` ném lỗi lúc boot nếu khoá không có ở đó
 2. Tạo `server/views/pages/<tên>.ejs` — **chỉ phần thân riêng**, không header/footer/script
-3. Thêm một mục vào bảng `PAGES` trong `server/routes/pages.js` (xem bảng tham số ở trên)
+3. Thêm một mục vào bảng `PAGES` trong `server/lib/pages-config.js` (xem bảng tham số ở trên)
 4. Thêm khoá dịch vào `client/js/i18n.js` — **cả VI lẫn EN**, `regression.js` báo đỏ nếu
    thiếu một bên
 5. Script riêng trang đặt tên `page-<tên>.js`, khai qua `pageJs` (tự vào nhóm 6, cuối `<body>`)
@@ -163,9 +166,9 @@ footer — layout lo hết. Snippet chống FOUC nằm trong `partials/head.ejs`
 ## Test
 
 ```bash
-node client/js/__tests__/run-all.js   # 12 file / 315 assertion
+node client/js/__tests__/run-all.js   # 12 file / 319 assertion
 node server/tools/regression.js       # 12 hạng mục toàn site (cần server đang chạy)
-node server/tools/verify-all.js       # so DOM 18 trang với file .html cũ
+node server/tools/verify-all.js       # so DOM 18 trang, bản gốc lấy từ git 21ca387
 node server/tools/domdiff.js --selftest   # negative control
 ```
 
@@ -191,4 +194,4 @@ Xem mục "Việc còn nợ" trong [CLEANUP.md](CLEANUP.md): **N-1** (hoá đơn
 **S-1** (`to()` cho qua khoá lạ), **H-1** (hiệu ứng hover chỉ chạy 1/6 trang danh mục),
 **Q-1** (7 trang chạy quirks mode, thiếu `<meta viewport>`), **C-1** (trang EJS không
 gửi `Cache-Control`, khác `express.static`), **X-1** (4 khối `<style>` inline chưa tách
-ra file CSS), **DEL-1** (18 file `.html` đã được thay thế, chờ duyệt để xoá).
+ra file CSS), **P-1** (`img/breeze.png` — ảnh dự phòng 6 file JS trỏ tới — không tồn tại).

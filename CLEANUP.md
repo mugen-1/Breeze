@@ -1231,10 +1231,66 @@ khác biệt — nhưng nếu JS chưa chạy xong thì chớp một nhịp ch�
 
 Trình duyệt bỏ qua thẻ thứ hai. Bản EJS chỉ có một — đúng hơn, không đổi gì.
 
-## DEL-1 — 18 file `.html` chờ duyệt xoá
+## DEL-1 — ĐÃ XOÁ 18 file `.html` (theo yêu cầu)
 
-Chưa xoá file nào. 18 file cũ còn nguyên trong `client/` làm bản đối chiếu:
-comment một dòng trong bảng `PAGES` là `express.static` trả lại bản cũ, không cần
-rollback git. Route `/ejs-healthcheck` cũng còn.
+Đã xoá 18 file `.html` được thay thế, giữ `invoice.html`, `admin.html`, `checkout.html`.
+Gỡ luôn route `/ejs-healthcheck` và view của nó. `client/` giờ chỉ còn `js/`, `css/`,
+`img/` và 3 trang tĩnh.
 
-Xoá sau khi tick xong [CHECKLIST-EJS.md](CHECKLIST-EJS.md).
+**Ghi chú:** lúc xoá, checklist test tay chưa được tick — chủ dự án chốt xoá luôn. File
+vẫn nằm trong git history nên lấy lại được.
+
+### Khả năng đối chiếu KHÔNG mất theo file
+
+`server/tools/verify-all.js` được viết lại: nó lấy 18 bản HTML gốc thẳng từ
+`git show 21ca387:client/<trang>.html` ra thư mục tạm rồi mới so DOM. Mốc so sánh
+`BASELINE_REF = '21ca387'` là commit **cuối cùng còn đủ 18 file** — cố định, đừng đổi
+thành `HEAD` hay tên nhánh, mốc mà chạy thì kết quả hết nghĩa.
+
+Sau khi xoá vẫn chạy lại được và vẫn ra **18/18 khớp DOM contract**.
+
+### Vì sao KHÔNG để 18 file đó nằm lại trong `client/`
+
+Route EJS đăng ký **trước** `express.static`, nên với 18 trang đã migrate, file `.html`
+là **code chết**: sửa nó không có tác dụng gì và **không báo lỗi**. Đã đo tận tay — sửa
+`client/cart.html` rồi `curl /cart.html` vẫn ra bản EJS. Đúng loại hỏng ngầm mà TASK 7
+sinh ra `routes.js` để diệt, nên để file lại là tự gài bẫy cho chính mình.
+
+### Bộ test bắt được đúng cái bẫy đó
+
+Xoá file làm 2 assertion cũ trong `routes.test.js` đỏ — chúng khẳng định bất biến
+"`PATHS` ↔ file `.html` trên đĩa", nay đã hết đúng. Thay bằng bất biến **mới và chặt
+hơn**, kiểm qua `server/lib/pages-config.js`:
+
+1. mọi khoá trong `PATHS` phải có **đúng một** nguồn phục vụ (EJS **hoặc** file tĩnh);
+2. **không trang nào vừa có file `.html` vừa có mục `PAGES`** — đây chính là cái bẫy
+   trên, giờ test chặn thẳng;
+3. không có trang thừa ở cả hai đầu;
+4. mọi mục `PAGES` phải trỏ tới một view có thật trong `server/views/pages/`;
+5. tổng vẫn là 21.
+
+Đã chạy negative control: tạo lại `client/cart.html` → test đỏ đúng 2 assertion; xoá đi
+→ xanh lại. **Bộ test: 12 file, 315 → 319 assertion, 0 fail.**
+
+### Tách `pages-config.js` khỏi `routes/pages.js`
+
+Bảng `PAGES` chuyển sang `server/lib/pages-config.js` — **dữ liệu thuần, không
+`require` gì**. Lý do: `client/js/__tests__` có lời hứa "không cần cài gì thêm"; nếu test
+phải `require` router thì nó kéo theo `express` và lời hứa đó gãy. Tách ra thì test đọc
+được cấu hình trang mà không chạm tới dependency của server. `routes/pages.js` còn 46
+dòng, chỉ làm mỗi việc đăng ký route.
+
+---
+
+## P-1 — `img/breeze.png` không tồn tại (KHÔNG do đợt này)
+
+6 file JS (`admin.js`, `cart.js`, `checkout.js`, `page-product.js`, `page-search.js`,
+`products-render.js`) dùng `'img/breeze.png'` làm ảnh dự phòng khi sản phẩm không có
+ảnh. File này **không có trong `client/img/`** — bị gỡ ở commit `aa7e6d2`
+("gỡ ảnh demo cũ") nhưng 6 chỗ tham chiếu thì không ai sửa theo.
+
+Hệ quả: sản phẩm thiếu ảnh sẽ hiện icon ảnh vỡ chứ không phải ảnh dự phòng. Phát hiện
+tình cờ lúc kiểm asset sau khi xoá file HTML, **không liên quan tới đợt migrate**.
+
+Sửa: hoặc thêm lại `client/img/breeze.png`, hoặc trỏ 6 chỗ đó sang một ảnh đang có.
+Chưa làm vì đó là quyết định về nội dung, không phải về refactor.

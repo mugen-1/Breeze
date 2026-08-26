@@ -116,7 +116,8 @@ app.use('/avatars', express.static(path.join(__dirname, 'uploads', 'avatars'), {
 app.use(require('./routes/pages'));
 
 // --- Static frontend ---------------------------------------------------------
-// Tiện dev: phục vụ client/ ngay trên cùng origin => mở http://localhost:3000/sanpham-ao.html
+// Tiện dev: phục vụ client/ ngay trên cùng origin => js/, css/, img/ và 3 trang .html
+// không migrate (invoice, admin, checkout). 18 trang còn lại do routes/pages.js render.
 // (fetch API cùng origin, không vướng CORS). Production sẽ tách CDN ở Phase 5.
 app.use(express.static(path.join(__dirname, '..', 'client')));
 
