@@ -9,7 +9,7 @@
  * - Để TRỐNG '' cột nào => GIỮ NGUYÊN tên cũ của cột đó trong DB.
  * - Các ô dưới đây đã điền sẵn TÊN HIỆN TẠI; chỉ cần sửa ô nào muốn đổi.
  */
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { getPool, sql } = require('../db');
 
 const PRODUCTS = [

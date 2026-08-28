@@ -2,7 +2,17 @@
 // Bootstrapping step: Express app on port 3000 with a real SQL Server health check.
 // Business logic (products, cart, orders, Firebase token verification) comes later.
 
-require('dotenv').config();
+// dotenv mặc định tìm .env theo THƯ MỤC ĐANG ĐỨNG lúc gõ lệnh, không theo vị trí
+// file này. Chạy `node server/server.js` từ gốc repo sẽ nạp 0 biến, rồi lỗi mới bung
+// ra tận db.js ("config.server property is required") — nhìn như SQL Server hỏng.
+// Trỏ đường dẫn tuyệt đối để chạy từ đâu cũng đúng, và báo ngay tại đây nếu rỗng.
+const ENV_PATH = require('path').join(__dirname, '.env');
+const envResult = require('dotenv').config({ path: ENV_PATH });
+if (Object.keys(envResult.parsed || {}).length === 0 && !process.env.DB_SERVER) {
+  console.error(`[env] Không nạp được biến nào từ ${ENV_PATH}`);
+  console.error('[env] Tạo file server/.env (copy từ server/.env.example) rồi chạy lại.');
+  process.exit(1);
+}
 
 const path = require('path');
 const express = require('express');

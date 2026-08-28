@@ -1,6 +1,6 @@
 // Verify seed: đếm số sản phẩm theo từng category và tổng số sản phẩm.
 // Dùng: node db/verify.js
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { getPool } = require('../db');
 
 async function main() {

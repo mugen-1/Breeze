@@ -2,7 +2,7 @@
 // không phải mở SSMS. Dùng chung .env với server nên luôn đúng DB đang chạy.
 //
 // Usage: node db/set-role.js <email> <admin|customer>
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { getPool, sql } = require('../db');
 
 const VALID_ROLES = ['admin', 'customer'];
