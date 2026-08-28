@@ -1,7 +1,7 @@
 // Chạy một file .sql vào SQL Server bằng package mssql (config từ .env).
 // Tách file theo separator "GO" (không phải T-SQL, chỉ là ngăn batch) rồi
 // chạy từng batch. Dùng: node db/run-sql.js db/schema.sql
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const fs = require('fs');
 const path = require('path');
 const { getPool } = require('../db');
@@ -12,7 +12,12 @@ async function main() {
     console.error('Usage: node db/run-sql.js <path-to-.sql>');
     process.exit(1);
   }
-  const filePath = path.resolve(process.cwd(), fileArg);
+  // Đường dẫn tương đối tính theo server/ (thư mục cha của db/), giống hệt cách nạp
+  // .env ở trên — nhờ vậy `node server/db/run-sql.js db/schema.sql` chạy từ gốc repo
+  // hay từ server/ đều ra cùng một file. Đường dẫn tuyệt đối thì giữ nguyên.
+  const filePath = path.isAbsolute(fileArg)
+    ? fileArg
+    : path.join(__dirname, '..', fileArg);
   const sqlText = fs.readFileSync(filePath, 'utf8');
 
   // Tách batch theo dòng chỉ chứa "GO".

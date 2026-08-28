@@ -10,7 +10,7 @@
  *
  * Ví dụ:  { id: 21, main: 'giay-nam-1.png', hover: 'giay-nam-1b.png' }
  */
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { getPool, sql } = require('../db');
 
 const IMG_DIR = 'img/'; // đường dẫn thư mục ảnh (tính từ client/), thường không cần đổi
