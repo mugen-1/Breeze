@@ -160,6 +160,9 @@ body { display: flex; flex-direction: column; min-height: 100vh; background: var
 .acct-fields--ro .acct-field:first-child { padding-top: 0; }
 .acct-fields--ro .acct-value { text-align: right; }
 .acct-dots { letter-spacing: 2px; color: var(--c-muted); }
+/* Dùng cho CẢ <a> lẫn <button>: hàng "Mật khẩu" giờ mở modal nên phải là <button>
+   (Phase 2B). 4 dòng reset dưới đây gỡ nền/viền/padding mặc định của nút để nó vẫn
+   trông đúng như một liên kết; với thẻ <a> chúng không đổi gì. */
 .acct-edit {
     font-family: var(--font-ui);
     font-size: 13px;
@@ -168,8 +171,13 @@ body { display: flex; flex-direction: column; min-height: 100vh; background: var
     text-underline-offset: 3px;
     white-space: nowrap;
     margin-left: 12px;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
 }
 .acct-edit:hover { color: var(--c-muted); }
+.acct-edit:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
 
 /* Field mới (khung UI, chưa nối backend) */
 .acct-input {
@@ -400,8 +408,45 @@ body { display: flex; flex-direction: column; min-height: 100vh; background: var
 .addr-req { color: #8a2b2b; }
 .addr-opt { color: var(--c-muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
 .acct-input.addr-input-err { border-color: #8a2b2b; box-shadow: 0 0 0 1px #8a2b2b; }
-.addr-field-msg { font-family: var(--font-ui); font-size: 12px; color: #8a2b2b; }
+/* color: dùng token thay hex cứng. #8a2b2b cũ chỉ hợp nền sáng — trên nền tối
+   (--c-bg = #141312) nó chỉ đạt 2.17:1, trượt xa WCAG AA 4.5:1, chữ 12px gần như chìm.
+   --c-danger có sẵn hai giá trị theo chế độ (#a12833 / #e0656f) nên đạt AA cả hai.
+   Class này dùng ở 3 modal: đổi mật khẩu, thêm địa chỉ, thẻ thanh toán. */
+.addr-field-msg { font-family: var(--font-ui); font-size: 12px; color: var(--c-danger); }
 .addr-field-msg:empty { display: none; }
+/* Biến thể THÀNH CÔNG của cùng vùng thông báo (Phase 2B). Không đẻ class mới: chỉ thêm
+   một modifier, vì .addr-field-msg vốn chỉ có sắc đỏ báo lỗi. */
+.addr-field-msg.is-ok { color: var(--c-success); }
+/* Thông báo cấp-modal (nằm ngay dưới lưới field) cần khoảng thở; thông báo cấp-field
+   nằm trong .addr-form-field thì không, nên chỉ nhắm đúng con trực tiếp của body. */
+.addr-modal-body > .addr-field-msg { margin: 14px 0 0; }
+
+/* ---- Ô mật khẩu có nút hiện/ẩn (Phase 2B) ----
+   Hai class DUY NHẤT phải thêm cho modal đổi mật khẩu: .acct-input không có neo
+   position nên nút không thể nằm trong ô, và toàn dự án chưa có nút toggle nào. */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap > .acct-input { padding-right: 46px; }
+.pw-toggle {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    background: none;
+    border: 0;
+    border-radius: 50%;
+    padding: 0;
+    color: var(--c-muted);
+    cursor: pointer;
+    transition: color .2s var(--ease), background .2s var(--ease);
+}
+.pw-toggle:hover { color: var(--c-ink); background: var(--c-cream); }
+.pw-toggle:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
+.pw-toggle[aria-pressed="true"] { color: var(--c-ink); }
 .addr-check-row { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin-top: 2px; }
 .addr-check-row input { width: 17px; height: 17px; accent-color: var(--c-ink); cursor: pointer; flex: 0 0 auto; }
 .addr-check-row label { font-family: var(--font-ui); font-size: 14px; color: var(--c-ink); cursor: pointer; }

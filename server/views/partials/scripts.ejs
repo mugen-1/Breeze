@@ -1,0 +1,56 @@
+<%
+/* scripts.ejs — TOÀN BỘ thẻ <script> cuối <body>, đúng thứ tự chuẩn ở CLAUDE.md.
+
+   BA RÀNG BUỘC CỨNG (sai là vỡ, có lỗi console) — thứ tự dưới đây tôn trọng cả ba:
+     1. Firebase SDK  TRƯỚC  firebase-config.js  (config cần biến `firebase`)
+     2. firebase-config.js  TRƯỚC  auth.js       (auth.js dùng `const auth` top-level)
+     3. utils-i18n.js  TRƯỚC  page-search.js     (page-search gọi t() ngay lúc parse)
+
+   VÌ SAO PARTIAL NÀY BẮT BUỘC NẰM CUỐI <body>, KHÔNG ĐƯỢC ĐƯA LÊN <head>:
+   7 file đọc DOM ngay lúc parse — page-profile (19 lần), page-product (11), voucher (8),
+   drawer-menu (4), page-index-slider (4), page-search (4), account-menu (1). Trong đó
+   account-menu.js và drawer-menu.js nằm ở NHÓM 5 dùng chung cho 18 trang, nên cả partial
+   phải ở sau markup. account-menu.js còn gọi currentPageKey() lúc parse -> routes.js
+   phải ở nhóm 2, trước nó.
+
+   NGOẠI LỆ: page-index-slider.js KHÔNG nằm ở đây. Nó giữ nguyên giữa trang, ngay sau
+   markup hero, vì .hero .mySlides mặc định opacity:0;visibility:hidden và chỉ JS gắn
+   .is-active mới hiện — dời xuống cuối thì hero trắng trơn tới khi Firebase SDK +
+   i18n.js (95KB) + cart.js nạp xong. Xem pages/index.ejs.
+
+   Tham số:
+     useUtilsI18n (mặc định false) — utils-i18n.js chỉ có ở 7/21 trang cũ. Bật thêm cho
+                                     trang không cần là thêm 1 request + 1 thẻ <script>
+                                     không có trong DOM cũ, nên phải khai báo rõ.
+     pageJs (mảng)                 — NHÓM 6, script riêng trang, luôn nạp sau cùng.
+     closeHtml (mặc định true)     — trang biến thể 'fragment' không có </html>.
+*/
+var _v = function (k, d) { return locals[k] === undefined ? d : locals[k]; };
+var useUtilsI18n = _v('useUtilsI18n', false);
+var pageJs       = _v('pageJs', []);
+var closeHtml    = _v('closeHtml', true);
+-%>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/api-config.js"></script>
+    <script src="js/routes.js"></script>
+    <script src="js/auth-helper.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/utils-format.js"></script>
+<% if (useUtilsI18n) { -%>
+    <script src="js/utils-i18n.js"></script>
+<% } -%>
+    <script src="js/account-menu.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/cart-drawer.js"></script>
+    <script src="js/drawer-menu.js"></script>
+    <script src="js/reveal.js"></script>
+<% pageJs.forEach(function (f) { -%>
+    <script src="js/<%= f %>"></script>
+<% }); -%>
+</body>
+<% if (closeHtml) { -%>
+</html>
+<% } -%>

@@ -1,0 +1,62 @@
+<%
+/* drawer-menu.ejs — menu trượt, GIỐNG HỆT NHAU trên 18/18 trang migrate (đã đo:
+   cùng một md5 cho cả 18 file). Không có tham số nào.
+
+   Nội dung chữ ở đây là bản tiếng Việt mặc định; i18n.js dịch lại lúc chạy qua
+   translateDrawer(). Đừng đổi cấu trúc: drawer-menu.js query thẳng .drawer-acc-btn,
+   #drawer-close, #drawer-backdrop ngay lúc parse.
+
+   Mọi href đi qua R.href() -> PATHS trong client/js/routes.js. */
+-%>
+    <!-- Slide-out Drawer Menu -->
+    <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+    <aside class="drawer" id="drawer-menu" role="dialog" aria-modal="true"
+           aria-label="Danh mục" aria-hidden="true" tabindex="-1">
+        <div class="drawer-head">
+            <span class="drawer-title">Danh Mục</span>
+            <button type="button" class="drawer-close" id="drawer-close" aria-label="Đóng menu">&times;</button>
+        </div>
+        <nav class="drawer-nav">
+            <ul class="drawer-acc">
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Sản phẩm <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="<%= R.href('sanpham-ao') %>">Áo</a></li>
+                        <li><a href="<%= R.href('sanpham-quan') %>">Quần</a></li>
+                        <li><a href="<%= R.href('sanpham-giay') %>">Giày &amp; Dép</a></li>
+                    </ul>
+                </li>
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Phụ Kiện <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="<%= R.href('gold-jewellery') %>">Phụ Kiện</a></li>
+                    </ul>
+                </li>
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Túi Xách <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="<%= R.href('handbags') %>">Túi Xách</a></li>
+                    </ul>
+                </li>
+                <li class="drawer-acc-item">
+                    <button type="button" class="drawer-acc-btn" aria-expanded="false">
+                        Khuyến Mãi <span class="drawer-acc-icon" aria-hidden="true">+</span>
+                    </button>
+                    <ul class="drawer-sub">
+                        <li><a href="<%= R.href('sale') %>">Khuyến Mãi</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <ul class="drawer-links">
+                <li><a href="<%= R.href('login') %>">Đăng nhập</a></li>
+                <li><a href="<%= R.href('orders') %>">Đơn hàng của tôi</a></li>
+            </ul>
+        </nav>
+    </aside>
+

@@ -185,6 +185,47 @@ function setup(opts) {
   check('bam Dat mac dinh -> goi PATCH .../default',
         cad.api().some(function (x) { return x[1] === 'PATCH' && /default$/.test(x[2]); }));
 
+  // ===== Bug (1): dong roi mo lai truoc khi hieu ung fade xong =====
+  // closeModal hen gio go modal khoi layout (hidden = true) SAU hieu ung. Neu khong giu
+  // timer id de huy, mo lai trong luc no con treo thi no van no vo dieu kien: hidden bi
+  // da ve true trong khi .is-open van bat -> hop thoai bien mat, ma nen VAN khoa cuon
+  // nen ESC cung khong an (listener gan tren overlay dang display:none).
+  // Cua so dinh loi la 220ms (dia chi) / 200ms (xoa tai khoan) — dung tam mot nhip nhap dup.
+  // Cung mau voi muc 10a trong change-password.test.js.
+
+  // -- Modal dia chi (hoan 220ms) --
+  let mm = setup({ hash: '#addresses' });
+  mm.login(); await wait();
+  const addrOv = mm.doc.getElementById('addr-modal-overlay');
+  mm.doc.getElementById('addr-add').fire('click');
+  eq('dia chi: mo modal -> hidden=false', addrOv.hidden, false);
+  mm.doc.getElementById('addr-cancel').fire('click');
+  await wait(80);                       // nhanh hon 220ms
+  mm.doc.getElementById('addr-add').fire('click');
+  eq('dia chi: mo lai ngay -> hidden=false', addrOv.hidden, false);
+  await wait(320);                      // qua moc hen gio CU cua lan dong truoc
+  eq('dia chi: hen gio cu KHONG dong modal vua mo', addrOv.hidden, false);
+  check('dia chi: van con .is-open', addrOv.classList.contains('is-open'));
+  eq('dia chi: nen van khoa cuon dung trang thai dang mo',
+     mm.doc.body.style.overflow, 'hidden');
+
+  // -- Modal xoa tai khoan (hoan 200ms) --
+  mm = setup({ hash: '#privacy' });
+  mm.login(); await wait();
+  const delOv = mm.doc.getElementById('del-modal-overlay');
+  mm.doc.getElementById('btn-delete-account').fire('click');
+  eq('xoa tk: mo modal -> hidden=false', delOv.hidden, false);
+  mm.doc.getElementById('del-cancel').fire('click');
+  await wait(80);                       // nhanh hon 200ms
+  mm.doc.getElementById('btn-delete-account').fire('click');
+  eq('xoa tk: mo lai ngay -> hidden=false', delOv.hidden, false);
+  await wait(300);
+  eq('xoa tk: hen gio cu KHONG dong modal vua mo', delOv.hidden, false);
+  check('xoa tk: van con .is-open', delOv.classList.contains('is-open'));
+  note('Modal xoa tai khoan KHONG dat body.style.overflow (khac 3 modal kia) nen o day');
+  note('khong kiem overflow — DOM gia tra undefined la dung, khong phai loi.');
+  note('Hai modal dung HAI bien timer rieng: chung mot bien thi dong cai nay huy nham cai kia.');
+
   note('theme.js nap bang defer o profile.html nen window.BreezeTheme chua co luc parse;');
   note('code da phong bang (window.BreezeTheme && ...) -> TASK 5 doi thu tu phai kiem lai cho nay.');
 })();

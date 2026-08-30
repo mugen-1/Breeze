@@ -163,7 +163,15 @@
   }
 
   // ---- Modal ----
+  /* Hẹn giờ gỡ modal khỏi layout sau hiệu ứng mờ. PHẢI giữ id để huỷ được: mở lại
+     trong lúc nó còn treo thì nó vẫn nổ vô điều kiện, đá hidden về true trong khi
+     .is-open đang bật — modal biến mất mà nền vẫn khoá cuộn. Xem closeModal. */
+  var _pmCloseTimer = null;
+
   function openModal(card) {
+    clearTimeout(_pmCloseTimer);
+    _pmCloseTimer = null;
+
     _editing = card || null;
     _modalTrigger = document.activeElement;
     byId('pm-modal-title').textContent = _editing ? t('pf.editCard') : t('pf.addCard');
@@ -181,7 +189,10 @@
     var overlay = byId('pm-modal-overlay');
     overlay.classList.remove('is-open');
     document.body.style.overflow = '';
-    setTimeout(function () { overlay.hidden = true; }, 220);
+    _pmCloseTimer = setTimeout(function () {
+      _pmCloseTimer = null;
+      overlay.hidden = true;
+    }, 220);
     if (_modalTrigger && _modalTrigger.focus) { try { _modalTrigger.focus(); } catch (e) {} }
     _modalTrigger = null;
   }

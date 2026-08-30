@@ -1,0 +1,35 @@
+<%
+/* orders.ejs — CHỈ phần thân riêng của trang. Header / drawer / footer / scripts do
+   layouts/main.ejs lo.
+
+   page-orders.js dựng danh sách đơn từ API. 96 dòng <style> của trang nằm ở partials/orders-style.ejs, nạp qua headExtra. */
+-%>
+
+    <div id="orders-wrapper">
+        <div class="orders-heading" id="orders-heading">Đơn Hàng Của Tôi</div>
+
+        <!-- Chưa đăng nhập -->
+        <div class="orders-notice" id="orders-login" style="display:none;">
+            <i class="fa fa-user-circle-o"></i>
+            <span id="orders-login-text">Vui lòng đăng nhập để xem đơn hàng của bạn.</span>
+            <br><br>
+            <a href="login.html" id="orders-login-link">Đăng nhập</a>
+        </div>
+
+        <!-- Không có đơn -->
+        <div class="orders-notice" id="orders-empty" style="display:none;">
+            <i class="fa fa-shopping-bag"></i>
+            <span id="orders-empty-text">Bạn chưa có đơn hàng nào.</span>
+            <br><br>
+            <a href="index.html" id="orders-empty-link">Tiếp tục mua sắm</a>
+        </div>
+
+        <!-- Đang tải / lỗi -->
+        <div class="orders-notice" id="orders-status" style="display:none;"></div>
+
+        <!-- Danh sách đơn -->
+        <div id="orders-list"></div>
+
+        <a href="index.html" class="orders-continue" id="orders-continue" style="display:none;">← Tiếp tục mua sắm</a>
+    </div>
+

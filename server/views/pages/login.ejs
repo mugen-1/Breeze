@@ -1,0 +1,89 @@
+<%
+/* login.ejs — CHỈ phần thân riêng của trang. Header / drawer / footer / scripts do
+   layouts/main.ejs lo.
+
+   auth.js phụ thuộc firebase-config.js (RB2) và có nhánh keyOf(redirect) === "checkout". KHÔNG đụng vào logic redirect — xem S-1 trong CLEANUP.md. */
+-%>
+
+    <div class="auth-body">
+        <div class="auth-container">
+
+            <!-- =====================================================
+                 LOGO PLACEHOLDER — thêm logo của bạn vào đây
+                 Xóa dòng comment và thay bằng:
+                 <img src="img/TEN_FILE_LOGO.png" alt="Logo" class="auth-logo-img">
+                 ===================================================== -->
+            <div class="auth-logo">
+                <!-- ADD LOGO HERE -->
+            </div>
+
+            <!-- TABS: Sign in | Create Account -->
+            <div class="auth-tabs">
+                <span class="auth-tab active" data-i18n="au.tabSignin">Sign in</span>
+                <a href="signup.html" class="auth-tab" data-i18n="au.tabSignup">Create Account</a>
+            </div>
+
+            <!-- FORM DANG NHAP -->
+            <form onsubmit="event.preventDefault(); dangNhap();">
+
+                <!-- EMAIL -->
+                <div class="auth-input-group">
+                    <input id="login-email"
+                           class="auth-input"
+                           type="email"
+                           placeholder="* EMAIL ADDRESS" data-i18n-ph="au.phEmail"
+                           required/>
+                </div>
+
+                <!-- PASSWORD -->
+                <div class="auth-input-group">
+                    <input id="login-password"
+                           class="auth-input"
+                           type="password"
+                           placeholder="* PASSWORD" data-i18n-ph="au.phPassword"
+                           required/>
+                </div>
+
+                <!-- FORGOT PASSWORD + REQUIRED -->
+                <div class="auth-meta-row">
+                    <a href="forgot-password.html" class="auth-forgot" data-i18n="au.forgot">Forgot Password?</a>
+                    <span class="auth-required" data-i18n="au.required">* Required</span>
+                </div>
+
+                <!-- REMEMBER ME + DETAILS -->
+                <div class="auth-remember-row">
+                    <label class="auth-remember">
+                        <input type="checkbox" checked> <span data-i18n="au.remember">Remember Me</span>
+                    </label>
+                    <a href="#" class="auth-details" data-i18n="au.details">Details</a>
+                </div>
+
+                <!-- THONG BAO LOI / THANH CONG -->
+                <p id="login-msg" class="auth-msg"></p>
+
+                <!-- NUT SIGN IN -->
+                <button type="submit" class="auth-btn" data-i18n="au.btnSignin">SIGN IN</button>
+
+            </form>
+
+            <!-- OR DIVIDER -->
+            <div class="auth-divider">
+                <hr><span data-i18n="au.or">OR</span><hr>
+            </div>
+
+            <!-- SOCIAL BUTTONS (trang tri) -->
+            <div class="auth-socials">
+                <button class="auth-social-btn" type="button" title="Facebook">
+                    <i class="fa fa-facebook" style="color:#1877f2;"></i>
+                </button>
+                <button class="auth-social-btn" type="button" title="Google">
+                    <i class="fa fa-google" style="color:#ea4335;"></i>
+                </button>
+                <button class="auth-social-btn" type="button" title="Apple">
+                    <i class="fa fa-apple" style="color:#000;"></i>
+                </button>
+            </div>
+
+        </div>
+    </div>
+

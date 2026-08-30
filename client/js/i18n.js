@@ -1041,7 +1041,29 @@
             'au.eNoUser': 'Tài khoản không tồn tại.',
             'au.eWrongPw': 'Mật khẩu không đúng.',
             'au.eBadCred': 'Email hoặc mật khẩu không chính xác.',
-            'au.eTooMany': 'Quá nhiều lần thử. Vui lòng thử lại sau.'
+            'au.eTooMany': 'Quá nhiều lần thử. Vui lòng thử lại sau.',
+
+            /* --- modal đổi mật khẩu trong profile.html (au.cp*) --- cho người ĐÃ đăng
+               nhập. Khác forgot-password: luồng kia gửi email cho người ở ngoài.
+               Nhãn nút để dạng câu thường: .addr-btn trong profile.css đã
+               text-transform:uppercase, viết hoa sẵn ở đây là hoa hai lần. */
+            'au.cpTitle': 'Đổi mật khẩu',
+            'au.cpCurrent': 'Mật khẩu hiện tại',
+            'au.cpNew': 'Mật khẩu mới',
+            'au.cpConfirm': 'Xác nhận mật khẩu mới',
+            'au.cpShow': 'Hiện mật khẩu',
+            'au.cpHide': 'Ẩn mật khẩu',
+            'au.cpSubmit': 'Đổi mật khẩu',
+            'au.cpSaving': 'Đang đổi…',
+            'au.cpOk': 'Đã đổi mật khẩu thành công.',
+            'au.cpErrCurrent': 'Mật khẩu hiện tại không đúng.',
+            'au.cpErrSame': 'Mật khẩu mới phải khác mật khẩu hiện tại.',
+            'au.cpErrShort': 'Mật khẩu mới phải có ít nhất 8 ký tự.',
+            'au.cpErrWeak': 'Mật khẩu mới quá yếu. Hãy chọn mật khẩu dài và khó đoán hơn.',
+            'au.cpNoPassword': 'Tài khoản này đăng nhập bằng nhà cung cấp bên ngoài nên không có mật khẩu để đổi.',
+            'au.cpErrStale': 'Phiên đăng nhập đã cũ. Vui lòng đăng nhập lại rồi thử lần nữa.',
+            'au.cpErrNetwork': 'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.',
+            'au.cpErrGeneric': 'Không đổi được mật khẩu. Vui lòng thử lại.'
         },
         en: {
             'au.loginDocTitle': 'Sign In - BREEZE',
@@ -1078,7 +1100,26 @@
             'au.eNoUser': 'Account does not exist.',
             'au.eWrongPw': 'Incorrect password.',
             'au.eBadCred': 'Incorrect email or password.',
-            'au.eTooMany': 'Too many attempts. Please try again later.'
+            'au.eTooMany': 'Too many attempts. Please try again later.',
+
+            /* --- modal đổi mật khẩu trong profile.html (au.cp*) --- */
+            'au.cpTitle': 'Change password',
+            'au.cpCurrent': 'Current password',
+            'au.cpNew': 'New password',
+            'au.cpConfirm': 'Confirm new password',
+            'au.cpShow': 'Show password',
+            'au.cpHide': 'Hide password',
+            'au.cpSubmit': 'Change password',
+            'au.cpSaving': 'Changing…',
+            'au.cpOk': 'Your password has been changed.',
+            'au.cpErrCurrent': 'Your current password is incorrect.',
+            'au.cpErrSame': 'The new password must differ from the current one.',
+            'au.cpErrShort': 'The new password must be at least 8 characters.',
+            'au.cpErrWeak': 'That new password is too weak. Pick a longer, harder-to-guess one.',
+            'au.cpNoPassword': 'This account signs in through an external provider, so it has no password to change.',
+            'au.cpErrStale': 'Your session is too old. Please sign in again and retry.',
+            'au.cpErrNetwork': 'Could not reach the server. Check your connection and retry.',
+            'au.cpErrGeneric': 'Could not change your password. Please try again.'
         }
     });
 

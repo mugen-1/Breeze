@@ -56,6 +56,10 @@
         }, 1900);
     }
 
+    // Mở toast ra ngoài IIFE để modal đổi mật khẩu (change-password.js) dùng lại đúng
+    // cơ chế này thay vì tự dựng thông báo thứ hai. Chỉ export, không đổi hành vi.
+    window.ProfileToast = toast;
+
     // display_name; nếu trống -> phần trước @ của email (khớp account-menu.js).
     function nameOf(u) {
         if (!u) return '';
@@ -281,7 +285,15 @@
     // ---- Modal ----
     var FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
+    /* Hẹn giờ gỡ modal khỏi layout sau hiệu ứng mờ. PHẢI giữ id để huỷ được: mở lại
+       trong lúc nó còn treo thì nó vẫn nổ vô điều kiện, đá hidden về true trong khi
+       .is-open đang bật — modal biến mất mà nền vẫn khoá cuộn. Xem closeModal. */
+    var _addrCloseTimer = null;
+
     function openModal(address) {
+        clearTimeout(_addrCloseTimer);
+        _addrCloseTimer = null;
+
         _editing = address || null;
         _modalTrigger = document.activeElement;
         byId('addr-modal-title').textContent = _editing ? t('pf.editAddress') : t('pf.addAddress');
@@ -301,7 +313,10 @@
         var overlay = byId('addr-modal-overlay');
         overlay.classList.remove('is-open');
         document.body.style.overflow = '';
-        setTimeout(function () { overlay.hidden = true; }, 220);
+        _addrCloseTimer = setTimeout(function () {
+            _addrCloseTimer = null;
+            overlay.hidden = true;
+        }, 220);
         if (_modalTrigger && _modalTrigger.focus) { try { _modalTrigger.focus(); } catch (e) {} }
         _modalTrigger = null;
     }
@@ -748,9 +763,15 @@
         };
     }
 
+    /* Biến RIÊNG, không dùng chung với _addrCloseTimer: hai modal cùng nằm trong file
+       này, chung một biến thì đóng modal nọ sẽ huỷ mất hẹn giờ của modal kia. */
+    var _delCloseTimer = null;
+
     function openDelModal() {
         var d = delEls();
         if (!d.overlay) return;
+        clearTimeout(_delCloseTimer);
+        _delCloseTimer = null;
         d.pass.value = '';
         d.err.textContent = '';
         d.confirm.disabled = false;
@@ -765,7 +786,10 @@
         var d = delEls();
         if (!d.overlay) return;
         d.overlay.classList.remove('is-open');
-        setTimeout(function () { d.overlay.hidden = true; }, 200);
+        _delCloseTimer = setTimeout(function () {
+            _delCloseTimer = null;
+            d.overlay.hidden = true;
+        }, 200);
     }
 
     function submitDelete(e) {
