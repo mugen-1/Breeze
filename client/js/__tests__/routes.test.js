@@ -68,12 +68,38 @@ Object.keys(R.PATHS).forEach(function (k) {
 });
 eq('21 trang: keyOf(to(k)) === k o CA HAI dang URL', loi, []);
 
-// ===== PATHS khop file that tren dia =====
+// ===== Moi khoa trong PATHS phai co ai do phuc vu =====
+// Truoc khi migrate EJS, bat bien la "PATHS <-> file .html tren dia". Gio 18 trang
+// khong con file nua, chung do server/views + bang PAGES lo. Bat bien MOI, chat hon:
+// moi khoa trong PATHS phai duoc phuc vu boi DUNG MOT trong hai nguon, va khong nguon
+// nao co trang thua ma PATHS khong biet.
 const fs = require('fs'), path = require('path');
-const dir = path.join(__dirname, '..', '..');
-const thieu = Object.keys(R.PATHS).filter(k => !fs.existsSync(path.join(dir, R.PATHS[k])));
-eq('moi duong dan trong PATHS deu ung voi file that', thieu, []);
-const tren_dia = fs.readdirSync(dir).filter(f => f.endsWith('.html'));
-eq('PATHS khong bo sot trang nao tren dia', tren_dia.length, Object.keys(R.PATHS).length);
+const CLIENT = path.join(__dirname, '..', '..');
+const VIEWS = path.join(CLIENT, '..', 'server', 'views', 'pages');
+const PAGES = require(path.join(CLIENT, '..', 'server', 'lib', 'pages-config.js'));
 
-note('to() la cho DUY NHAT biet duoi .html — migrate EJS chi can sua PATHS.');
+const tinh = fs.readdirSync(CLIENT).filter(f => f.endsWith('.html')).map(f => f.slice(0, -5));
+const ejs = Object.keys(PAGES);
+
+// 1. Khong khoa nao bi bo roi
+const khongAiPhucVu = Object.keys(R.PATHS)
+  .filter(k => !ejs.includes(k) && !tinh.includes(k));
+eq('moi khoa trong PATHS deu co nguoi phuc vu (EJS hoac file tinh)', khongAiPhucVu, []);
+
+// 2. Khong khoa nao bi phuc vu HAI lan — neu vua co file .html vua co muc PAGES thi
+//    route EJS an file tinh, sua file .html se khong co tac dung nao va KHONG bao loi.
+const phucVuHaiLan = ejs.filter(k => tinh.includes(k));
+eq('khong trang nao vua co file .html vua co muc PAGES', phucVuHaiLan, []);
+
+// 3. Khong co trang thua o hai dau
+eq('moi muc PAGES deu co trong PATHS', ejs.filter(k => !R.PATHS[k]), []);
+eq('moi file .html con lai deu co trong PATHS', tinh.filter(k => !R.PATHS[k]), []);
+
+// 4. Moi muc PAGES phai tro toi mot view co that
+const thieuView = ejs.filter(k => !fs.existsSync(path.join(VIEWS, PAGES[k].view + '.ejs')));
+eq('moi muc PAGES tro toi view co that trong server/views/pages', thieuView, []);
+
+eq('tong so trang van la 21', ejs.length + tinh.length, Object.keys(R.PATHS).length);
+
+note('to() la cho DUY NHAT biet duoi .html — doi route chi can sua PATHS.');
+note('18 trang EJS + 3 trang tinh (invoice/admin/checkout) = 21.');

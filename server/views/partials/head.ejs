@@ -1,0 +1,90 @@
+<%
+/* head.ejs — khối <head> + thẻ <body> mở.
+
+   VÌ SAO CÓ THAM SỐ headVariant
+   21 trang KHÔNG cùng một hình dạng <head>. Đo ở Phase 1:
+     - 14 trang có đủ <!DOCTYPE>/<html>/<head>/<meta charset>/<meta viewport>;
+     - 7 trang (6 danh mục + product) KHÔNG có gì trong số đó — file bắt đầu thẳng
+       bằng <link>, trình duyệt tự vá thành DOM. Tức 7 trang này chạy QUIRKS MODE.
+   Thêm doctype cho chúng là đổi chế độ render (quirks -> standards), không phải việc
+   của đợt migrate này. Nên partial giữ đúng hai hình dạng đó và ghi lại lý do.
+   Xem mục "Phát hiện thêm" trong CLEANUP.md nếu muốn chuẩn hoá về một dạng.
+
+   Snippet chống FOUC là bản literal, KHÔNG sinh bằng JS: giữ nguyên 312 ký tự y hệt
+   19 trang cũ để so byte-identical được, và để grep 'breeze-theme' vẫn ra nó.
+   themeSnippet='force-light' là bản rút gọn của admin/invoice (2 trang này không
+   migrate, tham số để sẵn cho tương lai).
+
+   Tham số: headVariant, title, i18nTitle, bodyClass, bodyData, baseCss, pageCss,
+            themeSnippet
+*/
+var _v = function (k, d) { return locals[k] === undefined ? d : locals[k]; };
+var headVariant  = _v('headVariant', 'standard');
+var title        = _v('title', 'BREEZE');
+var i18nTitle    = _v('i18nTitle', '');
+var bodyClass    = _v('bodyClass', '');
+var bodyData     = _v('bodyData', {});
+var baseCss      = _v('baseCss', 'global.css');
+var pageCss      = _v('pageCss', []);
+var themeSnippet = _v('themeSnippet', 'auto');
+/* headExtra: tên một partial nạp thêm vào cuối <head>. Hiện chỉ product dùng — nó có
+   250 dòng <style> viết thẳng trong file. Giữ inline thay vì tách ra css/product.css:
+   đổi <style> thành <link> là đổi DOM và đổi cả thứ tự thắng thua của CSS. */
+var headExtra    = _v('headExtra', null);
+
+/* Thuộc tính data-* của <body>, giữ đúng thứ tự: class -> data-* riêng trang ->
+   data-i18n-doctitle (đúng thứ tự trong 21 file cũ). */
+var bodyAttrs = '';
+Object.keys(bodyData).forEach(function (k) {
+  var val = bodyData[k];
+  if (val === undefined || val === null || val === false) return;
+  bodyAttrs += ' data-' + k + '="' + String(val).replace(/"/g, '&quot;') + '"';
+});
+if (i18nTitle) bodyAttrs += ' data-i18n-doctitle="' + i18nTitle + '"';
+-%>
+<% if (headVariant === 'standard') { -%>
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= title %></title>
+<% if (themeSnippet === 'auto') { -%>
+    <script>(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
+<% } else { -%>
+    <script>document.documentElement.setAttribute('data-theme','light');</script>
+<% } -%>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="css/<%= baseCss %>">
+<% pageCss.forEach(function (f) { -%>
+    <link rel="stylesheet" type="text/css" href="css/<%= f %>">
+<% }); -%>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<% if (headExtra) { -%>
+<%- include("./" + headExtra) -%>
+<% } -%>
+</head>
+
+<body class="<%= bodyClass %>"<%- bodyAttrs %>>
+<% } else { -%>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="css/<%= baseCss %>">
+<% pageCss.forEach(function (f) { -%>
+    <link rel="stylesheet" type="text/css" href="css/<%= f %>">
+<% }); -%>
+<script>(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<% if (headExtra) { -%>
+<%- include("./" + headExtra) -%>
+<% } -%>
+
+<title><%= title %></title>
+<body class="<%= bodyClass %>"<%- bodyAttrs %>>
+<% } -%>

@@ -1,0 +1,197 @@
+<%
+/* index.ejs — CHỈ phần thân trang chủ (hero + nội dung), từ sau drawer tới trước footer.
+
+   NGOẠI LỆ QUAN TRỌNG — page-index-slider.js nằm GIỮA TRANG, ngay sau markup hero,
+   KHÔNG gom xuống cuối <body> cùng các script khác. Lý do đã đo: .hero .mySlides mặc
+   định opacity:0; visibility:hidden, chỉ JS gắn .is-active mới hiện. Dời script xuống
+   cuối thì hero TRẮNG TRƠN cho tới khi Firebase SDK + i18n.js (95KB) + cart.js nạp
+   xong. Đây là ngoại lệ duy nhất với thứ tự script chuẩn, đã ghi trong CLAUDE.md.
+
+   Trang này dùng biến thể header thứ 3 (headerVariant: home) — <header> riêng có ô
+   tìm kiếm .sbox và .drawer-trigger, không dùng policy-header. */
+-%>
+
+
+    <section class="hero">
+        <div class="slideshow-container">
+            <div class="mySlides fade"><img src="img/gc60.avif" alt=""></div>   <!-- HERO 1 -->
+            <div class="mySlides fade"><img src="img/gc63.avif" alt=""></div>   <!-- HERO 2 -->
+            <div class="mySlides fade"><img src="img/gc62.avif" alt=""></div>   <!-- HERO 3 -->
+        </div>
+
+        <div class="hero-scrim"></div>
+
+        <div class="hero-content">
+            <p class="hero-eyebrow" data-i18n="ix.eyebrow">Bộ sưu tập 2026</p>
+            <h1 class="hero-title"></h1>
+            <a href="sanpham-ao.html" class="hero-btn" data-i18n="ix.shopNow">Shop Now</a>
+        </div>
+
+        <div class="hero-dots">
+            <span class="dot" onclick="currentSlide(0)"></span>
+            <span class="dot" onclick="currentSlide(1)"></span>
+            <span class="dot" onclick="currentSlide(2)"></span>
+        </div>
+
+        <div class="hero-scroll" aria-hidden="true">
+            <span class="hero-scroll-label" data-i18n="ix.scroll">Scroll</span>
+            <span class="hero-scroll-line"></span>
+        </div>
+    </section>
+
+      <script src="js/page-index-slider.js"></script>
+
+
+    <!-- Main content -->
+    <div class="main-content">
+        <div class="headline reveal">
+            <h4 data-i18n="ix.newArrivals">New Arrivals</h4>
+        </div>
+        <ul class="products" data-no-cart>
+            <li>
+                <div class="product-item reveal" data-id="25">
+                    <div class="product-top">
+                        <a href="product.html?id=25" class="product-thumb">
+                            <img src="img/giay-nam5.png" alt="Air Jordan 1 Low SE">
+                        </a>
+                    </div>
+                    <div class="product-info">
+                        <a href="product.html?id=25" class="product-name">Air Jordan 1 Low SE</a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <div class="product-item reveal" data-id="18">
+                    <div class="product-top">
+                        <a href="product.html?id=18" class="product-thumb">
+                            <img src="img/quan-nam15.png" alt="Quần Tây Nam">
+                        </a>
+                    </div>
+                    <div class="product-info">
+                        <a href="product.html?id=18" class="product-name">Quần Tây Nam</a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <div class="product-item reveal" data-id="49">
+                    <div class="product-top">
+                        <a href="product.html?id=49" class="product-thumb">
+                            <img src="img/phukien11.png" alt="Ví Dài Canvas">
+                        </a>
+                    </div>
+                    <div class="product-info">
+                        <a href="product.html?id=49" class="product-name">Ví Dài Canvas</a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <div class="product-item reveal" data-id="40">
+                    <div class="product-top">
+                        <a href="product.html?id=40" class="product-thumb">
+                            <img src="img/tui13.png" alt="Túi Chần Bông">
+                        </a>
+                    </div>
+                    <div class="product-info">
+                        <a href="product.html?id=40" class="product-name">Túi Chần Bông</a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <div class="product-item reveal" data-id="17">
+                    <div class="product-top">
+                        <a href="product.html?id=17" class="product-thumb">
+                            <img src="img/quan-nam13.png" alt="Quần Cargo Nhẹ">
+                        </a>
+                    </div>
+                    <div class="product-info">
+                        <a href="product.html?id=17" class="product-name">Quần Cargo Nhẹ</a>
+                    </div>
+                </div>
+            </li>
+        </ul>
+
+<!--        <div class="pagination">
+            <a href="#">«</a>
+            <a class="active" href="#">1</a>
+            <a href="#">2</a>
+            <a href="#">3</a>
+            <a href="#">4</a>
+            <a href="#">5</a>
+            <a href="#">6</a>
+            <a href="#">»</a>
+        </div> -->
+    </div>
+
+    <!-- Hero banner tĩnh (1 ảnh) — độc lập slideshow đầu trang (KHÔNG .mySlides/.dot) -->
+    <section class="hero hero--mens">
+        <div class="hero-figure">
+            <img src="img/gc60.png" alt="Men's Breeze">
+        </div>
+        <div class="hero-scrim"></div>
+        <div class="hero-content">
+        <!--    <p class="hero-eyebrow">Bộ Sưu Tập 2026</p> -->
+            <h2 class="hero-title">Men's Breeze</h2>
+            <a href="sanpham-ao.html" class="hero-btn">Shop Now</a>
+        </div>
+    </section>
+
+    <div id="khung" style="display:none;">
+        <div class="khungchu">
+            
+        </div>
+        <ul class="hinhanh">
+            <!--SP1-->
+            <li>
+                <div class="iteam">
+                    <div class="top">
+                        <a href="https://www.breeze.com/vn/en/st/capsule/breeze-ghost"
+                             class="thumb">
+                            <img src="img/gc23.png" alt="">
+                        </a>
+                        <!--mua ngay-->
+                    </div>
+                    <div class="info">
+                        
+                    </div>
+                </div>
+            </li>
+            <li>
+                <div class="iteam">
+                    <div class="top">
+                        <a href="https://www.breeze.com/vn/en/st/capsule/breeze-ghost"
+                            class="thumb">
+                            <img src="img/gc57.png" alt="">
+                        </a>
+                        <!--mua ngay-->
+                    </div>
+                    <div class="info"> </div>
+                </div>
+            </li>
+            <li>
+                <div class="iteam">
+                    <div class="top">
+                        <a href="https://www.scb.com.vn/vie/uu-dai-chu-the#PERSONAL_GOODWILL_FOODY" class="thumb">
+                            <img src="img/gc58.png" alt="">
+                        </a>
+                        <!--mua ngay-->
+                    </div>
+                    <div class="info">
+                        
+                    </div>
+                </div>
+            </li>
+            <li>
+                <div class="iteam">
+                    <div class="top">
+                        <a href="https://zalopay.vn/dich-vu/sieu-thi-cua-hang-tien-loi " class="thumb">
+                            <img src="img/gc55.png" alt="">
+                        </a>
+                        <!--mua ngay-->
+                    </div>
+                    <div class="info">
+                        
+                    </div> 
+                </div> 
+            </li>
+        </ul>
+    </div> 

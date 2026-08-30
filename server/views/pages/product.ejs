@@ -1,0 +1,133 @@
+<%
+/* product.ejs — CHỈ phần thân trang chi tiết sản phẩm.
+
+   page-product.js đọc DOM 11 lần NGAY LÚC PARSE (nhiều thứ nhì toàn site) — nó nằm
+   ở nhóm 6 cuối <body> nên markup này luôn có sẵn trước. Đừng dời script lên trên.
+
+   Tham số ?id= vẫn do page-product.js tự đọc từ location.search như cũ; server KHÔNG
+   đụng vào (xem mục S-1 trong CLEANUP.md — không truyền tham số URL vào to()).
+
+   250 dòng <style> của trang này nằm ở partials/product-style.ejs, nạp qua headExtra. */
+-%>
+
+    <!-- ===== CHI TIẾT SẢN PHẨM ===== -->
+    <div class="pd-wrap">
+        <!-- .product-item để addToCart(this) đọc được name/price/img -->
+        <div class="product-item" id="pd-root">
+            <div class="pd-layout">
+                <!-- Gallery -->
+                <div class="pd-gallery">
+                    <div class="pd-main">
+                        <img id="pd-main-img" src="img/gc40.png" alt="">
+                    </div>
+                    <div class="pd-thumbs" id="pd-thumbs">
+                        <!-- thumbnail được render bằng JS theo ?id -->
+                    </div>
+                </div>
+
+                <!-- Thông tin -->
+                <div class="pd-info">
+                    <h1 class="pd-title product-name" id="pd-name">Sản phẩm</h1>
+                    <div class="pd-price product-price" id="pd-price">0đ</div>
+                    <p class="pd-desc" id="pd-desc"></p>
+
+                    <div class="pd-size-head">
+                        <span class="pd-size-label" data-i18n="pd.chooseSize">Chọn size</span>
+                        <button type="button" class="pd-guide-link" id="sg-open" data-i18n="pd.sizeGuide">Bảng size</button>
+                    </div>
+                    <div class="pd-sizes" id="pd-sizes">
+                        <button type="button" class="pd-size" data-size="S">S</button>
+                        <button type="button" class="pd-size selected" data-size="M">M</button>
+                        <button type="button" class="pd-size" data-size="L">L</button>
+                        <button type="button" class="pd-size" data-size="XL">XL</button>
+                    </div>
+
+                    <button type="button" class="pd-add" onclick="addToCart(this)">Thêm vào giỏ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== CÓ THỂ BẠN THÍCH ===== -->
+    <div class="pd-wrap pd-related">
+        <div class="main-content">
+            <div class="headline reveal">
+                <h4 data-i18n="pd.youMayLike">Có thể bạn thích</h4>
+            </div>
+            <ul class="products" id="pd-related-list">
+                <li>
+                    <div class="product-item reveal">
+                        <div class="product-top">
+                            <a href="product.html?id=chowonhee" class="product-thumb">
+                                <img src="img/gc44.png" alt="Yêu mình trong những khoảng lặng">
+                            </a>
+                        </div>
+                        <div class="product-info">
+                            <a href="product.html?id=chowonhee" class="product-name">Yêu mình trong những khoảng lặng</a>
+                            <div class="product-price">75,000đ</div>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <div class="product-item reveal">
+                        <div class="product-top">
+                            <a href="product.html?id=thuytran" class="product-thumb">
+                                <img src="img/gc50.png" alt="Duyên đứt gánh">
+                            </a>
+                        </div>
+                        <div class="product-info">
+                            <a href="product.html?id=thuytran" class="product-name">Duyên đứt gánh</a>
+                            <div class="product-price">115,000đ</div>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <div class="product-item reveal">
+                        <div class="product-top">
+                            <a href="product.html?id=bachiem" class="product-thumb">
+                                <img src="img/gc56.png" alt="Ba chị em">
+                            </a>
+                        </div>
+                        <div class="product-info">
+                            <a href="product.html?id=bachiem" class="product-name">Ba chị em</a>
+                            <div class="product-price">95,000đ</div>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <div class="product-item reveal">
+                        <div class="product-top">
+                            <a href="product.html?id=neubiet" class="product-thumb">
+                                <img src="img/gc53.png" alt="Nếu biết trăm năm là hữu hạn">
+                            </a>
+                        </div>
+                        <div class="product-info">
+                            <a href="product.html?id=neubiet" class="product-name">Nếu biết trăm năm là hữu hạn</a>
+                            <div class="product-price">239,000đ</div>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ===== MODAL BẢNG SIZE ===== -->
+    <div class="sg-overlay" id="sg-overlay">
+        <div class="sg-modal" role="dialog" aria-modal="true" aria-label="Bảng size" data-i18n-aria="pd.sizeGuide">
+            <button type="button" class="sg-close" id="sg-close" aria-label="Đóng" data-i18n-aria="com.close">&times;</button>
+            <h2 class="sg-title" data-i18n="pd.sizeGuide">Bảng size</h2>
+            <p class="sg-sub" data-i18n="pd.sizeSub">Số đo tham khảo (cm). Chọn size lớn hơn nếu bạn thích form rộng.</p>
+            <table class="sg-table">
+                <thead>
+                    <tr><th data-i18n="pd.thSize">Size</th><th data-i18n="pd.thChest">Ngực</th><th data-i18n="pd.thLength">Dài áo</th><th data-i18n="pd.thShoulder">Vai</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>S</td><td>92</td><td>67</td><td>43</td></tr>
+                    <tr><td>M</td><td>98</td><td>69</td><td>45</td></tr>
+                    <tr><td>L</td><td>104</td><td>71</td><td>47</td></tr>
+                    <tr><td>XL</td><td>110</td><td>73</td><td>49</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+

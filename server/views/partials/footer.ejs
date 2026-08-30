@@ -1,0 +1,47 @@
+<%
+/* footer.ejs — chân trang. GIỐNG HỆT NHAU trên 18/18 trang migrate (đã đo: cùng md5,
+   riêng gold-jewellery chỉ lệch 4 dấu cách thụt đầu dòng).
+
+   i18n.js dịch cột "About Us" theo thuộc tính data-fk (footer mới) — giữ nguyên
+   data-fk, đừng đổi sang khoá khác. #footer-lang-* là nơi i18n.js gắn sự kiện đổi
+   ngôn ngữ; nút [data-lang] chính là nút người dùng bấm thật.
+
+   Mọi href đi qua R.href() -> PATHS trong client/js/routes.js. */
+-%>
+    <footer id="footer" class="footer-cols">
+        <div class="footer-content reveal">
+            <h6 class="footer-logo">BREEZE</h6>
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <p class="footer-col-title" id="footer-help-title">May We Help You?</p>
+                    <ul>
+                        <li><a href="<%= R.href('cart') %>" data-fk="cart">Giỏ Hàng Của Tôi</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <p class="footer-col-title" id="footer-company-title">About Us</p>
+                    <ul>
+                        <li><a href="<%= R.href('chinhsachdoitra') %>" data-fk="ret">Chính sách đổi trả</a></li>
+                        <li><a href="<%= R.href('chinhsachgiaohang') %>" data-fk="ship">Chính sách giao hàng</a></li>
+                        <li><a href="<%= R.href('chinhsachbaomat') %>" data-fk="priv">Chính sách bảo mật</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <p class="footer-col-title" id="footer-lang-title">Language</p>
+                    <div class="footer-lang" id="footer-lang">
+                        <button class="footer-lang-btn" id="footer-lang-btn" type="button">
+                            <span id="footer-lang-current">English</span>
+                            <span class="footer-lang-arrow">&#9662;</span>
+                        </button>
+                        <div class="footer-lang-menu" id="footer-lang-menu">
+                            <button class="footer-lang-opt" data-lang="vi" type="button"><span class="footer-lang-check">&#10003;</span> Tiếng Việt</button>
+                            <button class="footer-lang-opt" data-lang="en" type="button"><span class="footer-lang-check">&#10003;</span> English</button>
+                        </div>
+                    </div>
+                    <p class="footer-col-title footer-country-title" id="footer-country-title">Country/Region</p>
+                    <p class="footer-country" id="footer-country-name">Việt Nam</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+

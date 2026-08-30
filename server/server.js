@@ -35,6 +35,13 @@ const adminRouter = require('./routes/admin');
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+// --- EJS view engine ---------------------------------------------------------
+// Master layout thay cho 21 file .html lặp header/drawer/footer. Route EJS được
+// đăng ký TRƯỚC express.static (xem cuối file) và giữ nguyên URL '.html' cũ, nên
+// 336 link tĩnh trong HTML không phải sửa và routes.js không phải đổi PATHS.
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
 // --- Hardening (Phase 5) -----------------------------------------------------
 // helmet (security headers, CSP tắt vì frontend tĩnh dùng inline script + CDN),
 // CORS whitelist (chỉ origin của client), body JSON giới hạn 100kb (chống payload
@@ -113,8 +120,14 @@ app.use('/avatars', express.static(path.join(__dirname, 'uploads', 'avatars'), {
   immutable: true,
 }));
 
+// --- Trang EJS ---------------------------------------------------------------
+// PHẢI đứng TRƯỚC express.static: file .html cũ vẫn nằm trong client/ tới phase dọn
+// dẹp, nếu static chạy trước thì nó trả file cũ và route EJS không bao giờ được gọi.
+app.use(require('./routes/pages'));
+
 // --- Static frontend ---------------------------------------------------------
-// Tiện dev: phục vụ client/ ngay trên cùng origin => mở http://localhost:3000/sanpham-ao.html
+// Tiện dev: phục vụ client/ ngay trên cùng origin => js/, css/, img/ và 3 trang .html
+// không migrate (invoice, admin, checkout). 18 trang còn lại do routes/pages.js render.
 // (fetch API cùng origin, không vướng CORS). Production sẽ tách CDN ở Phase 5.
 app.use(express.static(path.join(__dirname, '..', 'client')));
 

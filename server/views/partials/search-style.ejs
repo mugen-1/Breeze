@@ -1,0 +1,93 @@
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        #wrapper {
+            flex: 1;
+            padding: 10px 40px 60px;
+            max-width: 1170px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Dùng biến theme (tokens.css) thay màu cứng — nếu không thì chữ #111 chìm
+           hẳn vào nền tối khi bật dark mode. */
+        .search-title {
+            text-align: center;
+            margin: 32px 0 24px;
+            font-size: 15px;
+            color: var(--c-ink, #111);
+            border-bottom: 1px solid var(--c-line, #e5e5e5);
+            padding-bottom: 20px;
+        }
+        .search-title span { color: var(--c-ink, #111); font-weight: 700; }
+
+        .no-result {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--c-muted, #888);
+            font-size: 15px;
+        }
+        .no-result i {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 16px;
+            color: var(--c-line, #ccc);
+        }
+        .no-result a { color: var(--c-ink, #555); text-decoration: underline; }
+
+        /* Card sản phẩm KHÔNG khai báo lại ở đây: dùng chung CSS trang danh mục
+           (.main-content ul.products trong global.css) để kết quả tìm kiếm trông
+           y hệt trang Áo/Quần/Giày — kể cả nút "Thêm vào giỏ" hiện khi rê chuột. */
+        .main-content { padding-top: 0; }
+
+        /* Thanh tìm kiếm trên header — CHỈ trang này (trang khác vẫn dùng icon kính lúp). */
+        .ph-search {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            height: 36px;
+            padding: 0 4px 0 14px;
+            border: 1px solid var(--c-line, #e6e3dd);
+            border-radius: 999px;
+            background: var(--c-surface, #fff);
+            transition: border-color .2s ease;
+        }
+        .ph-search:focus-within { border-color: var(--c-ink, #0e0e0e); }
+        .ph-search-input {
+            border: 0;
+            outline: 0;
+            background: transparent;
+            font-family: var(--font-ui, 'Jost', sans-serif);
+            font-size: 14px;
+            color: var(--c-ink, #0e0e0e);
+            line-height: 34px;
+            width: 190px;
+        }
+        .ph-search-input::placeholder { color: var(--c-muted, #6b6b6b); }
+        .ph-search-btn {
+            appearance: none;
+            -webkit-appearance: none;
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity .2s ease;
+        }
+        .ph-search-btn:hover { opacity: .55; }
+        /* global.css có '.fa-search { color:#fff !important }' (dành cho nút tìm trên nền
+           tối ở index) -> ở đây nền sáng thì icon tàng hình. Ghi đè riêng cho nút này. */
+        .ph-search-btn .fa { color: var(--c-ink, #0e0e0e) !important; font-size: 15px; }
+        @media (max-width: 720px) {
+            .ph-search-input { width: 108px; }
+            .ph-search { padding-left: 10px; }
+        }
+    </style>
