@@ -99,10 +99,13 @@ module.exports = {
     view: 'forgot-password', title: 'Quên Mật Khẩu - BREEZE', i18nTitle: 'au.forgotDocTitle',
     bodyClass: 'sitehdr', pageCss: ['auth.css'],
   },
+  /* Đổi mật khẩu KHÔNG còn là trang riêng (Phase 2B): nó là modal trong chính trang này,
+     nên change-password.js nạp ở đây. Phải đứng SAU page-profile.js — file đó export
+     window.ProfileToast mà modal dùng để hiện dòng xác nhận ngoài trang. */
   profile: {
     view: 'profile', title: 'Cài Đặt Tài Khoản - BREEZE', i18nTitle: 'pf.docTitle',
     bodyClass: 'sitehdr', pageCss: ['profile.css'],
-    useUtilsI18n: true, pageJs: ['payment-methods.js', 'page-profile.js'],
+    useUtilsI18n: true, pageJs: ['payment-methods.js', 'page-profile.js', 'change-password.js'],
   },
   orders: {
     view: 'orders', title: 'Đơn Hàng Của Tôi - BREEZE', i18nTitle: 'title.orders',

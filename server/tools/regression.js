@@ -159,10 +159,24 @@ function row(name, ok, detail) {
   row('API can quyen /api/me -> 401', prot.status === 401, 'HTTP ' + prot.status);
 
   /* 9. so card danh muc / khuyen mai / tim kiem -------------------------------- */
-  const catN = JSON.parse((await req('GET', BASE + '/api/products?category=sanpham-ao&onsale=0')).body);
-  const saleN = JSON.parse((await req('GET', BASE + '/api/products?onsale=1')).body);
-  const all = JSON.parse(pub.body);
-  const arr = (x) => (Array.isArray(x) ? x : x.data);
+  /* CHONG CRASH khi DB chet ma server con song ------------------------------------
+     Luc do /api/products tra HTTP 500 kem than JSON bao loi ({status:'error',...}),
+     co truong hop than rong. Truoc day cho nay lam CRASH ca cong cu, mat luon bang ket
+     qua cua 10 hang muc khong dinh gi toi DB — Phase 3 phai chay mot ban sao va lai moi
+     doc duoc so. Hai lop chan duoi day THUAN TUY chong crash, KHONG doi tieu chi
+     pass/fail: doc khong ra danh sach thi coi nhu rong, hang muc 9 do dung nhu no phai do.
+
+     Lop 1 — than khong phai JSON hop le (rong, trang HTML loi, ket noi dut giua chung)
+     thi JSON.parse nem NGAY, truoc khi kip cham toi arr(). */
+  const parseJson = (s) => { try { return JSON.parse(s); } catch (e) { return null; } };
+  const catN = parseJson((await req('GET', BASE + '/api/products?category=sanpham-ao&onsale=0')).body);
+  const saleN = parseJson((await req('GET', BASE + '/api/products?onsale=1')).body);
+  const all = parseJson(pub.body);
+  /* Lop 2 — vá o CHINH ham arr() chu khong o tung cho goi: no duoc goi 5 lan tren 3
+     dong (arr(all) o cho tinh searchN, arr(catN)+arr(saleN) o ca ve dieu kien lan ve
+     chuoi chi tiet) va ca 5 deu chung mot lo hong. Vá mot cho la kin het.
+     x = {status:'error'} -> x.data la undefined; x = null -> doc .data la nem luon. */
+  const arr = (x) => (Array.isArray(x) ? x : (x && Array.isArray(x.data) ? x.data : []));
   const norm = (s) => String(s == null ? '' : s).toLowerCase().normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').replace(/\s+/g, ' ').trim();
   const tk = norm('quan').split(' ').filter(Boolean);
@@ -184,14 +198,21 @@ function row(name, ok, detail) {
   let testOk = false;
   try {
     testOut = execFileSync(process.execPath, [path.join(CLIENT, 'js/__tests__/run-all.js')], { encoding: 'utf8' });
-    testOk = /OK: 12\/12 file test pass/.test(testOut);
+    /* Backreference \1: khop "OK: N/N file test pass" voi N bat ky, mien la hai ve
+       BANG NHAU (tuc moi file deu pass). Truoc day cho nay ghi cung 12/12 — them file
+       test thu 13 la hang muc nay do oan, keo theo ca hang muc 12 vi no dung testOk. */
+    testOk = /OK: (\d+)\/\1 file test pass/.test(testOut);
   } catch (e) { testOut = e.stdout || ''; }
-  const asserts = (testOut.match(/KET QUA: (\d+) pass, (\d+)/g) || [])
-    .reduce((acc, s) => {
-      const m = s.match(/KET QUA: (\d+) pass, (\d+)/);
-      return { p: acc.p + Number(m[1]), f: acc.f + Number(m[2]) };
-    }, { p: 0, f: 0 });
-  row('bo test client', testOk && asserts.f === 0, '12 file, ' + asserts.p + ' assertion, ' + asserts.f + ' fail');
+  /* Moi file test in dung MOT dong "KET QUA: ..." -> dem luon so file tu day, khong
+     ghi cung con so vao chuoi. Truoc day cho nay in cung '12 file' va da lech that khi
+     them change-password.test.js (file thu 13). */
+  const ketQua = testOut.match(/KET QUA: (\d+) pass, (\d+)/g) || [];
+  const asserts = ketQua.reduce((acc, s) => {
+    const m = s.match(/KET QUA: (\d+) pass, (\d+)/);
+    return { p: acc.p + Number(m[1]), f: acc.f + Number(m[2]) };
+  }, { p: 0, f: 0 });
+  row('bo test client', testOk && asserts.f === 0,
+    ketQua.length + ' file, ' + asserts.p + ' assertion, ' + asserts.f + ' fail');
 
   /* 12. chot chan hoi quy '.html' chua bi pha -------------------------------- */
   const guard = /group-b-route-keys/.test(fs.readdirSync(path.join(CLIENT, 'js/__tests__')).join(','));

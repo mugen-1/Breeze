@@ -80,7 +80,7 @@
                                 <span class="acct-label" data-i18n="pf.password">Mật khẩu</span>
                                 <span class="acct-value">
                                     <span class="acct-dots" aria-hidden="true">••••••••••</span>
-                                    <a class="acct-edit" href="forgot-password.html" data-i18n="pf.change">Đổi</a>
+                                    <button type="button" class="acct-edit" id="cp-open" data-i18n="pf.change">Đổi</button>
                                 </span>
                             </div>
                             <div class="acct-field">
@@ -458,6 +458,64 @@
                 <div class="addr-modal-foot">
                     <button type="button" class="addr-btn addr-btn-ghost" id="pm-cancel" data-i18n="com.cancel">Hủy</button>
                     <button type="submit" class="addr-btn addr-btn-primary" id="pm-save" data-i18n="pf.saveCard">Lưu thẻ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal đổi mật khẩu (Phase 2B) — bám đúng pattern modal "Thêm địa chỉ":
+         cùng .addr-modal-overlay[hidden] + .is-open, cùng head/body/foot, cùng cặp nút.
+         change-password.js lo phần hành vi; không script inline, không onclick. -->
+    <div class="addr-modal-overlay" id="cp-modal-overlay" hidden>
+        <div class="addr-modal" role="dialog" aria-modal="true" aria-labelledby="cp-modal-title" id="cp-modal">
+            <div class="addr-modal-head">
+                <h2 class="addr-modal-title" id="cp-modal-title" data-i18n="au.cpTitle">Đổi mật khẩu</h2>
+                <button type="button" class="addr-modal-close" id="cp-modal-close" aria-label="Đóng" data-i18n-aria="pf.closeAria">&times;</button>
+            </div>
+            <form id="cp-form" novalidate>
+                <div class="addr-modal-body">
+                    <div class="addr-form-grid">
+                        <div class="addr-form-field col-2">
+                            <label class="acct-label" for="cp-current" data-i18n="au.cpCurrent">Mật khẩu hiện tại</label>
+                            <div class="pw-wrap">
+                                <input class="acct-input" id="cp-current" type="password" autocomplete="current-password" required>
+                                <button type="button" class="pw-toggle" data-toggle-pw="cp-current"
+                                        aria-controls="cp-current" aria-pressed="false"
+                                        aria-label="Hiện mật khẩu" data-i18n-aria="au.cpShow">
+                                    <i class="fa fa-eye" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="addr-form-field col-2">
+                            <label class="acct-label" for="cp-new" data-i18n="au.cpNew">Mật khẩu mới</label>
+                            <div class="pw-wrap">
+                                <input class="acct-input" id="cp-new" type="password" autocomplete="new-password" required>
+                                <button type="button" class="pw-toggle" data-toggle-pw="cp-new"
+                                        aria-controls="cp-new" aria-pressed="false"
+                                        aria-label="Hiện mật khẩu" data-i18n-aria="au.cpShow">
+                                    <i class="fa fa-eye" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="addr-form-field col-2">
+                            <label class="acct-label" for="cp-confirm" data-i18n="au.cpConfirm">Xác nhận mật khẩu mới</label>
+                            <div class="pw-wrap">
+                                <input class="acct-input" id="cp-confirm" type="password" autocomplete="new-password" required>
+                                <button type="button" class="pw-toggle" data-toggle-pw="cp-confirm"
+                                        aria-controls="cp-confirm" aria-pressed="false"
+                                        aria-label="Hiện mật khẩu" data-i18n-aria="au.cpShow">
+                                    <i class="fa fa-eye" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Vùng thông báo dùng chung. Để TRỐNG: .addr-field-msg:empty tự ẩn,
+                         nên không cần hidden hay style inline. -->
+                    <p class="addr-field-msg" id="cp-msg" aria-live="polite"></p>
+                </div>
+                <div class="addr-modal-foot">
+                    <button type="button" class="addr-btn addr-btn-ghost" id="cp-cancel" data-i18n="com.cancel">Hủy</button>
+                    <button type="submit" class="addr-btn addr-btn-primary" id="cp-submit" data-i18n="au.cpSubmit">Đổi mật khẩu</button>
                 </div>
             </form>
         </div>

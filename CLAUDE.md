@@ -14,6 +14,7 @@ HTML/CSS/JS thuần, không build step.
 
 Tài liệu đợt dọn dẹp trước khi migrate EJS: xem [CLEANUP.md](CLEANUP.md).
 Checklist test tay sau migrate: [CHECKLIST-EJS.md](CHECKLIST-EJS.md).
+Checklist test tay cho modal đổi mật khẩu: [CHECKLIST-CHANGE-PASSWORD.md](CHECKLIST-CHANGE-PASSWORD.md).
 
 ---
 
@@ -166,7 +167,7 @@ footer — layout lo hết. Snippet chống FOUC nằm trong `partials/head.ejs`
 ## Test
 
 ```bash
-node client/js/__tests__/run-all.js   # 12 file / 319 assertion
+node client/js/__tests__/run-all.js   # 14 file / 437 assertion
 node server/tools/regression.js       # 12 hạng mục toàn site (cần server đang chạy)
 node server/tools/verify-all.js       # so DOM 18 trang, bản gốc lấy từ git 21ca387
 node server/tools/domdiff.js --selftest   # negative control
@@ -183,8 +184,10 @@ CSS/JS không đổi thì pixel bằng nhau theo định nghĩa — và tất đ
 **Luôn chạy `--selftest` trước khi tin một kết quả "0 khác biệt".** Nó cố tình phá 5
 kiểu (đổi class, mất `data-`, đảo thứ tự thẻ, đổi chữ, mất `aria-`) và phải bắt được cả 5.
 
-DOM giả **không** kiểm được giao diện, dark mode, việc in, hay thứ tự thực thi thật giữa
-các thẻ `<script>` — những thứ đó phải mở trình duyệt: xem [CHECKLIST-EJS.md](CHECKLIST-EJS.md).
+DOM giả **không** kiểm được giao diện, dark mode, việc in, thứ tự tab thật, focus trap
+thật, hay thứ tự thực thi thật giữa các thẻ `<script>` — những thứ đó phải mở trình
+duyệt: xem [CHECKLIST-EJS.md](CHECKLIST-EJS.md) và
+[CHECKLIST-CHANGE-PASSWORD.md](CHECKLIST-CHANGE-PASSWORD.md).
 
 ---
 
