@@ -178,7 +178,7 @@ const avatarLimiter = buildUserActionLimiter({
    rename() là nguyên tử ở tầng filesystem: người đọc luôn thấy TRỌN VẸN ảnh cũ hoặc
    ảnh mới, không có trạng thái ở giữa.
    Tên tạm phải DUY NHẤT để 2 upload đồng thời của cùng một user không đè temp của nhau.
-   Prefix '.' để express.static (dotfiles:'ignore' mặc định) không bao giờ phục vụ file tạm. */
+   Prefix '.' để express.static (dotfiles:'deny', khai ở server.js) không bao giờ phục vụ file tạm. */
 async function writeFileAtomic(finalPath, buf) {
   const dir = path.dirname(finalPath);
   const tmpPath = path.join(
@@ -248,7 +248,10 @@ router.post('/avatar', verifyFirebaseToken, avatarLimiter, uploadAvatar, async (
 
     // .rotate() không tham số = áp EXIF orientation TRƯỚC khi metadata bị loại,
     // nếu không ảnh chụp dọc từ điện thoại sẽ bị xoay ngang sau khi re-encode.
-    const webp = await sharp(req.file.buffer)
+    // limitInputPixels: file 2MB vẫn có thể khai kích thước 30000×30000 (PNG nén cực
+    // tốt) — giải mã ra hàng GB RAM. Mặc định của sharp là ~268 triệu pixel, quá rộng
+    // cho ảnh sẽ bị thu về 256×256. Vượt ngưỡng thì sharp ném lỗi -> catch dưới trả 400.
+    const webp = await sharp(req.file.buffer, { limitInputPixels: 4096 * 4096 })
       .rotate()
       .resize(256, 256, { fit: 'cover', position: 'centre' })
       .webp({ quality: 82 })

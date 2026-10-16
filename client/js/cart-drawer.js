@@ -1,6 +1,6 @@
 /* Mini-cart drawer trượt từ phải.
-   Tái dùng getCart / saveCart / updateQty / removeFromCart / _updateAllBadges
-   trong cart.js — KHÔNG viết lại logic lưu trữ. */
+   Tái dùng getCart / saveCart / updateQty / removeFromCart / _updateAllBadges /
+   CART_MAX_QTY trong cart.js — KHÔNG viết lại logic lưu trữ. */
 (function () {
     'use strict';
 
@@ -61,7 +61,8 @@
             if (!btn) return;
             var line = e.target.closest('.cart-line');
             if (!line) return;
-            var id = Number(line.getAttribute('data-id'));
+            var rawId = line.getAttribute('data-id');
+            var id = rawId.charAt(0) === 'v' ? rawId : Number(rawId);
             var act = btn.getAttribute('data-act');
             if (act === 'inc' && typeof updateQty === 'function') updateQty(id, 1);
             else if (act === 'dec' && typeof updateQty === 'function') updateQty(id, -1);
@@ -79,15 +80,18 @@
             bodyEl.innerHTML = '<div class="cart-empty">Giỏ hàng của bạn đang trống.</div>';
         } else {
             bodyEl.innerHTML = items.map(function (it) {
-                return '<div class="cart-line" data-id="' + it.id + '">' +
+                return '<div class="cart-line" data-id="' + (it.variant_id ? 'v' + it.variant_id : it.id) + '">' +
                     '<img class="cart-line-img" src="' + esc(it.img) + '" alt="">' +
                     '<div class="cart-line-main">' +
                         '<span class="cart-line-name">' + esc(it.name) + '</span>' +
+                        (it.size ? '<small>' + esc(window.__i18n.t('pd.thSize')) + ': ' + esc(it.size) + '</small>' : '') +
+                        (it.color ? '<small>' + esc(window.__i18n.t('co.metaColor')) + ': ' + esc(it.color) + '</small>' : '') +
                         '<span class="cart-line-price">' + money(it.price) + '</span>' +
                         '<span class="cart-qty">' +
                             '<button type="button" data-act="dec" aria-label="Giảm">&minus;</button>' +
                             '<span>' + it.qty + '</span>' +
-                            '<button type="button" data-act="inc" aria-label="Tăng">+</button>' +
+                            '<button type="button" data-act="inc" aria-label="Tăng"' +
+                                (it.qty >= CART_MAX_QTY || it.available === false || (it.stock != null && it.qty >= it.stock) ? ' disabled' : '') + '>+</button>' +
                         '</span>' +
                     '</div>' +
                     '<button type="button" class="cart-line-remove" data-act="remove">Xóa</button>' +
@@ -122,8 +126,7 @@
         if (typeof window.addToCart === 'function') {
             var orig = window.addToCart;
             window.addToCart = function (btn) {
-                orig.call(this, btn);
-                open();
+                if (orig.call(this, btn) !== false) open();
             };
         }
 

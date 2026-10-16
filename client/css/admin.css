@@ -27,6 +27,16 @@ body { background:var(--c-bg); color:var(--c-ink); font-family:var(--font-ui); m
    KHÔNG sửa global.css — chỉ override trong scope admin bằng selector cụ thể hơn. */
 #panel section { padding-block: 0; }
 
+/* ===== Breadcrumb + h1 (chung cho cả 6 view, đứng đầu mỗi section) ===== */
+.adm-crumb { margin-bottom:10px; }
+.adm-crumb ol { display:flex; align-items:center; flex-wrap:wrap; gap:6px; list-style:none; margin:0; padding:0; }
+.adm-crumb li { font-family:var(--font-ui); font-size:12.5px; color:var(--admin-ink-3); }
+.adm-crumb li:not(:first-child)::before { content:'/'; margin-right:6px; color:var(--admin-border-hv); }
+.adm-crumb a { color:var(--admin-ink-3); text-decoration:none; }
+.adm-crumb a:hover { color:var(--admin-ink); text-decoration:underline; }
+.adm-crumb a:focus-visible { outline:2px solid var(--c-ink); outline-offset:2px; }
+.adm-page-title { font-family:var(--font-display); font-size:30px; font-weight:500; letter-spacing:.3px; color:var(--admin-ink); margin:0 0 20px; }
+
 /* ===== Dashboard — page header (zone B) ===== */
 .dash-header { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
 .dash-title { font-family:var(--font-display); font-size:30px; font-weight:500; letter-spacing:.3px; color:var(--admin-ink); margin:0; }
@@ -128,11 +138,24 @@ body { background:var(--c-bg); color:var(--c-ink); font-family:var(--font-ui); m
 .adm-search { position:relative; flex:0 0 auto; width:240px; display:flex; align-items:center; }
 .adm-search .fa { position:absolute; left:14px; color:var(--c-muted); font-size:13px; pointer-events:none; }
 .adm-search input {
-    width:100%; box-sizing:border-box; padding:8px 16px 8px 34px;
+    /* padding-right 52px (không phải 16px): chừa chỗ cho hint .adm-kbd đè bên phải,
+       nếu không chữ gõ dài sẽ chui xuống dưới nó. */
+    width:100%; box-sizing:border-box; padding:8px 52px 8px 34px;
     border:1px solid var(--c-line); background:var(--c-cream);
     font-family:inherit; font-size:13.5px; color:var(--c-ink); border-radius:999px;
 }
 .adm-search input:focus { outline:2px solid var(--c-ink); outline-offset:-1px; background:var(--c-bg); }
+/* Hint phím tắt Ctrl/⌘ K. Đè bên phải trong ô search — đối xứng với icon .fa bên trái
+   (cùng dùng position:absolute trong .adm-search đã là position:relative).
+   pointer-events:none để bấm trúng nó vẫn focus được vào input bên dưới. */
+.adm-kbd {
+    position:absolute; right:8px; pointer-events:none;
+    -webkit-user-select:none; user-select:none;
+    font-family:var(--font-ui); font-size:11px; line-height:1; white-space:nowrap;
+    color:var(--admin-ink-3); background:var(--admin-surface);
+    border:1px solid var(--admin-border); border-radius:var(--admin-radius);
+    padding:4px 7px;
+}
 .adm-topbar-right { display:flex; align-items:center; gap:14px; margin-left:auto; font-size:13px; color:var(--c-muted); }
 /* Host của nút đổi VI/EN (js/i18n.js chèn #lang-switcher vào đây). Đẩy sát
    cụm bên phải; luôn hiển thị kể cả khi #bar-right còn ẩn (chưa đăng nhập). */
@@ -230,22 +253,7 @@ body.adm-authed .adm-main { margin-left:232px; }
     max-width:1180px; margin-left:auto; margin-right:auto;
 }
 
-/* --- Dashboard: stat cards (hairline grid, hero doanh thu đảo màu) --- */
-.stat-grid {
-    display:grid; grid-template-columns:repeat(4, 1fr); gap:1px;
-    background:var(--c-line); border:1px solid var(--c-line); margin-bottom:44px;
-}
-.stat-card { background:var(--c-bg); padding:26px 24px; display:flex; flex-direction:column; gap:12px; min-height:132px; }
-.stat-card--hero { background:var(--c-ink); }
-.stat-label { font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--c-muted); }
-.stat-card--hero .stat-label { color:var(--c-cream); opacity:.72; }  /* cream thích ứng theme (light: =rgba(246,244,239,.72) cũ; dark: hiện trên card đảo off-white) */
-.stat-value { font-family:var(--font-display); font-size:34px; font-weight:600; line-height:1.1; letter-spacing:.5px; color:var(--c-ink); }
-.stat-card--hero .stat-value { color:var(--c-cream); }
-.stat-value.is-up { color:var(--c-success); }
-.stat-value.is-down { color:var(--c-danger); }
-.stat-value.is-up::before { content:'\25B2\00A0'; font-size:.55em; vertical-align:middle; }
-.stat-value.is-down::before { content:'\25BC\00A0'; font-size:.55em; vertical-align:middle; }
-.dash-recent-head { margin-top:4px; }
+/* --- Pill / badge: trạng thái · vai trò · tồn kho --- */
 .pill.status { background:var(--c-cream); color:var(--c-ink); border:1px solid var(--c-line); }
 .pill.role-admin { background:var(--c-ink); color:var(--c-cream); }
 .pill.role-customer { background:var(--c-cream); color:var(--c-ink); border:1px solid var(--c-line); }
@@ -265,8 +273,6 @@ body.adm-authed .adm-main { margin-left:232px; }
 .prod-filter-btn:focus-visible { outline:2px solid var(--c-ink); outline-offset:2px; }
 
 /* --- Revenue chart --- */
-.chart-card { border:1px solid var(--c-line); padding:22px 24px 24px; margin-bottom:44px; }
-.chart-head { margin-bottom:18px; }
 .chart-body { position:relative; height:320px; }
 .chart-body canvas { width:100% !important; height:100% !important; }
 .chart-state {
@@ -282,16 +288,10 @@ body.adm-authed .adm-main { margin-left:232px; }
     background-size:200% 100%; animation:adm-skel 1.2s var(--ease) infinite;
 }
 .skel-cell { width:70%; min-width:40px; height:12px; }
-.stat-card--hero .skel {
-    background:linear-gradient(90deg, rgba(255,255,255,.16) 25%, rgba(255,255,255,.30) 50%, rgba(255,255,255,.16) 75%);
-    background-size:200% 100%;
-}
 @keyframes adm-skel { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
-@media (max-width: 980px) { .stat-grid { grid-template-columns:repeat(2, 1fr); } }
-@media (max-width: 560px) { .stat-grid { grid-template-columns:1fr; } }
 
 .adm-section-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:12px; }
-.adm-section-head h3 { font-size:16px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin:0; }
+.adm-section-head h2 { font-size:16px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin:0; }
 .adm-count { color:var(--c-muted); font-size:13px; }
 
 /* --- Tables --- */
@@ -391,6 +391,54 @@ table.adm-table td.num, table.adm-table th.num { text-align:right; white-space:n
 .fld-check label { margin:0; text-transform:none; letter-spacing:0; font-size:14px; color:var(--c-ink); }
 .modal-err { background:var(--c-danger-bg); color:var(--c-danger-text); padding:10px 14px; font-size:13px; margin-bottom:16px; display:none; }
 .modal-foot { display:flex; justify-content:flex-end; gap:10px; margin-top:8px; }
+#inventory-modal .modal-card { max-width:850px; }
+#inventory-modal .adm-table-wrap { max-height:60vh; overflow:auto; }
+#inventory-modal .adm-table { min-width:620px; }
+#stock-reason-field[hidden] { display:none; }
+#sizes-modal .modal-card { max-width:850px; }
+#sizes-modal .adm-table-wrap { max-height:45vh; overflow:auto; margin-top:16px; }
+#sizes-body input[type="number"] { width:90px; padding:8px; border:1px solid var(--c-line); background:var(--c-bg); color:var(--c-ink); font:inherit; }
+#colors-modal .modal-card { max-width:900px; }
+#colors-body { max-height:48vh; overflow:auto; margin:16px 0; }
+.adm-color-card { border:1px solid var(--c-line); padding:14px; margin-bottom:12px; }
+.adm-color-head { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:10px; }
+.adm-color-head input[type="text"] { max-width:180px; padding:7px; border:1px solid var(--c-line); background:var(--c-bg); color:var(--c-ink); }
+.adm-color-head .adm-color-hex { max-width:100px; }
+.adm-color-card .adm-table-wrap { overflow-x:auto; }
+.adm-color-card .adm-table { min-width:600px; }
+.adm-color-card input[type="number"] { width:85px; padding:7px; border:1px solid var(--c-line); background:var(--c-bg); color:var(--c-ink); }
+.adm-color-images { margin-top:12px; }
+.adm-color-images img { width:38px; height:38px; object-fit:cover; border:1px solid var(--c-line); }
+.adm-color-images input[type="text"] { width:min(300px,100%); padding:7px; border:1px solid var(--c-line); background:var(--c-bg); color:var(--c-ink); }
+#sizes-error { color:var(--c-danger); }
+#size-stock-hint[hidden] { display:none; }
+
+/* Customer Detail reuses the Admin modal, table and pager. */
+body.customer-detail-open { overflow:hidden; }
+#customer-modal .modal-card { max-width:960px; box-sizing:border-box; }
+#customer-modal [hidden] { display:none; }
+.customer-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.customer-heading .adm-btn { flex-shrink:0; }
+#customer-message { color:var(--c-muted); }
+#customer-message.customer-error { color:var(--c-danger-text); }
+.customer-info { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px 24px; margin:0 0 24px; }
+.customer-info dt, .customer-kpis span { color:var(--c-muted); font-size:12px; margin-bottom:6px; }
+.customer-info dd { margin:0; overflow-wrap:anywhere; }
+.customer-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:24px; }
+.customer-kpis > div { border:1px solid var(--c-line); padding:16px; }
+.customer-kpis span, .customer-kpis strong { display:block; }
+.customer-kpis strong { font-size:22px; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+#customer-modal h4 { margin:0 0 14px; }
+#customer-modal .adm-table { min-width:680px; }
+#customer-modal .adm-table-wrap { overflow:auto; }
+@media (max-width:640px) {
+    #customer-modal { padding:16px 10px; }
+    #customer-modal .modal-card { padding:22px 16px; }
+    .customer-info, .customer-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:380px) {
+    .customer-info { grid-template-columns:1fr; }
+}
 
 /* --- Toast --- */
 #toast { position:fixed; bottom:26px; left:50%; transform:translateX(-50%); background:var(--c-accent); color:var(--c-on-accent); padding:12px 22px; font-size:13.5px; letter-spacing:.3px; opacity:0; transition:opacity .25s; pointer-events:none; z-index:2000; }
@@ -412,5 +460,11 @@ table.adm-table td.num, table.adm-table th.num { text-align:right; white-space:n
 @media (max-width: 620px) {
     .adm-topbar { gap:12px; padding:0 16px; }
     .adm-search { display:none; }
+    /* Thừa về mặt kỹ thuật (cha .adm-search đã display:none), giữ để hint không
+       lòi ra nếu sau này ô search được cho hiện lại ở mobile. */
+    .adm-kbd { display:none; }
     #panel { padding:22px 16px 60px; }
 }
+
+.adm-shipping-control { display: block; padding: 0 16px 16px; }
+.adm-shipping-control select { padding: 8px; max-width: 100%; border: 1px solid var(--admin-border); background: var(--admin-surface); color: inherit; }

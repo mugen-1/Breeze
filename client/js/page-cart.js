@@ -1,7 +1,9 @@
 // Script riêng của cart.html — tách ra từ thẻ <script> inline cuối trang.
-// Phải load SAU cart.js (dùng getCart/updateQty/removeFromCart/money/startCheckout)
+// Phải load SAU cart.js (dùng getCart/updateQty/removeFromCart/money/startCheckout/CART_MAX_QTY)
 // và SAU i18n.js (đọc window.__i18n).
-// changeQty / removeItem / checkout được gọi từ onclick trong HTML -> phải ở scope global.
+// Nút trong bảng + nút Thanh toán mang data-action="cart-*"; một listener click ở cuối
+// file điều phối (thay cho onclick="..." inline cũ — CSP chặn handler inline).
+// changeQty / removeItem / checkout vẫn để global như cũ.
 
 function _cp() {
     var lang = (window.__i18n && window.__i18n.current) || 'vi';
@@ -33,24 +35,30 @@ function renderCart() {
         var subtotal = item.price * item.qty;
         total += subtotal;
         // Hết/thiếu hàng: chỉ áp khi biết stock (giỏ server). Guest chưa biết stock -> bỏ qua.
-        var soldOut = (item.stock != null) && (item.qty > item.stock);
+        var soldOut = item.available === false || ((item.stock != null) && (item.qty > item.stock));
         if (soldOut) _cartStockIssue = true;
         var tag = soldOut ? ' <span class="cart-soldout-tag">Hết hàng</span>' : '';
         var tr = document.createElement('tr');
         if (soldOut) tr.className = 'cart-row-soldout';
+        // esc(): tên sản phẩm và đường dẫn ảnh là dữ liệu (từ server hoặc giỏ khách trong
+        // localStorage), ghép thẳng vào innerHTML là chèn được HTML/script.
+        var id = esc(item.variant_id ? 'v' + item.variant_id : item.id);
         tr.innerHTML =
-            '<td><img class="cart-item-img" src="' + item.img + '" alt="' + item.name + '" onerror="this.src=\'img/gc8.png\'"></td>' +
-            '<td><div class="cart-item-name">' + item.name + tag + '</div></td>' +
+            '<td><img class="cart-item-img" src="' + esc(item.img) + '" alt="' + esc(item.name) + '"></td>' +
+            '<td><div class="cart-item-name">' + esc(item.name) + tag + '</div>' +
+                (item.size ? '<small>' + esc(window.__i18n.t('pd.thSize')) + ': ' + esc(item.size) + '</small>' : '') +
+                (item.color ? '<small>' + esc(window.__i18n.t('co.metaColor')) + ': ' + esc(item.color) + '</small>' : '') + '</td>' +
             '<td>' + money(item.price) + '</td>' +
             '<td>' +
                 '<div class="qty-control">' +
-                    '<button class="qty-btn" onclick="changeQty(' + item.id + ', -1)">−</button>' +
+                    '<button class="qty-btn" data-action="cart-qty" data-id="' + id + '" data-delta="-1">−</button>' +
                     '<span class="qty-num">' + item.qty + '</span>' +
-                    '<button class="qty-btn" onclick="changeQty(' + item.id + ', 1)">+</button>' +
+                    '<button class="qty-btn" data-action="cart-qty" data-id="' + id + '" data-delta="1"' +
+                        (item.qty >= CART_MAX_QTY || item.available === false || (item.stock != null && item.qty >= item.stock) ? ' disabled' : '') + '>+</button>' +
                 '</div>' +
             '</td>' +
             '<td class="item-price">' + money(subtotal) + '</td>' +
-            '<td><button class="btn-remove" onclick="removeItem(' + item.id + ')" title="' + (cp.removeTitle || 'Xóa') + '"><i class="fa fa-times"></i></button></td>';
+            '<td><button class="btn-remove" data-action="cart-remove" data-id="' + id + '" title="' + esc(cp.removeTitle || 'Xóa') + '"><i class="fa fa-times"></i></button></td>';
         bodyEl.appendChild(tr);
     });
 
@@ -94,6 +102,30 @@ function checkout() {
         window.location.href = window.BreezeRoutes.to('checkout');
     }
 }
+
+// Điều phối mọi nút data-action="cart-*". data-id có thể âm (món khách không có
+// product_id, id cục bộ -Date.now()) — Number() giữ đúng dấu.
+document.addEventListener('click', function (e) {
+    var btn = e.target && e.target.closest ? e.target.closest('[data-action]') : null;
+    if (!btn) return;
+    var act = btn.getAttribute('data-action');
+    var rawId = btn.getAttribute('data-id') || '';
+    var id = rawId.charAt(0) === 'v' ? rawId : Number(rawId);
+    if (act === 'cart-qty') changeQty(id, Number(btn.getAttribute('data-delta')));
+    else if (act === 'cart-remove') removeItem(id);
+    else if (act === 'cart-checkout') checkout();
+});
+
+// Ảnh sản phẩm lỗi -> ảnh dự phòng (thay cho onerror="..." inline). 'error' của <img>
+// KHÔNG nổi bọt nên bắt ở pha capture (tham số true). Chỉ thử dự phòng MỘT lần: nếu
+// chính ảnh dự phòng cũng lỗi thì dừng, không lặp vô hạn.
+var CART_IMG_FALLBACK = 'img/gc8.png';
+document.addEventListener('error', function (e) {
+    var img = e.target;
+    if (!img || !img.classList || !img.classList.contains('cart-item-img')) return;
+    if (img.getAttribute('src') === CART_IMG_FALLBACK) return;
+    img.src = CART_IMG_FALLBACK;
+}, true);
 
 document.addEventListener('DOMContentLoaded', renderCart);
 document.addEventListener('langchange', renderCart);

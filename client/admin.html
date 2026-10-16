@@ -12,12 +12,13 @@
          biểu đồ doanh thu và donut trạng thái tương phản kém.
          Muốn hỗ trợ tối thật thì phải cho Chart.js đọc token trước — việc thiết kế
          riêng, không phải đổi một dòng snippet. -->
-    <script>document.documentElement.setAttribute('data-theme','light');</script>
+    <script src="js/theme-boot.js" data-theme-mode="light"></script>
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="css/global.css">
     <link rel="stylesheet" type="text/css" href="css/admin.css">
+    <link rel="stylesheet" href="css/order-payment.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
@@ -35,8 +36,11 @@
         <div class="adm-topbar-right" id="bar-right" style="visibility:hidden;">
             <div class="adm-search">
                 <i class="fa fa-search" aria-hidden="true"></i>
-                <input type="search" id="top-search" data-i18n-ph="adm.searchPh" placeholder="Tìm mã đơn / khách hàng…"
-                       aria-label="Tìm đơn theo mã hoặc khách hàng" data-i18n-aria="adm.searchAria">
+                <input type="search" id="top-search" data-i18n-ph="adm.searchPh" placeholder="Tìm kiếm..."
+                       aria-label="Tìm kiếm" data-i18n-aria="adm.searchAria">
+                <!-- Gợi ý phím tắt. Chữ do admin.js ghi lúc DOM ready ("Ctrl K" hoặc "⌘ K"
+                     tuỳ nền tảng). aria-hidden: chỉ là nhãn trang trí, ô input đã có aria-label. -->
+                <kbd class="adm-kbd" id="search-kbd" aria-hidden="true"></kbd>
             </div>
             <button type="button" class="adm-bell" aria-label="Thông báo" data-i18n-aria="adm.notif">
                 <i class="fa fa-bell-o" aria-hidden="true"></i>
@@ -113,6 +117,12 @@
     <div id="panel">
         <!-- Dashboard: page header (zone B) + KPI cards (zone C hàng 1) -->
         <section id="view-dashboard">
+            <nav class="adm-crumb" aria-label="Breadcrumb">
+                <ol>
+                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
+                    <li aria-current="page" data-i18n="adm.crumbDashboard">Dashboard</li>
+                </ol>
+            </nav>
             <div class="dash-header">
                 <div class="dash-header-left">
                     <h1 class="dash-title" data-i18n="adm.dashboard">Dashboard</h1>
@@ -232,13 +242,20 @@
 
         <!-- Tab sản phẩm -->
         <section id="tab-products" style="display:none;">
+            <nav class="adm-crumb" aria-label="Breadcrumb">
+                <ol>
+                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
+                    <li aria-current="page" data-i18n="adm.crumbProducts">Sản phẩm</li>
+                </ol>
+            </nav>
+            <h1 class="adm-page-title" data-i18n="adm.products">Sản phẩm</h1>
             <div class="prod-filters" role="group" aria-label="Lọc theo tồn kho" data-i18n-aria="adm.stockFilterAria">
                 <button type="button" class="prod-filter-btn active" data-stock-filter="all" aria-current="true" data-i18n="adm.fAll">Tất cả</button>
                 <button type="button" class="prod-filter-btn" data-stock-filter="low" data-i18n="adm.fLow">Sắp hết</button>
                 <button type="button" class="prod-filter-btn" data-stock-filter="out" data-i18n="adm.fOut">Hết hàng</button>
             </div>
             <div class="adm-section-head">
-                <h3><span data-i18n="adm.products">Sản phẩm</span> <span class="adm-count" id="prod-count"></span></h3>
+                <h2><span data-i18n="adm.productsList">Danh sách sản phẩm</span> <span class="adm-count" id="prod-count"></span></h2>
                 <button type="button" class="adm-btn small" id="btn-add-prod"><i class="fa fa-plus"></i> <span data-i18n="adm.addProd">Thêm sản phẩm</span></button>
             </div>
             <div class="adm-table-wrap">
@@ -257,8 +274,15 @@
 
         <!-- Tab đơn hàng -->
         <section id="tab-orders" style="display:none;">
+            <nav class="adm-crumb" aria-label="Breadcrumb">
+                <ol>
+                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
+                    <li aria-current="page" data-i18n="adm.crumbOrders">Hoá đơn</li>
+                </ol>
+            </nav>
+            <h1 class="adm-page-title" data-i18n="adm.orders">Hoá đơn</h1>
             <div class="adm-section-head">
-                <h3><span data-i18n="adm.orders">Hoá đơn</span> <span class="adm-count" id="order-count"></span></h3>
+                <h2><span data-i18n="adm.ordersList">Danh sách hoá đơn</span> <span class="adm-count" id="order-count"></span></h2>
                 <div class="adm-toolbar">
                     <div class="adm-search-sm">
                         <i class="fa fa-search" aria-hidden="true"></i>
@@ -268,6 +292,9 @@
                     <select id="order-status-filter" class="status-sel" aria-label="Lọc theo trạng thái" data-i18n-aria="adm.statusFilterAria">
                         <option value="" data-i18n="adm.allStatus">Tất cả trạng thái</option>
                         <option value="pending" data-i18n="st.pending">Chờ xử lý</option>
+                        <option value="confirmed" data-i18n="st.confirmed">Đã xác nhận</option>
+                        <option value="processing" data-i18n="st.processing">Đang xử lý</option>
+                        <option value="shipping" data-i18n="st.shipping">Đang giao</option>
                         <option value="paid" data-i18n="st.paid">Đã thanh toán</option>
                         <option value="shipped" data-i18n="st.shipped">Đang giao</option>
                         <option value="completed" data-i18n="st.completed">Hoàn tất</option>
@@ -292,8 +319,15 @@
 
         <!-- Thống kê: sản phẩm bán được trong khoảng (gom theo SẢN PHẨM, không gộp theo đơn) -->
         <section id="view-statistics" style="display:none;">
+            <nav class="adm-crumb" aria-label="Breadcrumb">
+                <ol>
+                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
+                    <li aria-current="page" data-i18n="adm.crumbStatistics">Thống kê</li>
+                </ol>
+            </nav>
+            <h1 class="adm-page-title" data-i18n="adm.statistics">Thống kê</h1>
             <div class="adm-section-head">
-                <h3><span data-i18n="adm.statTitle">Thống kê sản phẩm bán được</span></h3>
+                <h2><span data-i18n="adm.statTitle">Thống kê sản phẩm bán được</span></h2>
                 <div class="adm-toolbar">
                     <select id="stat-preset" class="dash-preset" aria-label="Khoảng thời gian" data-i18n-aria="adm.rangeAria">
                         <option value="7d" selected data-i18n="adm.p7">7 ngày qua</option>
@@ -303,6 +337,7 @@
                     </select>
                 </div>
             </div>
+            <p data-i18n="report.productRevenue">Doanh thu sản phẩm (VND, sau giảm giá, chưa gồm phí vận chuyển)</p>
             <div class="adm-table-wrap">
                 <table class="adm-table">
                     <thead><tr>
@@ -323,16 +358,23 @@
 
         <!-- Người dùng (chỉ xem) -->
         <section id="view-users" style="display:none;">
+            <nav class="adm-crumb" aria-label="Breadcrumb">
+                <ol>
+                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
+                    <li aria-current="page" data-i18n="adm.crumbUsers">Người dùng</li>
+                </ol>
+            </nav>
+            <h1 class="adm-page-title" data-i18n="adm.users">Người dùng</h1>
             <div class="adm-section-head">
-                <h3><span data-i18n="adm.users">Người dùng</span> <span class="adm-count" id="user-count"></span></h3>
+                <h2><span data-i18n="adm.usersList">Danh sách người dùng</span> <span class="adm-count" id="user-count"></span></h2>
             </div>
             <div class="adm-table-wrap">
                 <table class="adm-table">
                     <thead><tr>
-                        <th data-i18n="adm.thEmail">Email</th><th data-i18n="adm.thName">Tên</th><th data-i18n="adm.thRole">Vai trò</th><th data-i18n="adm.thCreated">Ngày tạo</th><th data-i18n="adm.thLastLogin">Đăng nhập gần nhất</th><th data-i18n="adm.thBl">Blacklist</th>
+                        <th data-i18n="adm.thEmail">Email</th><th data-i18n="adm.thName">Tên</th><th data-i18n="adm.thRole">Vai trò</th><th data-i18n="adm.thCreated">Ngày tạo</th><th data-i18n="adm.thLastLogin">Đăng nhập gần nhất</th><th data-i18n="adm.thBl">Blacklist</th><th data-i18n="adm.thActions">Thao tác</th>
                     </tr></thead>
                     <tbody id="user-body">
-                        <tr><td colspan="6" class="adm-loading" data-i18n="com.loading">Đang tải…</td></tr>
+                        <tr><td colspan="7" class="adm-loading" data-i18n="com.loading">Đang tải…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -341,8 +383,15 @@
 
         <!-- Danh sách Đen: đơn ĐÃ HUỶ của user đang bị blacklist (theo ĐƠN, không gộp) -->
         <section id="view-blacklist" style="display:none;">
+            <nav class="adm-crumb" aria-label="Breadcrumb">
+                <ol>
+                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
+                    <li aria-current="page" data-i18n="adm.crumbBlacklist">Danh sách Đen</li>
+                </ol>
+            </nav>
+            <h1 class="adm-page-title" data-i18n="adm.blacklist">Danh sách Đen</h1>
             <div class="adm-section-head">
-                <h3><span data-i18n="adm.blacklist">Danh sách Đen</span> <span class="adm-count" id="blacklist-count"></span></h3>
+                <h2><span data-i18n="adm.cancelledOrders">Đơn hàng đã huỷ</span> <span class="adm-count" id="blacklist-count"></span></h2>
                 <div class="adm-toolbar">
                     <div class="adm-search-sm">
                         <i class="fa fa-search" aria-hidden="true"></i>
@@ -367,6 +416,40 @@
         </section>
     </div>
     </main>
+
+    <div class="modal-backdrop" id="customer-modal" role="dialog" aria-modal="true" aria-labelledby="customer-title">
+        <div class="modal-card">
+            <div class="customer-heading">
+                <h3 id="customer-title" data-i18n="adm.customerTitle">Chi tiết khách hàng</h3>
+                <button type="button" class="adm-btn ghost small" id="customer-close" data-i18n="com.close">Đóng</button>
+            </div>
+            <p id="customer-message" role="status" aria-live="polite"></p>
+            <button type="button" class="adm-btn ghost small" id="customer-retry" data-i18n="adm.customerRetry" hidden>Thử lại</button>
+            <div id="customer-content" hidden>
+                <dl id="customer-info" class="customer-info"></dl>
+                <div class="customer-kpis">
+                    <div><span data-i18n="adm.customerTotalOrders">Tổng đơn</span><strong id="customer-total-orders">0</strong></div>
+                    <div><span data-i18n="st.completed">Hoàn thành</span><strong id="customer-completed">0</strong></div>
+                    <div><span data-i18n="st.cancelled">Đã hủy</span><strong id="customer-cancelled">0</strong></div>
+                    <div><span data-i18n="adm.customerTotalSpent">Tổng đã mua</span><strong id="customer-spent">0</strong></div>
+                </div>
+                <h4 data-i18n="adm.customerOrders">Lịch sử đơn hàng</h4>
+                <div class="adm-table-wrap" tabindex="0" data-i18n-aria="adm.customerOrders" aria-label="Lịch sử đơn hàng">
+                    <table class="adm-table">
+                        <thead><tr>
+                            <th data-i18n="adm.thOrderId">Mã đơn</th><th data-i18n="adm.thOrderDate">Ngày đặt</th><th data-i18n="adm.thTotal">Tổng tiền</th><th data-i18n="adm.thPayMethod">Thanh toán</th><th data-i18n="adm.thStatus">Trạng thái</th><th data-i18n="adm.thActions">Thao tác</th>
+                        </tr></thead>
+                        <tbody id="customer-orders"></tbody>
+                    </table>
+                </div>
+                <div class="adm-pager" id="customer-pager">
+                    <button type="button" id="customer-prev" data-i18n="adm.pgPrev">← Trước</button>
+                    <span id="customer-page" aria-live="polite"></span>
+                    <button type="button" id="customer-next" data-i18n="adm.pgNext">Sau →</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal thêm/sửa sản phẩm -->
     <div class="modal-backdrop" id="prod-modal">
@@ -406,7 +489,13 @@
                     <div class="fld">
                         <label data-i18n="adm.fStock">Tồn kho</label>
                         <input type="number" id="f-stock" min="0" step="1" value="0">
+                        <div class="hint" id="size-stock-hint" hidden data-i18n="adm.sizeStockHint">Tổng tồn kho tự tính. Điều chỉnh trong Quản lý size/màu.</div>
                     </div>
+                </div>
+                <div class="fld" id="stock-reason-field" hidden>
+                    <label for="f-stock-reason"><span data-i18n="adm.stockReason">Lý do điều chỉnh kho</span> <span class="req">*</span></label>
+                    <input type="text" id="f-stock-reason" maxlength="250" data-i18n-ph="adm.stockReasonPh" placeholder="Ví dụ: Nhập thêm hàng">
+                    <div class="hint" data-i18n="adm.stockReasonHint">Bắt buộc khi thay đổi tồn kho.</div>
                 </div>
                 <div class="fld">
                     <label data-i18n="adm.fImages">Ảnh (mỗi dòng 1 đường dẫn)</label>
@@ -433,11 +522,96 @@
         </div>
     </div>
 
+    <div class="modal-backdrop" id="sizes-modal" role="dialog" aria-modal="true" aria-labelledby="sizes-title">
+        <div class="modal-card">
+            <h3 id="sizes-title" data-i18n="adm.manageSizes">Quản lý size</h3>
+            <p id="sizes-summary"></p>
+            <p class="hint" data-i18n="adm.sizeAllocationHint">Tạo size với tồn 0. Phân bổ từ BASE không làm đổi tổng tồn kho.</p>
+            <p id="sizes-error" role="alert"></p>
+            <div class="fld"><label for="sizes-add" data-i18n="pd.thSize">Size</label><select id="sizes-add"></select></div>
+            <button type="button" class="adm-btn ghost small" id="sizes-create" data-i18n="adm.addSize">Thêm size</button>
+            <button type="button" class="adm-btn ghost small" id="sizes-create-all" data-i18n="adm.addAllSizes">Thêm các size còn thiếu</button>
+            <div class="adm-table-wrap">
+                <table class="adm-table">
+                    <thead><tr><th data-i18n="pd.thSize">Size</th><th data-i18n="adm.sizeStock">Tồn kho</th>
+                        <th data-i18n="adm.sizeActive">Đang bán</th><th data-i18n="adm.sizeAllocate">Lấy từ BASE</th><th></th></tr></thead>
+                    <tbody id="sizes-body"></tbody>
+                </table>
+            </div>
+            <div class="fld"><label for="sizes-reason" data-i18n="adm.stockReason">Lý do điều chỉnh kho</label>
+                <input id="sizes-reason" maxlength="250" type="text"></div>
+            <div class="modal-foot">
+                <button type="button" class="adm-btn ghost small" id="sizes-close" data-i18n="com.close">Đóng</button>
+                <button type="button" class="adm-btn small" id="sizes-allocate" data-i18n="adm.sizeAllocateConfirm">Phân bổ tồn BASE</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="colors-modal" role="dialog" aria-modal="true" aria-labelledby="colors-title">
+        <div class="modal-card">
+            <h3 id="colors-title" data-i18n="adm.manageColors">Quản lý màu</h3>
+            <p id="colors-summary"></p>
+            <p id="colors-error" role="alert"></p>
+            <div class="fld-row">
+                <div class="fld"><label for="colors-name" data-i18n="adm.colorName">Tên màu</label><input id="colors-name" type="text" maxlength="80" placeholder="Đen"></div>
+                <div class="fld"><label for="colors-hex" data-i18n="adm.colorSwatch">Mã màu (tuỳ chọn)</label><input id="colors-hex" type="text" maxlength="7" placeholder="#000000"></div>
+            </div>
+            <button type="button" class="adm-btn ghost small" id="colors-create" data-i18n="adm.addColor">Thêm màu</button>
+            <p class="hint" data-i18n="adm.colorStockHint">Màu mới có tồn 0. Phân bổ từ BASE hoặc size nguồn; tổng tồn không đổi.</p>
+            <div class="fld-row" id="colors-size-row" hidden>
+                <div class="fld"><label for="colors-size" data-i18n="pd.thSize">Size</label><select id="colors-size"></select></div>
+                <button type="button" class="adm-btn ghost small" id="colors-add-size" data-i18n="adm.addSize">Thêm size</button>
+            </div>
+            <div id="colors-body"></div>
+            <div class="fld"><label for="colors-reason" data-i18n="adm.stockReason">Lý do điều chỉnh kho</label>
+                <input id="colors-reason" type="text" maxlength="250"></div>
+            <div class="modal-foot">
+                <button type="button" class="adm-btn ghost small" id="colors-close" data-i18n="com.close">Đóng</button>
+                <button type="button" class="adm-btn small" id="colors-allocate" data-i18n="adm.colorAllocate">Phân bổ tồn theo màu</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="inventory-modal" role="dialog" aria-modal="true" aria-labelledby="inventory-title">
+        <div class="modal-card">
+            <h3 id="inventory-title"></h3>
+            <div class="adm-table-wrap">
+                <table class="adm-table">
+                    <thead><tr>
+                        <th data-i18n="adm.thDate">Ngày</th><th data-i18n="adm.invType">Loại</th>
+                        <th class="num" data-i18n="adm.invDelta">Thay đổi</th>
+                        <th class="num" data-i18n="adm.invBefore">Trước</th>
+                        <th class="num" data-i18n="adm.invAfter">Sau</th>
+                        <th data-i18n="adm.invReference">Tham chiếu</th>
+                    </tr></thead>
+                    <tbody id="inventory-body"></tbody>
+                </table>
+            </div>
+            <div class="adm-pager" id="inventory-pager"></div>
+            <div class="modal-foot">
+                <button type="button" class="adm-btn ghost small" id="inventory-close" data-i18n="com.close">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal xác nhận dùng chung (thay window.confirm): xoá sản phẩm/đơn, thêm/gỡ
+         blacklist. Tái dùng nguyên class .modal-backdrop/.modal-card của #prod-modal. -->
+    <div class="modal-backdrop" id="confirm-modal">
+        <div class="modal-card">
+            <h3 id="confirm-title" data-i18n="com.confirm">Xác nhận</h3>
+            <p id="confirm-message"></p>
+            <div class="modal-foot">
+                <button type="button" class="adm-btn ghost small" id="confirm-cancel" data-i18n="com.cancel">Hủy</button>
+                <button type="button" class="adm-btn small" id="confirm-ok" data-i18n="com.confirm">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast"></div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" integrity="sha384-ajMUFBUFMCyjh8uxJg6bkGcKe9RTolyjwbxB3yES0QQMenP3Oztj/W9vA2SJPcIh" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" integrity="sha384-xD1t9dGSVKobUztxDkv6xUI0H4AnFz0NxwlgDJJ7FDlblG9xxr1Z9iauCZuJYj6p" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" integrity="sha384-Sse/HDqcypGpyTDpvZOJNnG0TT3feGQUkF9H+mnRvic+LjR+K1NhTt8f51KIQ3v3" crossorigin="anonymous"></script>
     <script src="js/firebase-config.js"></script>
     <script src="js/api-config.js"></script>
     <script src="js/routes.js"></script>
@@ -445,6 +619,10 @@
     <script src="js/theme.js"></script>
     <script src="js/i18n.js"></script>
     <script src="js/utils-format.js"></script>
+    <script src="js/utils-i18n.js"></script>
+    <script src="js/order-payment.js"></script>
+    <script src="js/order-shipping.js"></script>
+    <script src="js/business-report-csv.js"></script>
     <script src="js/admin.js"></script>
     <!-- Chart.js: chỉ dùng cho biểu đồ doanh thu Dashboard (dependency mới duy nhất phase này) -->
 </body>

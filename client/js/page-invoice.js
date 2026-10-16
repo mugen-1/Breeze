@@ -38,19 +38,22 @@
     var _order = null;                  // đơn đang hiển thị -> dựng lại khi đổi VI/EN
     function render(o) {
         _order = o;
-        document.title = t('inv.docTitleN', { id: o.id });
-        $('inv-customer').textContent = o.shipping_name || o.user_name || o.user_email
-            || t('inv.guest', { id: o.user_id });
+        document.title = t('inv.docTitleN', { id: window.BreezeOrderShipping.code(o) });
+        $('inv-customer').textContent = o.shipping_name || '—';
         $('inv-phone').textContent = o.shipping_phone || '—';
-        $('inv-address').textContent = o.shipping_address || '—';
+        $('inv-address').textContent = window.BreezeOrderShipping.address(o) || '—';
+        $('inv-shipping-method').textContent = window.BreezeOrderShipping.method(o);
+        $('inv-shipping-fee').textContent = o.shipping_fee == null ? '—' : money(o.shipping_fee);
+        $('inv-note').textContent = o.delivery_note || '—';
         $('inv-date').textContent = fmtDateVN(o.created_at);
-        $('inv-id').textContent = '#' + o.id;
+        $('inv-id').textContent = '#' + window.BreezeOrderShipping.code(o);
 
         var items = o.items || [];
         $('inv-items').innerHTML = items.length
             ? items.map(function (it) {
                 return '<tr>' +
-                    '<td>' + esc(it.product_name) + '</td>' +
+                    '<td>' + esc(it.product_name) + (it.size_snapshot ? '<br><small>' + esc(t('pd.thSize')) + ': ' + esc(it.size_snapshot) + '</small>' : '') +
+                    (it.color_snapshot ? '<br><small>' + esc(t('co.metaColor')) + ': ' + esc(it.color_snapshot) + '</small>' : '') + '</td>' +
                     '<td class="col-qty num">x' + it.quantity + '</td>' +
                     '<td class="col-price num">' + money(it.unit_price) + '</td>' +
                     '<td class="col-total num">' + money(it.line_total) + '</td>' +
@@ -86,7 +89,7 @@
         var id = getOrderId();
         if (!id) { showState(t('inv.badId')); return; }
 
-        window.AuthHelper.apiFetch('/api/admin/orders?q=' + encodeURIComponent(id) + '&limit=1')
+        window.AuthHelper.apiFetch('/api/admin/orders?order_id=' + encodeURIComponent(id) + '&limit=1')
             .then(function (r) {
                 if (r.status === 401 || r.status === 403) throw new Error('FORBIDDEN');
                 if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -111,6 +114,16 @@
         } else {
             showState(t('inv.authErr'));
         }
+    });
+
+    // Nút Đóng / In (data-action) — thay cho onclick="window.close()/print()" inline cũ,
+    // CSP chặn handler inline.
+    document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('[data-action]') : null;
+        if (!btn) return;
+        var act = btn.getAttribute('data-action');
+        if (act === 'inv-close') window.close();
+        else if (act === 'inv-print') window.print();
     });
 
     // Đổi VI/EN: các nhãn tĩnh do i18n.js lo, phần do JS sinh dựng lại ở đây.

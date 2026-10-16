@@ -58,7 +58,7 @@ var showSearchBox = _v('showSearchBox', false);
         <div class="box">
             <form class="sbox" id="search-form" action="<%= R.href('search') %>" method="get">
                 <input class="stext" type="text" name="q" placeholder="Search">
-                <a class="sbutton" href="javascript:void(0);" onclick="document.getElementById('search-form').submit();">
+                <a class="sbutton" href="#" data-action="submit-search">
                     <i class="fa fa-search"></i>
                 </a>
             </form>

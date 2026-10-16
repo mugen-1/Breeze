@@ -1,5 +1,6 @@
-// Hardening tổng thể (Phase 5, mục 4): helmet + CORS whitelist + rate limit.
+// Hardening tổng thể (Phase 5, mục 4): helmet (kèm CSP có nonce) + CORS whitelist + rate limit.
 // Gom một chỗ để chính sách bảo mật dễ đọc/chỉnh; server.js chỉ việc app.use(...).
+const crypto = require('crypto');
 const helmet = require('helmet');
 const cors = require('cors');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
@@ -35,13 +36,111 @@ function buildCors() {
   });
 }
 
-// helmet: bật security headers mặc định, NHƯNG TẮT Content-Security-Policy.
-// Lý do: client/ là site tĩnh dùng inline <script> ở mọi trang + CDN ngoài
-// (Firebase gstatic, Google Fonts, cdnjs font-awesome). CSP mặc định của helmet
-// chặn inline + cross-origin => vỡ toàn bộ frontend. CSP chặt (khai báo nguồn
-// cho phép cụ thể) để dành làm sau, không nằm trong phạm vi hardening tối thiểu này.
+// Nonce CSP: 16 byte ngẫu nhiên MỖI REQUEST, gắn vào res.locals để EJS in ra
+// (<script nonce="...">) và để buildHelmet() đưa vào header. PHẢI mount TRƯỚC helmet.
+// Chỉ thẻ <script> inline mang đúng nonce của lần tải này mới được chạy — kẻ tấn công
+// chèn được HTML cũng không đoán được giá trị.
+function cspNonce(req, res, next) {
+  res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+  next();
+}
+
+// CSP BẬT THẬT (enforce): trình duyệt CHẶN mọi thứ ngoài danh sách dưới, và vẫn báo về
+// report-uri. Đã chạy Report-Only trước, tới khi gỡ hết code inline (script theme của 3
+// trang tĩnh -> js/theme-boot.js; mọi onclick/onsubmit/onerror -> data-action +
+// addEventListener) và duyệt đủ 21 trang ra 0 báo cáo. Hệ quả cho code mới: KHÔNG viết
+// on*="...", href="javascript:", hay <script> inline thiếu nonce — sẽ im lặng không chạy.
+//
+// CÔNG TẮC: biến môi trường CSP_MODE (server/.env, hoặc launch.json của VS Code — biến
+// đặt sẵn trong môi trường thắng .env). Khởi động lại server sau khi đổi.
+//   enforce (mặc định) — chặn thật + báo;
+//   report             — KHÔNG chặn, chỉ báo về /api/csp-report (thử thay đổi lớn, hoặc
+//                        tìm xem CSP có phải thủ phạm không mà vẫn biết nó SẼ chặn gì);
+//   off                — không gửi header CSP. Chỉ để test; các header khác của helmet
+//                        (Referrer-Policy, X-Frame-Options...) VẪN còn.
+// Hai lưới an toàn, đều rơi về enforce:
+//   - NODE_ENV=production -> LUÔN enforce, CSP_MODE bị bỏ qua: một dòng CSP_MODE=off
+//     còn sót trong .env khi deploy không được phép tắt bảo vệ trên site thật;
+//   - giá trị lạ (gõ sai) -> enforce.
+//
+// useDefaults:false — chỉ dùng ĐÚNG danh sách dưới. Mặc định của helmet kèm thêm
+// upgrade-insecure-requests (làm hỏng dev qua http://localhost khi bật thật) và các
+// nguồn rộng 'https:' cho style/font. Muốn thêm directive thì thêm tường minh ở đây.
+//
+// Nonce CHỈ ở script-src. Không đưa vào style-src: có nonce thì trình duyệt BỎ QUA
+// 'unsafe-inline', mà style="..." và 4 khối <style> trong partials/*-style.ejs cần nó.
+//
+// img-src giữ data: vì 3 ảnh CSS là SVG data-URI (mũi tên <select> ở checkout.css x2,
+// profile.css x1); blob: cho ảnh xem trước khi đổi avatar (page-profile.js).
+const CSP_MODES = ['enforce', 'report', 'off'];
+
+// -> { mode, raw, why }: mode là chế độ THẬT SỰ áp dụng; raw là CSP_MODE người dùng đặt;
+// why = null | 'production' (bị NODE_ENV=production ép) | 'invalid' (giá trị lạ).
+function cspModeInfo() {
+  const raw = String(process.env.CSP_MODE || '').trim();
+  const asked = raw.toLowerCase();
+  if (String(process.env.NODE_ENV || '').trim().toLowerCase() === 'production') {
+    return { mode: 'enforce', raw, why: asked && asked !== 'enforce' ? 'production' : null };
+  }
+  if (!asked) return { mode: 'enforce', raw, why: null };
+  if (!CSP_MODES.includes(asked)) return { mode: 'enforce', raw, why: 'invalid' };
+  return { mode: asked, raw, why: null };
+}
+function cspMode() { return cspModeInfo().mode; }
+
+// In chế độ CSP lúc khởi động — tắt để test mà quên bật lại là lỗ bảo mật âm thầm, nên
+// chế độ khác enforce in bằng console.warn cho nổi bật.
+function logCspMode() {
+  const { mode, raw, why } = cspModeInfo();
+  if (why === 'production') {
+    console.warn(`[security] NODE_ENV=production -> bỏ qua CSP_MODE="${raw}", CSP luôn chặn thật`);
+  } else if (why === 'invalid') {
+    console.warn(`[security] CSP_MODE="${raw}" không hợp lệ (enforce | report | off) -> dùng enforce`);
+  }
+  if (mode === 'off') console.warn('[security] !!! CSP ĐANG TẮT (CSP_MODE=off) — chỉ để test, nhớ bật lại !!!');
+  else if (mode === 'report') console.warn('[security] CSP chỉ BÁO, không chặn (CSP_MODE=report)');
+  else console.log('[security] CSP: chặn thật (enforce)');
+}
+
 function buildHelmet() {
-  return helmet({ contentSecurityPolicy: false });
+  const mode = cspMode();
+  if (mode === 'off') return helmet({ contentSecurityPolicy: false });
+  return helmet({
+    contentSecurityPolicy: {
+      useDefaults: false,
+      reportOnly: mode === 'report',
+      directives: {
+        defaultSrc: ["'self'"],
+        // Nguồn script ngoài thu hẹp tới ĐÚNG thư mục phiên bản đang dùng (dấu '/' cuối
+        // = mọi file nằm dưới đó). Không cho cả host: cdn.jsdelivr.net phục vụ MỌI gói
+        // npm, www.gstatic.com chứa nhiều thư viện Google khác — kẻ chèn được HTML sẽ nạp
+        // được <script src> từ đó mà CSP vẫn cho qua. SRI không che được lỗ này (SRI chỉ
+        // bảo vệ thẻ script do mình viết). Nâng phiên bản = sửa ở đây + tính lại hash SRI.
+        scriptSrc: [
+          "'self'",
+          (req, res) => `'nonce-${res.locals.cspNonce}'`,
+          'https://www.gstatic.com/firebasejs/9.23.0/',         // Firebase SDK
+          'https://cdn.jsdelivr.net/npm/chart.js@4.4.6/',       // Chart.js (admin)
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        connectSrc: [
+          "'self'",
+          'https://identitytoolkit.googleapis.com',   // Firebase Auth: đăng nhập/ký, gửi email
+          'https://securetoken.googleapis.com',       // Firebase Auth: làm mới ID token
+          'https://www.googleapis.com',
+        ],
+        frameSrc: ['https://webgc-8a445.firebaseapp.com'],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        frameAncestors: ["'none'"],
+        formAction: ["'self'"],
+        // Trình duyệt POST từng vi phạm về đây -> log server (routes/csp-report.js).
+        reportUri: ['/api/csp-report'],
+      },
+    },
+  });
 }
 
 // Rate limit chung cho /api: chống brute-force/spam. 300 request / 15 phút / IP.
@@ -78,5 +177,5 @@ function buildUserActionLimiter(opts) {
 }
 
 module.exports = {
-  buildCors, buildHelmet, buildApiLimiter, buildUserActionLimiter, allowedOrigins, DEFAULT_ORIGINS,
+  cspNonce, cspMode, cspModeInfo, logCspMode, buildCors, buildHelmet, buildApiLimiter, buildUserActionLimiter, allowedOrigins, DEFAULT_ORIGINS,
 };

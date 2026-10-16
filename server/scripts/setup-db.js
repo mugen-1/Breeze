@@ -17,8 +17,8 @@
  *
  * AN TOÀN:
  *   - schema.sql + seed.sql XOÁ SẠCH dữ liệu cũ (DROP/DELETE + RESEED). Chỉ chạy
- *     khi muốn dựng lại từ đầu. Dùng cờ --keep-data để bỏ qua 2 bước này.
- *   - Toàn bộ migration còn lại đều idempotent (chạy lại nhiều lần không lỗi).
+ *     khi muốn dựng lại từ đầu bằng cờ --fresh; mặc định bỏ qua 2 bước này.
+ *   - Migration 003 lịch sử có xóa dữ liệu nên chỉ chạy ở chế độ --fresh.
  *   - Dừng ngay khi có bước lỗi, in rõ file nào hỏng.
  */
 const { execFileSync } = require('child_process');
@@ -31,6 +31,8 @@ const SERVER = path.join(ROOT, 'server');
 // MẶC ĐỊNH = AN TOÀN: chỉ chạy migration, KHÔNG đụng dữ liệu.
 // Muốn dựng lại từ đầu (XOÁ SẠCH) phải khai báo rõ --fresh.
 const FRESH = process.argv.includes('--fresh');
+// Only the disposable historical-chain test stops before the new variant cutover.
+const BEFORE_VARIANTS = FRESH && process.argv.includes('--before-variants');
 
 if (!fs.existsSync(SERVER)) {
   console.error('[setup] Không thấy thư mục server/. Đặt file này ở gốc project.');
@@ -46,14 +48,21 @@ if (!fs.existsSync(path.join(SERVER, '.env'))) {
    Nếu 4 bảng dưới đây đang tồn tại thì DROP TABLE users/products sẽ THẤT BẠI vì
    vướng FK -> phải gỡ chúng TRƯỚC. Chỉ chạy ở chế độ --fresh. */
 const DROP_DEPENDENTS_SQL = [
+  "IF OBJECT_ID('dbo.payment_transactions','U') IS NOT NULL DROP TABLE dbo.payment_transactions;",
+  "IF OBJECT_ID('dbo.order_code_counter','U') IS NOT NULL DROP TABLE dbo.order_code_counter;",
   "IF OBJECT_ID('dbo.cart_items','U')            IS NOT NULL DROP TABLE dbo.cart_items;",
   "IF OBJECT_ID('dbo.delivery_addresses','U')    IS NOT NULL DROP TABLE dbo.delivery_addresses;",
   "IF OBJECT_ID('dbo.payment_methods','U')       IS NOT NULL DROP TABLE dbo.payment_methods;",
   "IF OBJECT_ID('dbo.user_privacy_settings','U') IS NOT NULL DROP TABLE dbo.user_privacy_settings;",
+  "IF OBJECT_ID('dbo.inventory_movements','U') IS NOT NULL DROP TABLE dbo.inventory_movements;",
+  "IF OBJECT_ID('dbo.order_items','U') IS NOT NULL DROP TABLE dbo.order_items;",
+  "IF OBJECT_ID('dbo.product_variants','U') IS NOT NULL DROP TABLE dbo.product_variants;",
+  "IF OBJECT_ID('dbo.product_color_images','U') IS NOT NULL DROP TABLE dbo.product_color_images;",
+  "IF OBJECT_ID('dbo.product_colors','U') IS NOT NULL DROP TABLE dbo.product_colors;",
   'GO',
 ].join('\n');
 
-const TMP_SQL = '.tmp-drop-dependents.sql';
+const TMP_SQL = path.join(require('os').tmpdir(), `breeze-drop-dependents-${process.pid}.sql`);
 
 /* Thứ tự chạy. type: 'sql' -> qua db/run-sql.js ; 'node' -> chạy trực tiếp */
 const STEPS = [
@@ -64,16 +73,17 @@ const STEPS = [
   // --- Nền: tạo bảng + dữ liệu mẫu (XOÁ dữ liệu cũ) ---
   { type: 'sql', file: 'db/schema.sql', destructive: true,
     desc: 'Tạo 5 bảng nền: categories, products, users, orders, order_items' },
+  // seed.sql DELETE FROM dbo.cart_items nên migration 001 phải chạy trước seed.
+  { type: 'sql', file: 'db/migrations/001_cart_items.sql',
+    desc: 'Bảng cart_items (giỏ hàng phía server)' },
   { type: 'sql', file: 'db/seed.sql', destructive: true,
     desc: 'Nạp 5 danh mục + 50 sản phẩm mẫu' },
 
   // --- Migration có đánh số ---
-  { type: 'sql', file: 'db/migrations/001_cart_items.sql',
-    desc: 'Bảng cart_items (giỏ hàng phía server)' },
   { type: 'sql', file: 'db/migrations/002_orders_status_check.sql',
     desc: 'CHECK constraint cho orders.status (5 trạng thái)' },
-  { type: 'sql', file: 'db/migrations/003_remove_nhan.sql',
-    desc: 'Dọn danh mục cũ không dùng' },
+  { type: 'sql', file: 'db/migrations/003_remove_nhan.sql', destructive: true,
+    desc: 'Migration lịch sử xóa danh mục Nhẫn (chỉ chạy trên database --fresh)' },
   { type: 'sql', file: 'db/migrations/004_rename_giay_giaydep.sql',
     desc: 'Đổi tên danh mục Giày -> Giày & Dép' },
   { type: 'sql', file: 'db/migrations/005_users_profile_fields.sql',
@@ -102,13 +112,35 @@ const STEPS = [
     desc: 'Thêm users.IsBlacklisted (+ seed 1 lần duy nhất)' },
   { type: 'node', file: 'scripts/add-orders-indexes.js',
     desc: 'Chỉ mục IX_orders_status_created' },
+  { type: 'sql', file: 'db/migrations/008_orders_state_machine.sql',
+    desc: 'Mở rộng CHECK status cho workflow mới, giữ nguyên đơn paid/shipped cũ' },
+  { type: 'sql', file: 'db/migrations/009_order_cancellation.sql',
+    desc: 'Thêm cancel_reason và cancelled_at nullable cho hủy đơn atomic' },
+  { type: 'sql', file: 'db/migrations/010_product_order_integrity.sql',
+    desc: 'Khôi phục product có bằng chứng trong Git và lập lại FK order_items -> products' },
+  { type: 'sql', file: 'db/migrations/011_inventory_movements.sql',
+    desc: 'Inventory ledger và opening balance từ stock hiện tại' },
+  { type: 'sql', file: 'db/migrations/012_product_variants.sql',
+    desc: 'Base variant, cart/order identity và chuyển ledger sang variant' },
+  { type: 'sql', file: 'db/migrations/013_size_variants.sql',
+    desc: 'Size identity, order size snapshot và ledger transfer; không chia stock' },
+  { type: 'sql', file: 'db/migrations/014_inventory_transfer_types.sql',
+    desc: 'Forward-only CHECK cho variant transfer movement types' },
+  { type: 'sql', file: 'db/migrations/015_color_variants.sql',
+    desc: 'Color metadata, gallery, size × color identity và order snapshot; không chia stock' },
+  { type: 'sql', file: 'db/migrations/016_order_shipping.sql',
+    desc: 'Order shipping snapshot; historical rows unchanged' },
+  { type: 'sql', file: 'db/migrations/017_order_shipping_simulation.sql',
+    desc: 'Simulated shipping and business order codes; preserve internal IDs' },
+  { type: 'sql', file: 'db/migrations/018_payment_transactions.sql',
+    desc: 'Payment transactions (simulation only)' },
 ];
 
 if (FRESH) {
-  fs.writeFileSync(path.join(SERVER, TMP_SQL), DROP_DEPENDENTS_SQL, 'utf8');
+  fs.writeFileSync(TMP_SQL, DROP_DEPENDENTS_SQL, 'utf8');
 }
 function cleanupTmp() {
-  const p = path.join(SERVER, TMP_SQL);
+  const p = TMP_SQL;
   if (fs.existsSync(p)) { try { fs.unlinkSync(p); } catch (e) { /* bỏ qua */ } }
 }
 
@@ -123,8 +155,12 @@ let done = 0, skipped = 0;
 
 for (let idx = 0; idx < STEPS.length; idx++) {
   const step = STEPS[idx];
+  if (BEFORE_VARIANTS && /db\/migrations\/01[2345678]_/.test(step.file)) {
+    skipped++;
+    continue;
+  }
   const label = `[${String(idx + 1).padStart(2, '0')}/${STEPS.length}]`;
-  const full = path.join(SERVER, step.file);
+  const full = path.resolve(SERVER, step.file);
 
   if (step.destructive && !FRESH) {
     console.log(`${label} BỎ QUA (chế độ an toàn): ${step.file}`);

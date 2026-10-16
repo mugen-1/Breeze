@@ -53,6 +53,14 @@ function dropDuplicateEnd(tokens) {
   });
 }
 
+/* Thuộc tính KHÔNG thuộc DOM contract, bỏ khỏi token:
+     nonce — CSP (server/middleware/security.js) sinh giá trị MỚI mỗi request, bản gốc
+             thì không có. Trình duyệt cũng tự giấu nó: sau khi parse, getAttribute('nonce')
+             trả chuỗi rỗng ("nonce hiding"), nên không JS/CSS nào dựa vào được.
+   Chỉ bỏ ĐÚNG tên attribute — selftest kiểm rằng thêm nonce thì 0 khác biệt, còn đổi
+   attribute khác trên cùng thẻ vẫn bị bắt. */
+const IGNORED_ATTRS = new Set(['nonce']);
+
 function tokenize(html) {
   const tags = [], comments = [];
   const re = /<!--([\s\S]*?)-->|<(\/?)([a-zA-Z][\w:-]*)((?:"[^"]*"|'[^']*'|[^>"'])*?)(\/?)>/g;
@@ -71,6 +79,7 @@ function tokenize(html) {
     const ar = /([\w:.-]+)(?:\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
     let a;
     while ((a = ar.exec(m[4])) !== null) {
+      if (IGNORED_ATTRS.has(a[1].toLowerCase())) continue;
       const val = a[3] !== undefined ? a[3] : a[4] !== undefined ? a[4] : a[5] !== undefined ? a[5] : null;
       attrs.push(a[1].toLowerCase() + (val === null ? '' : '="' + val.replace(/\s+/g, ' ').trim() + '"'));
     }
@@ -84,8 +93,51 @@ function tokenize(html) {
 
 
 /* Chuẩn hoá ĐÃ DUYỆT — khác biệt cố ý, có lý do, không phải lỗi.
-   Mỗi mục phải ghi rõ vì sao nó vô hại, nếu không thì đừng cho vào đây. */
+   Mỗi mục phải ghi rõ vì sao nó vô hại, nếu không thì đừng cho vào đây.
+   So KHỚP NGUYÊN TOKEN (cả chuỗi hash, cả giá trị attribute): lệch một ký tự là vẫn bị báo.
+   '*' áp cho MỌI trang. */
+const FB = 'https://www.gstatic.com/firebasejs/9.23.0/';
 const KNOWN = {
+  '*': [
+    /* Đợt bảo mật Phase 4 — SRI: CDN bị sửa file thì trình duyệt từ chối chạy. Chỉ thêm
+       integrity + crossorigin, src giữ nguyên. Đổi phiên bản Firebase là phải tính lại
+       hash (lệnh ở partials/scripts.ejs) VÀ sửa 2 dòng này. */
+    ['<script src="' + FB + 'firebase-app-compat.js">',
+     '<script crossorigin="anonymous" integrity="sha384-ajMUFBUFMCyjh8uxJg6bkGcKe9RTolyjwbxB3yES0QQMenP3Oztj/W9vA2SJPcIh" src="' + FB + 'firebase-app-compat.js">'],
+    ['<script src="' + FB + 'firebase-auth-compat.js">',
+     '<script crossorigin="anonymous" integrity="sha384-xD1t9dGSVKobUztxDkv6xUI0H4AnFz0NxwlgDJJ7FDlblG9xxr1Z9iauCZuJYj6p" src="' + FB + 'firebase-auth-compat.js">'],
+  ],
+  /* Đợt bảo mật Phase 4 — gỡ inline event handler (CSP chặn onclick/onsubmit/... và
+     URL javascript:). Mỗi handler cũ thay bằng data-action; hành vi gắn lại bằng
+     addEventListener trong file JS ghi ở từng dòng. */
+  'product.html': [
+    // cart.js: click [data-action="add-to-cart"] -> window.addToCart(nút)
+    ['<button class="pd-add" onclick="addToCart(this)" type="button">',
+     '<button class="pd-add" data-action="add-to-cart" type="button">'],
+  ],
+  'login.html': [
+    // auth.js: submit form[data-action="login"] -> preventDefault + dangNhap()
+    ['<form onsubmit="event.preventDefault(); dangNhap();">', '<form data-action="login">'],
+  ],
+  'signup.html': [
+    // auth.js: submit form[data-action="signup"] -> preventDefault + dangKy()
+    ['<form onsubmit="event.preventDefault(); dangKy();">', '<form data-action="signup">'],
+  ],
+  'forgot-password.html': [
+    /* auth.js: submit -> chỉ preventDefault. guiEmailDatLai() chưa từng tồn tại (tính
+       năng đặt lại mật khẩu chưa làm) nên hành vi cũ cũng chỉ là "không submit". */
+    ['<form onsubmit="event.preventDefault(); guiEmailDatLai();">', '<form data-action="reset-password">'],
+    /* Trang này trước không có JS riêng; nay nạp auth.js (pageJs) để bắt submit trên.
+       Thêm 1 thẻ script ở cuối <body> -> 2 token chèn vào, 2 token cuối dời xuống. */
+    ['</body>', '<script src="js/auth.js">'],
+    ['</html>', '</script>'],
+    [undefined, '</body>'],
+    [undefined, '</html>'],
+  ],
+  'cart.html': [
+    // page-cart.js: click [data-action="cart-checkout"] -> checkout()
+    ['<button class="btn-checkout" onclick="checkout()">', '<button class="btn-checkout" data-action="cart-checkout">'],
+  ],
   'profile.html': [
     /* profile.html là trang DUY NHẤT bỏ type="text/css" ở link CSS riêng trang.
        HTML5 coi text/css là mặc định nên thuộc tính này không đổi gì; 20 trang kia
@@ -111,10 +163,19 @@ const KNOWN = {
     ['TEXT BREEZE - Thời trang', '<title>'],
     ['</title>', 'TEXT BREEZE - Thời trang'],
     ['<meta content="width=device-width, initial-scale=1" name="viewport">', '</title>'],
+    /* Đợt bảo mật Phase 4. Kính lúp ô tìm kiếm: cart.js bắt click
+       [data-action="submit-search"] -> preventDefault + form.submit() (y như onclick cũ). */
+    ['<a class="sbutton" href="javascript:void(0);" onclick="document.getElementById(\'search-form\').submit();">',
+     '<a class="sbutton" data-action="submit-search" href="#">'],
+    /* 3 chấm slider: page-index-slider.js gắn click theo THỨ TỰ chấm (chấm i -> slide i),
+       đúng các chỉ số 0/1/2 viết cứng trong onclick cũ. */
+    ['<span class="dot" onclick="currentSlide(0)">', '<span class="dot">'],
+    ['<span class="dot" onclick="currentSlide(1)">', '<span class="dot">'],
+    ['<span class="dot" onclick="currentSlide(2)">', '<span class="dot">'],
   ],
 };
 function isKnown(label, a, b) {
-  const list = KNOWN[label] || [];
+  const list = (KNOWN['*'] || []).concat(KNOWN[label] || []);
   return list.some((k) => k[0] === a && k[1] === b);
 }
 
@@ -172,7 +233,25 @@ function selftest() {
   });
   const same = compare(base, base, 'giong het');
   console.log('  ' + (same.diffs === 0 ? 'OK      ' : 'SAI     ') + '  ban giong het -> ' + same.diffs + ' khac biet (phai la 0)');
-  const pass = ok === cases.length && same.diffs === 0;
+  /* nonce: thêm vào thì PHẢI được bỏ qua; nhưng đổi attribute khác trên CÙNG thẻ đó thì
+     vẫn PHẢI bị bắt — chứng minh bỏ qua đúng một tên, không nuốt cả thẻ. */
+  const withNonce = base.replace('<title>', '<script nonce="abc+/=">x()</script><title>');
+  const plain = base.replace('<title>', '<script>x()</script><title>');
+  const nonceOnly = compare(plain, withNonce, 'nonce');
+  const nonceAndMore = compare(plain, withNonce.replace('<script nonce', '<script defer nonce'), 'nonce+defer');
+  const nonceOk = nonceOnly.diffs === 0 && nonceAndMore.diffs > 0;
+  console.log('  ' + (nonceOnly.diffs === 0 ? 'OK      ' : 'SAI     ') + '  chi them nonce -> ' + nonceOnly.diffs + ' khac biet (phai la 0)');
+  console.log('  ' + (nonceAndMore.diffs > 0 ? 'BAT DUOC' : 'LOT LUOI') + '  nonce + doi attribute khac cung the (' + nonceAndMore.diffs + ' khac biet)');
+  /* SRI trong KNOWN['*'] áp cho mọi trang: đúng hash thì được duyệt, nhưng hash SAI một
+     ký tự thì PHẢI bị bắt — chứng minh danh sách duyệt so nguyên token, không so lỏng. */
+  const [sriOld, sriNew] = KNOWN['*'][0];
+  const sriBase = base.replace('<title>', sriOld + '</script><title>');
+  const sriGood = compare(sriBase, base.replace('<title>', sriNew + '</script><title>'), 'sri');
+  const sriBad = compare(sriBase, base.replace('<title>', sriNew.replace('sha384-a', 'sha384-b') + '</script><title>'), 'sri-sai');
+  const sriOk = sriGood.diffs === 0 && sriGood.known === 1 && sriBad.diffs > 0;
+  console.log('  ' + (sriGood.diffs === 0 ? 'OK      ' : 'SAI     ') + '  SRI dung hash -> ' + sriGood.diffs + ' khac biet, ' + sriGood.known + ' da duyet');
+  console.log('  ' + (sriBad.diffs > 0 ? 'BAT DUOC' : 'LOT LUOI') + '  SRI sai 1 ky tu hash (' + sriBad.diffs + ' khac biet)');
+  const pass = ok === cases.length && same.diffs === 0 && nonceOk && sriOk;
   console.log(pass ? 'NEGATIVE CONTROL: DAT — phep kiem co gia tri.' : 'NEGATIVE CONTROL: HONG — dung tin ket qua.');
   process.exit(pass ? 0 : 1);
 }

@@ -1,13 +1,14 @@
 /* page-orders.js — danh sách đơn hàng của khách. */
 const { check, eq } = require('./helpers/assert');
 const { load, wait } = require('./helpers/sandbox');
+const { El } = require('./helpers/dom');
 
 function setup(loggedIn, orders) {
   const log = [];
   const r = load('page-orders.js', {
-    deps: ['routes.js', 'utils-format.js'],
+    deps: ['routes.js', 'order-shipping.js', 'utils-i18n.js', 'order-payment.js', 'utils-format.js'],
     window: {
-      __i18n: { current: 'vi', T: { vi: { orders: {
+      __i18n: { current: 'vi', t: function (key) { return key; }, T: { vi: { orders: {
         heading: 'Don Hang Cua Toi', empty: 'Chua co don', orderNo: 'Don hang #',
         date: 'Ngay dat', total: 'Tong tien', statusMap: { paid: 'Da thanh toan' },
         loadError: 'Khong tai duoc don hang.' } } } },
@@ -57,6 +58,10 @@ const ORDERS = [{
         html.includes('&lt;script&gt;') && !html.includes('<script>'));
   check('statusMap dich trang thai don', html.includes('Da thanh toan'));
   eq('hien nut tiep tuc mua sam', g(r, 'orders-continue').style.display, 'inline-block');
+  check('don cu khong hien Size N/A', !html.includes('pd.thSize') && !html.includes('N/A'));
+  const sized = setup(true, [{ ...ORDERS[0], items: [{ ...ORDERS[0].items[0], size_snapshot: 'M' }] }]);
+  sized.doc.fire('authchange'); await wait();
+  check('don moi hien size snapshot', sized.doc.getElementById('orders-list').innerHTML.includes('pd.thSize: M'));
 
   // Không có đơn nào
   r = setup(true, []);
@@ -65,8 +70,54 @@ const ORDERS = [{
   eq('khong co don -> hien khoi empty', g(r, 'orders-empty').style.display, 'block');
   eq('khong co don -> danh sach rong', g(r, 'orders-list').innerHTML, '');
 
-  eq('dang ky du 3 su kien', Object.keys(r.doc._l).sort(),
-     ['DOMContentLoaded', 'authchange', 'langchange']);
+  eq('dang ky su kien cancel va render', Object.keys(r.doc._l).sort(),
+     ['DOMContentLoaded', 'authchange', 'change', 'click', 'keydown', 'langchange']);
+
+  // Nút chỉ render khi backend cho phép; submit thành công tải lại status.
+  const cancellable = [{ ...ORDERS[0], status: 'pending', can_cancel: true }];
+  r = setup(true, cancellable);
+  r.doc.fire('authchange');
+  await wait();
+  check('pending co nut huy tu can_cancel cua API', g(r, 'orders-list').innerHTML.includes('order-cancel-open'));
+  const open = El('button');
+  open.setAttribute('data-action', 'order-cancel-open');
+  open.setAttribute('data-order-id', '7');
+  open._closest = { '[data-action]': open };
+  r.doc.fire('click', { target: open });
+  eq('mo modal khong huy ngay', g(r, 'orders-cancel-overlay').hidden, false);
+  eq('chua POST khi moi mo modal', r.acts, [['api', '/api/orders']]);
+  g(r, 'orders-cancel-reason').value = 'wrong_item';
+  let posted;
+  r.win.AuthHelper.apiFetch = (path, options) => {
+    if (options && options.method === 'POST') {
+      posted = { path, body: JSON.parse(options.body) };
+      return Promise.resolve({ status: 200, json: async () => ({ status: 'ok' }) });
+    }
+    return Promise.resolve({ ok: true, json: async () => [{ ...cancellable[0], status: 'cancelled', can_cancel: false }] });
+  };
+  const submit = g(r, 'orders-cancel-submit');
+  submit.setAttribute('data-action', 'order-cancel-submit');
+  submit._closest = { '[data-action]': submit };
+  r.doc.fire('click', { target: submit });
+  await wait();
+  eq('POST dung endpoint va ly do', posted, { path: '/api/orders/7/cancel', body: { reason: 'wrong_item', details: '' } });
+  eq('thanh cong dong modal', g(r, 'orders-cancel-overlay').hidden, true);
+  check('refresh status va an nut huy', !g(r, 'orders-list').innerHTML.includes('order-cancel-open'));
+  check('thong bao thanh cong ngan gon', !g(r, 'orders-flash').hidden);
+
+  // Admin đổi trạng thái giữa lúc xem và lúc hủy: refresh và ẩn action.
+  r = setup(true, cancellable);
+  r.doc.fire('authchange');
+  await wait();
+  r.doc.fire('click', { target: open });
+  g(r, 'orders-cancel-reason').value = 'wrong_item';
+  r.win.AuthHelper.apiFetch = (path, options) => options && options.method === 'POST'
+    ? Promise.resolve({ status: 409, json: async () => ({ error: 'ORDER_NOT_CANCELLABLE' }) })
+    : Promise.resolve({ ok: true, json: async () => [{ ...cancellable[0], status: 'processing', can_cancel: false }] });
+  r.doc.fire('click', { target: submit });
+  await wait();
+  check('409 hien thong bao', !g(r, 'orders-flash').hidden && g(r, 'orders-flash').classList.contains('is-error'));
+  check('409 refresh va an nut huy', !g(r, 'orders-list').innerHTML.includes('order-cancel-open'));
   
 })();
 

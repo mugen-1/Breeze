@@ -45,11 +45,15 @@ eq('sau 1 nhip -> sang slide 2', actives(r.slides), '010');
 r.timers()[0].fn(); r.timers()[0].fn();
 eq('qua slide cuoi -> quay vong ve dau', actives(r.slides), '100');
 
-// onclick trên .dot trong HTML gọi currentSlide -> bắt buộc global
-eq('window.currentSlide phai global cho onclick', typeof r.win.currentSlide, 'function');
-r.win.currentSlide(2);
-eq('currentSlide(2) -> nhay dung slide', actives(r.slides), '001');
-eq('currentSlide -> dat lai dong ho (khong cong don)', r.timers().length, 1);
+// Click .dot gắn bằng addEventListener (không còn onclick inline — CSP chặn)
+eq('window.currentSlide van global', typeof r.win.currentSlide, 'function');
+r.dots[2].fire('click');
+eq('click dot thu 3 -> nhay dung slide 3', actives(r.slides), '001');
+eq('click dot -> dat lai dong ho (khong cong don)', r.timers().length, 1);
+r.dots[1].fire('click');
+eq('click dot thu 2 -> slide 2 + dot 2 sang', [actives(r.slides), dotOn(r.dots)], ['010', '010']);
+r.win.currentSlide(0);
+eq('goi truc tiep currentSlide(0) van chay', actives(r.slides), '100');
 
 r.hero.fire('mouseenter');
 eq('hover hero -> dung tu chuyen', r.timers().length, 0);

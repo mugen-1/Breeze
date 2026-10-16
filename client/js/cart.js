@@ -9,6 +9,9 @@
    - Mỗi lần giỏ đổi phát sự kiện document 'cartchange' để các view render lại. */
 
 var CART_KEY = 'bookstore_cart';
+// Trần số lượng một dòng giỏ — PHẢI khớp MAX_QTY ở server/routes/cart.js (server trả 400
+// nếu vượt). page-cart.js và cart-drawer.js đọc biến này để khoá nút "+".
+var CART_MAX_QTY = 99;
 
 var _cart = [];            // nguồn sự thật in-memory (cả guest lẫn server mode)
 var _serverMode = false;   // true khi đã đăng nhập & đồng bộ server
@@ -26,6 +29,8 @@ function _t(key, params) {
 }
 
 function getCart() { return _cart; }
+function cartItemKey(it) { return it.variant_id ? 'v' + it.variant_id : String(it.id); }
+function cartItemMatches(it, key) { return cartItemKey(it) === String(key); }
 
 function _readLocal() {
     try { return JSON.parse(localStorage.getItem(CART_KEY)) || []; }
@@ -66,6 +71,10 @@ function _mapServerItem(it) {
     var name = (_lang() === 'en') ? (it.name_en || it.name_vi) : (it.name_vi || it.name_en);
     return {
         id: it.product_id,
+        variant_id: it.variant_id,
+        size: it.size || null,
+        color: it.color || null,
+        available: it.available,
         name_vi: it.name_vi,
         name_en: it.name_en,
         name: name,
@@ -99,7 +108,7 @@ function _enterServerMode() {
     var forUid = _uid;   // giỏ đang tải là của tài khoản này; đổi người giữa chừng -> bỏ kết quả
 
     // Chỉ id sản phẩm THẬT (số dương) mới merge lên server; bỏ id cục bộ âm (item không có product_id).
-    var guest = _readLocal().filter(function (g) { return typeof g.id === 'number' && g.id > 0; });
+    var guest = _readLocal().filter(function (g) { return typeof g.id === 'number' && g.id >= 0; });
     // Xoá NGAY giỏ khách: từ lúc này giỏ thuộc về tài khoản vừa đăng nhập, không được
     // rơi lại cho khách hay tài khoản khác dùng chung máy (kể cả khi merge dưới đây lỗi).
     _writeLocal([]);
@@ -110,10 +119,12 @@ function _enterServerMode() {
         chain = chain.then(function () {
             return guest.reduce(function (p, g) {
                 return p.then(function () {
+                    // Kẹp ở trần: giỏ khách cũ (trước khi có trần) có thể lớn hơn 99 —
+                    // gửi nguyên thì server trả 400 và món đó mất hẳn, vì giỏ khách đã xoá.
                     return window.AuthHelper.apiFetch('/api/cart', {
                         method: 'POST',
-                        body: JSON.stringify({ product_id: g.id, quantity: g.qty, mode: 'add' }),
-                    });
+                        body: JSON.stringify({ product_id: g.id, variant_id: g.variant_id, quantity: Math.min(g.qty, CART_MAX_QTY), mode: 'add' }),
+                    }).then(function (r) { if (!r.ok) _cartToast(_t('pd.cartReview')); });
                 });
             }, Promise.resolve());
         }).then(_serverGet);
@@ -184,6 +195,23 @@ function _cartToast(msg) {
     }, 2600);
 }
 
+// Server từ chối một thao tác giỏ (MỌI status không ok: 400 vượt trần, 401 hết phiên,
+// 403 blacklist, 5xx...): hoàn tác thay đổi lạc quan + toast, rồi trả null để lời gọi
+// bỏ qua _applyServerCart. Body lỗi KHÔNG phải giỏ hàng — áp nó vào là giỏ hiện trống.
+// Chỉ 403 mới hiện message của server (giữ như cũ); lỗi khác dùng câu i18n, vì message
+// server là chữ kỹ thuật tiếng Việt, không dịch.
+function _rejectCartChange(r, rollback, fallbackKey) {
+    return r.json().catch(function () { return {}; }).then(function (data) {
+        rollback();
+        _notify();
+        var msg = data.error === 'BLACKLISTED' ? _t('acc.blocked')
+            : (r.status === 403 && data.message) ? data.message
+            : _t(fallbackKey);
+        _cartToast(msg);
+        return null;
+    });
+}
+
 function _flashAdded(btn) {
     if (!btn) return;
     var lang = _lang();
@@ -209,7 +237,32 @@ function _hydrateGuestIfNeeded() {
 
 function addToCart(btn) {
     const item = btn.closest('.product-item');
-    if (_isSoldOut(item)) return;                 // chặn thêm giỏ khi hết hàng
+    if (!item || _isSoldOut(item)) return false;
+    var variantId = Number(item.getAttribute('data-variant-id')) || null;
+    var size = item.getAttribute('data-size') || null;
+    var color = item.getAttribute('data-color') || null;
+    var configured = item.getAttribute('data-size-configured');
+    var colorConfigured = item.getAttribute('data-color-configured');
+    if ((configured === 'true' || colorConfigured === 'true') && !variantId) {
+        if (item.id !== 'pd-root') window.location.href = window.BreezeRoutes.product(Number(item.getAttribute('data-id')));
+        else _cartToast(_t(colorConfigured === 'true' && !color ? 'pd.selectColor' : 'pd.selectSize'));
+        return false;
+    }
+    // Static home cards have no variant metadata: resolve before adding, including guest carts.
+    if (configured === null && colorConfigured === null && item.getAttribute('data-id') !== null) {
+        btn.disabled = true;
+        fetch((window.API_BASE || '') + '/api/products/' + encodeURIComponent(item.getAttribute('data-id')))
+            .then(function (r) { if (!r.ok) throw new Error('product ' + r.status); return r.json(); })
+            .then(function (p) {
+                item.setAttribute('data-size-configured', p.size_configured ? 'true' : 'false');
+                item.setAttribute('data-color-configured', p.color_configured ? 'true' : 'false');
+                item.setAttribute('data-stock', p.stock);
+                if (!p.size_configured && !p.color_configured && p.variants && p.variants[0]) item.setAttribute('data-variant-id', p.variants[0].id);
+                window.addToCart(btn);
+            }).catch(function () { _cartToast(_t('acc.errAddCart')); })
+            .finally(function () { btn.disabled = false; });
+        return false;
+    }
     _hydrateGuestIfNeeded();
     const nameEl = item.querySelector('.product-name') || item.querySelector('.product-cat');
     const salePriceEl = item.querySelector('.price-sale');
@@ -223,68 +276,92 @@ function addToCart(btn) {
 
     var rawId = item.getAttribute('data-id');
     var id = (rawId !== null && rawId !== '' && !isNaN(Number(rawId))) ? Number(rawId) : null;
+    var key = variantId ? 'v' + variantId : String(id);
 
     if (_serverMode) {
         if (id === null) {
             console.warn('[cart] không có product_id, bỏ qua đồng bộ server cho:', name);
             return;
         }
-        var srvItem = _cart.find(function (p) { return p.id === id; });
+        var srvItem = _cart.find(function (p) { return cartItemMatches(p, key); });
+        if (srvItem && srvItem.qty >= CART_MAX_QTY) {
+            _cartToast(_t('acc.maxQty', { max: CART_MAX_QTY }));
+            return;
+        }
         var prevQty = srvItem ? srvItem.qty : null;   // để rollback nếu server chặn
         var newQty = (srvItem ? srvItem.qty : 0) + 1;
         if (srvItem) srvItem.qty = newQty;
-        else _cart.push({ id: id, name: name, price: price, img: img, qty: 1 });
+        else _cart.push({ id: id, variant_id: variantId, size: size, color: color, name: name, price: price, img: img, qty: 1 });
         _notify();
         _flashAdded(btn);
         window.AuthHelper.apiFetch('/api/cart', {
             method: 'POST',
-            body: JSON.stringify({ product_id: id, quantity: newQty, mode: 'set' }),
+            body: JSON.stringify({ product_id: id, variant_id: variantId || undefined, quantity: newQty, mode: 'set' }),
         }).then(function (r) {
-            if (r.status === 403) {
-                return r.json().catch(function () { return {}; }).then(function (data) {
-                    // Rollback đúng thay đổi lạc quan vừa làm (không phải xoá cả giỏ).
+            if (!r.ok) {
+                // Rollback đúng thay đổi lạc quan vừa làm (không phải xoá cả giỏ).
+                return _rejectCartChange(r, function () {
                     if (prevQty !== null) { srvItem.qty = prevQty; }
-                    else { _cart = _cart.filter(function (p) { return p.id !== id; }); }
-                    _notify();
-                    _cartToast(data.error === 'BLACKLISTED' ? _t('acc.blocked') : (data.message || _t('acc.errAddCart')));
-                    return null;
-                });
+                    else { _cart = _cart.filter(function (p) { return !cartItemMatches(p, key); }); }
+                }, 'acc.errAddCart');
             }
             return r.json();
         }).then(function (data) { if (data) _applyServerCart(data); })
           .catch(function (e) { console.error('[cart] thêm giỏ lỗi:', e); });
-        return;
+        return true;
     }
 
     // guest: dedupe theo id THẬT; sản phẩm không có id -> cấp id cục bộ âm & duy nhất (-Date.now()).
     // name KHÔNG còn là định danh remove/update (id âm là duy nhất) — name chỉ để gộp dòng trùng tên
     // trong nhóm không-id, tránh bug cũ removeFromCart(null) xoá sạch mọi item không id.
     const existing = id !== null
-        ? _cart.find(function (p) { return p.id === id; })
+        ? _cart.find(function (p) { return cartItemMatches(p, key); })
         : _cart.find(function (p) { return p.id < 0 && p.name === name; });
+    // Giỏ khách cũng kẹp trần: vượt 99 thì lúc đăng nhập merge lên server sẽ bị 400.
+    if (existing && existing.qty >= CART_MAX_QTY) {
+        _cartToast(_t('acc.maxQty', { max: CART_MAX_QTY }));
+        return;
+    }
     if (existing) existing.qty++;
-    else _cart.push({ id: (id !== null ? id : -Date.now()), name: name, price: price, img: img, qty: 1 });
+    else _cart.push({ id: (id !== null ? id : -Date.now()), variant_id: variantId, size: size, color: color, name: name, price: price, img: img, qty: 1 });
     saveCart(_cart);
     _flashAdded(btn);
+    return true;
 }
 
 function removeFromCart(id) {
-    var item = _cart.find(function (p) { return p.id === id; });
+    var item = _cart.find(function (p) { return cartItemMatches(p, id); });
     if (_serverMode) {
         if (!item) return;
+        var idx = _cart.indexOf(item);
         _cart = _cart.filter(function (p) { return p !== item; });
         _notify();
-        window.AuthHelper.apiFetch('/api/cart/' + item.id, { method: 'DELETE' })
-            .then(function (r) { return r.json(); }).then(_applyServerCart)
+        window.AuthHelper.apiFetch('/api/cart/' + (item.variant_id ? 'variant/' + item.variant_id : item.id), { method: 'DELETE' })
+            .then(function (r) {
+                if (!r.ok) {
+                    // Đặt món lại đúng chỗ cũ — trừ khi trong lúc chờ, giỏ đã được nạp
+                    // lại từ server và đã có nó (tránh hiện 2 dòng trùng).
+                    return _rejectCartChange(r, function () {
+                        if (_cart.some(function (p) { return cartItemKey(p) === cartItemKey(item); })) return;
+                        _cart.splice(Math.min(idx, _cart.length), 0, item);
+                    }, 'acc.errUpdCart');
+                }
+                return r.json();
+            })
+            .then(function (data) { if (data) _applyServerCart(data); })
             .catch(function (e) { console.error('[cart] xoá giỏ lỗi:', e); });
         return;
     }
-    saveCart(_cart.filter(function (p) { return p.id !== id; }));
+    saveCart(_cart.filter(function (p) { return !cartItemMatches(p, id); }));
 }
 
 function updateQty(id, delta) {
-    const item = _cart.find(function (p) { return p.id === id; });
+    const item = _cart.find(function (p) { return cartItemMatches(p, id); });
     if (!item) return;
+    // Nút "+" đã bị khoá ở trần (page-cart.js, cart-drawer.js); chặn thêm ở đây cho mọi
+    // đường gọi khác. Chỉ chặn chiều TĂNG: giỏ cũ lỡ vượt trần vẫn giảm xuống được.
+    if (delta > 0 && item.qty + delta > CART_MAX_QTY) return;
+    if (delta > 0 && (item.available === false || (item.stock != null && item.qty + delta > item.stock))) return;
 
     if (_serverMode) {
         var prevQty = item.qty;
@@ -294,15 +371,12 @@ function updateQty(id, delta) {
         _notify();
         window.AuthHelper.apiFetch('/api/cart', {
             method: 'POST',
-            body: JSON.stringify({ product_id: item.id, quantity: newQty, mode: 'set' }),
+            body: JSON.stringify({ product_id: item.id, variant_id: item.variant_id, quantity: newQty, mode: 'set' }),
         }).then(function (r) {
-            if (r.status === 403) {
-                return r.json().catch(function () { return {}; }).then(function (data) {
+            if (!r.ok) {
+                return _rejectCartChange(r, function () {
                     item.qty = prevQty;         // rollback thay đổi lạc quan
-                    _notify();
-                    _cartToast(data.error === 'BLACKLISTED' ? _t('acc.blocked') : (data.message || _t('acc.errUpdCart')));
-                    return null;
-                });
+                }, 'acc.errUpdCart');
             }
             return r.json();
         }).then(function (data) { if (data) _applyServerCart(data); })
@@ -311,7 +385,7 @@ function updateQty(id, delta) {
     }
 
     item.qty += delta;
-    if (item.qty <= 0) saveCart(_cart.filter(function (p) { return p.id !== id; }));
+    if (item.qty <= 0) saveCart(_cart.filter(function (p) { return !cartItemMatches(p, id); }));
     else saveCart(_cart);
 }
 
@@ -352,6 +426,26 @@ function _initSearchPersist() {
         sync();
     });
 }
+
+// Nút gắn data-action — thay cho onclick="..." inline cũ (CSP chặn handler inline).
+// Gắn ở document nên nút sinh sau (render động) cũng nhận.
+//   add-to-cart   : nút "Thêm vào giỏ" của trang sản phẩm. Gọi window.addToCart chứ KHÔNG
+//                   gọi thẳng hàm trong file này: cart-drawer.js thay window.addToCart bằng
+//                   bản bọc (thêm xong thì mở drawer) — onclick cũ cũng gọi đúng bản đó.
+//   submit-search : kính lúp ô tìm kiếm ở header trang chủ (<a href="#">). form.submit()
+//                   chứ không requestSubmit() — giữ đúng hành vi onclick cũ.
+document.addEventListener('click', function (e) {
+    var el = e.target && e.target.closest ? e.target.closest('[data-action]') : null;
+    if (!el) return;
+    var act = el.getAttribute('data-action');
+    if (act === 'add-to-cart') {
+        window.addToCart(el);
+    } else if (act === 'submit-search') {
+        e.preventDefault();
+        var form = el.closest('form');
+        if (form) form.submit();
+    }
+});
 
 // Đổi ngôn ngữ: cập nhật tên hiển thị các item server (guest item giữ nguyên tên đã lưu).
 document.addEventListener('langchange', function () {

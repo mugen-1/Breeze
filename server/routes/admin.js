@@ -1,24 +1,31 @@
 // Admin API (Phase 5) — MỌI route bọc verifyFirebaseToken + requireAdmin.
 //   POST   /api/admin/products            — tạo sản phẩm.
 //   PUT    /api/admin/products/:id         — sửa sản phẩm (cập nhật từng phần).
-//   DELETE /api/admin/products/:id         — xoá: SOFT (is_active=0) nếu đã có đơn
-//                                            tham chiếu; HARD nếu chưa (tránh vỡ order_items).
+//   DELETE /api/admin/products/:id         — ẩn sản phẩm (soft delete), giữ FK/lịch sử.
 //   GET    /api/admin/orders               — mọi đơn của mọi user, phân trang ?page=&limit=.
 //   PUT    /api/admin/orders/:id/status    — đổi trạng thái đơn (whitelist).
 //   DELETE /api/admin/orders/:id           — xoá hẳn 1 đơn (order_items cascade theo).
 //
 // Nguyên tắc: TIN server, KHÔNG tin client. Mọi input validate + parameterized.
 const express = require('express');
+const { nextShippingStatuses, shippingForOrderStatus } = require('../lib/shipping-state');
 const router = express.Router();
 const { getPool, sql } = require('../db');
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/requireAdmin');
+const { ALL_STATUSES, nextStatuses, canTransition, isTargetStatus } = require('../lib/order-state');
+const { cancelOrder, CancelError } = require('../lib/cancel-order');
+const businessReport = require('../lib/business-report');
+const { fetchPayments, completeCodPayment } = require('../lib/order-payment');
+const { recordInventoryMovement } = require('../lib/inventory-movement');
+const { readSizes, changeSizes, SizeError, SIZE_CONFIGURED_SQL, COLOR_CONFIGURED_SQL, sizeProfile } = require('../lib/size-variants');
+const { readColors, changeColors, ColorError } = require('../lib/color-variants');
 
 // Bọc toàn bộ router: chưa đăng nhập -> 401; đăng nhập nhưng không phải admin -> 403.
 router.use(verifyFirebaseToken, requireAdmin);
 
-// Trạng thái đơn hợp lệ (không có CHECK constraint ở DB nên whitelist ở app).
-const ORDER_STATUSES = ['pending', 'paid', 'shipped', 'completed', 'cancelled'];
+// Bộ lọc gồm cả trạng thái legacy; mục tiêu chuyển trạng thái do order-state.js quản lý.
+const ORDER_STATUSES = ALL_STATUSES;
 
 // ---- Validators nhỏ, trả { ok, value } hoặc { ok:false, error } --------------
 const okv = (value) => ({ ok: true, value });
@@ -118,6 +125,9 @@ function mapProduct(row) {
     currency: row.currency,
     images,
     stock: row.stock,
+    size_configured: !!row.size_configured,
+    color_configured: !!row.color_configured,
+    size_kind: sizeProfile(row).kind,
     is_active: !!row.is_active,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -128,7 +138,8 @@ const PRODUCT_SELECT = `
   SELECT p.id, p.slug, p.category_id, c.slug AS category_slug,
          p.name_vi, p.name_en, p.description_vi, p.description_en,
          p.price, p.sale_price, p.currency, p.images, p.stock, p.is_active,
-         p.created_at, p.updated_at
+         p.created_at, p.updated_at, ${SIZE_CONFIGURED_SQL} AS size_configured,
+         ${COLOR_CONFIGURED_SQL} AS color_configured
   FROM dbo.products p
   JOIN dbo.categories c ON c.id = p.category_id`;
 
@@ -163,6 +174,105 @@ router.get('/products', async (req, res) => {
   }
 });
 
+// ---- GET /api/admin/products/:id/inventory-movements -----------------------
+router.get('/products/:id/inventory-movements', async (req, res) => {
+  const idc = reqInt(req.params.id, 1, 'id');
+  if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
+  const page = Number(req.query.page || 1);
+  const limit = Number(req.query.limit || 20);
+  if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100 ||
+      (page - 1) * limit > 2147483647) {
+    return res.status(400).json({ status: 'error', message: 'page/limit không hợp lệ' });
+  }
+  try {
+    const pool = await getPool();
+    const product = await loadProduct(pool, idc.value);
+    if (!product) return res.status(404).json({ status: 'error', message: 'Không tìm thấy sản phẩm' });
+    const count = await pool.request().input('pid', sql.Int, idc.value)
+      .query('SELECT COUNT(*) AS total FROM dbo.inventory_movements WHERE product_id = @pid;');
+    const history = await pool.request()
+      .input('pid', sql.Int, idc.value)
+      .input('offset', sql.Int, (page - 1) * limit)
+      .input('limit', sql.Int, limit)
+      .query(`SELECT id, variant_id, (SELECT size FROM dbo.product_variants WHERE id = m.variant_id) AS size,
+                     (SELECT c.label FROM dbo.product_variants v JOIN dbo.product_colors c
+                      ON c.product_id=v.product_id AND c.color_key=v.color WHERE v.id=m.variant_id) AS color,
+                     created_at, movement_type, quantity_delta, stock_before, stock_after,
+                     order_id, order_reference_id, (SELECT order_code FROM dbo.orders WHERE id = m.order_id) AS order_code, reason, actor_user_id
+              FROM dbo.inventory_movements m
+              WHERE product_id = @pid
+              ORDER BY created_at DESC, id DESC
+              OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;`);
+    res.json({ product: { id: product.id, name_vi: product.name_vi, name_en: product.name_en,
+      stock: product.stock, is_active: !!product.is_active },
+    page, limit, total: count.recordset[0].total,
+    total_pages: Math.ceil(count.recordset[0].total / limit), movements: history.recordset });
+  } catch (err) {
+    console.error('[admin] inventory history error:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không tải được lịch sử kho' });
+  }
+});
+
+// Size management reuses the product-level admin authorization above.
+router.get('/products/:id/sizes', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 0) return res.status(400).json({ message: 'id không hợp lệ' });
+  try { res.json(await readSizes(await getPool(), id)); }
+  catch (err) { sizeResponseError(res, err); }
+});
+for (const [method, suffix, action] of [
+  ['post', 'sizes', 'configure'], ['post', 'size-allocation', 'allocate'], ['put', 'sizes/:variantId', 'adjust'],
+]) {
+  router[method]('/products/:id/' + suffix, async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 0) return res.status(400).json({ message: 'id không hợp lệ' });
+    try {
+      const payload = { ...(req.body || {}) };
+      if (action === 'adjust') payload.variant_id = Number(req.params.variantId);
+      res.json(await changeSizes(await getPool(), id, req.user.id, action, payload));
+    } catch (err) { sizeResponseError(res, err); }
+  });
+}
+function sizeResponseError(res, err) {
+  if (err instanceof SizeError) return res.status(err.status).json({ status: 'error', error: err.code, message: err.message });
+  if (isUniqueViolation(err)) return res.status(409).json({ status: 'error', message: 'Size hoặc SKU đã tồn tại' });
+  console.error('[admin] size error:', err.message);
+  res.status(500).json({ status: 'error', message: 'Không cập nhật được size' });
+}
+
+// Color, Size × Color stock and gallery share the product authorization above.
+router.get('/products/:id/colors', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 0) return res.status(400).json({ message: 'id không hợp lệ' });
+  try { res.json(await readColors(await getPool(), id)); }
+  catch (err) { colorResponseError(res, err); }
+});
+for (const [method, route, action] of [
+  ['post', 'colors', 'create'], ['put', 'colors/:colorId', 'update'],
+  ['post', 'color-sizes', 'add-size'], ['post', 'color-allocation', 'allocate'],
+  ['put', 'color-variants/:variantId', 'adjust'],
+  ['post', 'colors/:colorId/images', 'add-image'],
+  ['put', 'colors/:colorId/images/:imageId', 'update-image'],
+  ['delete', 'colors/:colorId/images/:imageId', 'delete-image'],
+]) {
+  router[method]('/products/:id/' + route, async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 0) return res.status(400).json({ message: 'id không hợp lệ' });
+    const payload = { ...(req.body || {}) };
+    if (req.params.colorId !== undefined) payload.color_id = Number(req.params.colorId);
+    if (req.params.variantId !== undefined) payload.variant_id = Number(req.params.variantId);
+    if (req.params.imageId !== undefined) payload.image_id = Number(req.params.imageId);
+    try { res.json(await changeColors(await getPool(), id, req.user.id, action, payload)); }
+    catch (err) { colorResponseError(res, err); }
+  });
+}
+function colorResponseError(res, err) {
+  if (err instanceof ColorError) return res.status(err.status).json({ status: 'error', error: err.code, message: err.message });
+  if (isUniqueViolation(err)) return res.status(409).json({ status: 'error', error: 'DUPLICATE_COLOR', message: 'Màu, ảnh hoặc SKU đã tồn tại' });
+  console.error('[admin] color error:', err.message);
+  res.status(500).json({ status: 'error', message: 'Không cập nhật được màu' });
+}
+
 // ---- POST /api/admin/products ------------------------------------------------
 router.post('/products', async (req, res) => {
   const b = req.body || {};
@@ -189,7 +299,11 @@ router.post('/products', async (req, res) => {
   if (v.sale_price !== null && v.sale_price > v.price) {
     return res.status(400).json({ status: 'error', message: 'sale_price không được lớn hơn price' });
   }
+  if (v.stock !== null && v.stock > 2147483647) {
+    return res.status(400).json({ status: 'error', message: 'stock phải từ 0 đến 2147483647' });
+  }
 
+  let tx;
   try {
     const pool = await getPool();
     if (!(await categoryExists(pool, v.category_id))) {
@@ -201,7 +315,9 @@ router.post('/products', async (req, res) => {
     const stock = v.stock === null ? 0 : v.stock;
     const isActive = v.is_active === null ? 1 : v.is_active;
 
-    const ins = await pool.request()
+    tx = new sql.Transaction(pool);
+    await tx.begin();
+    const ins = await new sql.Request(tx)
       .input('slug', PRODUCT_SQL_TYPE.slug, v.slug)
       .input('name_vi', PRODUCT_SQL_TYPE.name_vi, v.name_vi)
       .input('name_en', PRODUCT_SQL_TYPE.name_en, v.name_en)
@@ -224,9 +340,21 @@ router.post('/products', async (req, res) => {
            @currency, @images, @category_id, @stock, @is_active);`);
 
     const newId = ins.recordset[0].id;
+    const baseVariant = await new sql.Request(tx)
+      .input('pid', sql.Int, newId)
+      .input('sku', sql.VarChar(80), `BR-P${newId}-BASE`)
+      .input('stock', sql.Int, stock)
+      .input('active', sql.Bit, isActive)
+      .query(`INSERT INTO dbo.product_variants (product_id, sku, stock, is_active, is_base)
+              OUTPUT INSERTED.id VALUES (@pid, @sku, @stock, @active, 1);`);
+    await recordInventoryMovement(tx, { productId: newId, variantId: baseVariant.recordset[0].id,
+      type: 'PRODUCT_CREATE',
+      delta: stock, before: 0, after: stock, actorUserId: req.user.id });
+    await tx.commit();
     const row = await loadProduct(pool, newId);
     res.status(201).json({ status: 'ok', product: mapProduct(row) });
   } catch (err) {
+    if (tx) { try { await tx.rollback(); } catch (_) { /* already rolled back */ } }
     if (isUniqueViolation(err)) {
       return res.status(409).json({ status: 'error', message: 'slug đã tồn tại' });
     }
@@ -271,6 +399,11 @@ router.put('/products/:id', async (req, res) => {
     return res.status(400).json({ status: 'error', message: 'Không có trường hợp lệ nào để cập nhật' });
   }
 
+  if (updates.stock === null || (updates.stock !== undefined && updates.stock > 2147483647)) {
+    return res.status(400).json({ status: 'error', message: 'stock phải là số nguyên từ 0 đến 2147483647' });
+  }
+
+  let tx;
   try {
     const pool = await getPool();
     const existing = await loadProduct(pool, idc.value);
@@ -280,27 +413,86 @@ router.put('/products/:id', async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'category_id không tồn tại' });
     }
 
+    tx = new sql.Transaction(pool);
+    await tx.begin();
+    const locked = await new sql.Request(tx).input('id', sql.Int, idc.value)
+      .query(`SELECT stock, price, sale_price, ${SIZE_CONFIGURED_SQL} AS size_configured,
+        ${COLOR_CONFIGURED_SQL} AS color_configured
+        FROM dbo.products p WITH (UPDLOCK, HOLDLOCK) WHERE id = @id;`);
+    if (!locked.recordset.length) {
+      await tx.rollback();
+      return res.status(404).json({ status: 'error', message: 'Không tìm thấy sản phẩm' });
+    }
+    const current = locked.recordset[0];
+    if ((current.size_configured || current.color_configured) && (updates.stock !== undefined ||
+        (updates.category_id !== undefined && updates.category_id !== existing.category_id) ||
+        (updates.slug !== undefined && updates.slug !== existing.slug))) {
+      await tx.rollback();
+      return res.status(409).json({ status: 'error', error: 'SIZE_MANAGEMENT_REQUIRED',
+        message: 'Sản phẩm đã cấu hình biến thể: quản lý tồn theo size/màu; giữ danh mục và slug hiện tại.' });
+    }
+    const baseVariant = await new sql.Request(tx).input('pid', sql.Int, idc.value)
+      .query('SELECT id, stock FROM dbo.product_variants WITH (UPDLOCK, HOLDLOCK) WHERE product_id = @pid AND is_base = 1;');
+    if (baseVariant.recordset.length !== 1) throw new Error('Missing base variant during admin update');
+    const base = baseVariant.recordset[0];
+    // Use the SQL value after lock, never a stock value cached by the browser.
+    const stockChanged = updates.stock !== undefined && updates.stock !== base.stock;
+    const reason = stockChanged ? reqText(b.stock_reason, 250, 'Lý do điều chỉnh kho') : null;
+    if (reason && !reason.ok) {
+      await tx.rollback();
+      return res.status(400).json({ status: 'error', message: reason.error });
+    }
+
     // sale_price <= price: so trên GIÁ TRỊ CUỐI (giá trị mới nếu có, ngược lại giá cũ).
-    const finalPrice = updates.price !== undefined ? updates.price : existing.price;
-    const finalSale = updates.sale_price !== undefined ? updates.sale_price : existing.sale_price;
+    const finalPrice = updates.price !== undefined ? updates.price : current.price;
+    const finalSale = updates.sale_price !== undefined ? updates.sale_price : current.sale_price;
     if (finalSale !== null && finalSale > finalPrice) {
+      await tx.rollback();
       return res.status(400).json({ status: 'error', message: 'sale_price không được lớn hơn price' });
     }
 
     // Dựng câu UPDATE động: mỗi cột 1 param có kiểu đúng.
-    const request = pool.request().input('id', sql.Int, idc.value);
+    const request = new sql.Request(tx).input('id', sql.Int, idc.value);
     const setParts = [];
     for (const [col, value] of Object.entries(updates)) {
+      if (col === 'stock') continue;
       request.input(col, PRODUCT_SQL_TYPE[col], value);
       setParts.push(`${col} = @${col}`);
     }
+    const delta = stockChanged ? updates.stock - base.stock : 0;
+    if (stockChanged) {
+      request.input('delta', sql.Int, delta);
+      setParts.push('stock = stock + @delta');
+    }
     setParts.push('updated_at = SYSUTCDATETIME()');
 
-    await request.query(`UPDATE dbo.products SET ${setParts.join(', ')} WHERE id = @id;`);
+    const updated = await request.query(`UPDATE dbo.products SET ${setParts.join(', ')}
+      OUTPUT INSERTED.stock AS stock_after WHERE id = @id
+        AND CONVERT(BIGINT, stock) + ${stockChanged ? '@delta' : '0'} BETWEEN 0 AND 2147483647;`);
+    if (updated.rowsAffected[0] !== 1) throw new Error('Product aggregate would overflow');
+    if (stockChanged) {
+      const variant = await new sql.Request(tx).input('vid', sql.Int, base.id)
+        .input('stock', sql.Int, updates.stock)
+        .query(`UPDATE dbo.product_variants SET stock = @stock, updated_at = SYSUTCDATETIME()
+                OUTPUT DELETED.stock AS stock_before, INSERTED.stock AS stock_after WHERE id = @vid;`);
+      if (variant.rowsAffected[0] !== 1) throw new Error('Base variant disappeared during admin update');
+      await recordInventoryMovement(tx, { productId: idc.value, variantId: base.id,
+        type: 'ADMIN_ADJUSTMENT', delta,
+        before: variant.recordset[0].stock_before, after: variant.recordset[0].stock_after,
+        reason: reason.value, actorUserId: req.user.id });
+    }
+    if (updates.is_active !== undefined) {
+      await new sql.Request(tx).input('pid', sql.Int, idc.value)
+        .input('active', sql.Bit, updates.is_active)
+        .query(`UPDATE dbo.product_variants SET is_active = @active, updated_at = SYSUTCDATETIME()
+                WHERE product_id = @pid AND (@active = 0 OR is_base = 1);`);
+    }
+    await tx.commit();
 
     const row = await loadProduct(pool, idc.value);
     res.json({ status: 'ok', product: mapProduct(row) });
   } catch (err) {
+    if (tx) { try { await tx.rollback(); } catch (_) { /* already rolled back */ } }
     if (isUniqueViolation(err)) {
       return res.status(409).json({ status: 'error', message: 'slug đã tồn tại' });
     }
@@ -310,47 +502,28 @@ router.put('/products/:id', async (req, res) => {
 });
 
 // ---- DELETE /api/admin/products/:id ------------------------------------------
-// Có đơn tham chiếu (order_items) => SOFT delete (is_active=0), giữ lịch sử đơn.
-// Chưa có đơn nào => HARD delete; xoá luôn cart_items tạm để không vỡ FK.
+// Luôn soft-delete. Tránh race giữa kiểm tra tham chiếu và checkout tạo order_item.
 router.delete('/products/:id', async (req, res) => {
   const idc = reqInt(req.params.id, 0, 'id');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
   const id = idc.value;
 
+  let tx;
   try {
     const pool = await getPool();
     const existing = await loadProduct(pool, id);
     if (!existing) return res.status(404).json({ status: 'error', message: 'Không tìm thấy sản phẩm' });
 
-    const ref = await pool.request().input('id', sql.Int, id)
-      .query('SELECT TOP 1 1 AS x FROM dbo.order_items WHERE product_id = @id;');
-    const referenced = ref.recordset.length > 0;
-
-    if (referenced) {
-      await pool.request().input('id', sql.Int, id)
-        .query('UPDATE dbo.products SET is_active = 0, updated_at = SYSUTCDATETIME() WHERE id = @id;');
-      return res.json({
-        status: 'ok', mode: 'soft',
-        message: 'Sản phẩm đã có trong đơn hàng — ẩn (soft delete) để giữ lịch sử đơn',
-        product_id: id,
-      });
-    }
-
-    // Hard delete trong transaction: dọn cart_items (tạm, FK) trước rồi xoá product.
-    const tx = new sql.Transaction(pool);
+    tx = new sql.Transaction(pool);
     await tx.begin();
-    try {
-      await new sql.Request(tx).input('id', sql.Int, id)
-        .query('DELETE FROM dbo.cart_items WHERE product_id = @id;');
-      await new sql.Request(tx).input('id', sql.Int, id)
-        .query('DELETE FROM dbo.products WHERE id = @id;');
-      await tx.commit();
-    } catch (e) {
-      try { await tx.rollback(); } catch (_) { /* ignore */ }
-      throw e;
-    }
-    res.json({ status: 'ok', mode: 'hard', message: 'Đã xoá sản phẩm', product_id: id });
+    await new sql.Request(tx).input('id', sql.Int, id)
+      .query('UPDATE dbo.products SET is_active = 0, updated_at = SYSUTCDATETIME() WHERE id = @id;');
+    await new sql.Request(tx).input('id', sql.Int, id)
+      .query('UPDATE dbo.product_variants SET is_active = 0, updated_at = SYSUTCDATETIME() WHERE product_id = @id;');
+    await tx.commit();
+    res.json({ status: 'ok', mode: 'soft', message: 'Đã ẩn sản phẩm', product_id: id });
   } catch (err) {
+    if (tx) { try { await tx.rollback(); } catch (_) { /* already rolled back */ } }
     console.error('[admin] delete product error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không xoá được sản phẩm' });
   }
@@ -365,7 +538,7 @@ async function fetchItemsByOrderIds(pool, orderIds) {
     return '@o' + i;
   });
   const result = await request.query(`
-    SELECT order_id, product_id, product_name, unit_price, quantity, line_total
+    SELECT order_id, product_id, variant_id, product_name, size_snapshot, color_snapshot, unit_price, quantity, line_total
     FROM dbo.order_items
     WHERE order_id IN (${params.join(', ')})
     ORDER BY id;`);
@@ -374,6 +547,9 @@ async function fetchItemsByOrderIds(pool, orderIds) {
     (map[it.order_id] = map[it.order_id] || []).push({
       product_id: it.product_id,
       product_name: it.product_name,
+      variant_id: it.variant_id,
+      size_snapshot: it.size_snapshot,
+      color_snapshot: it.color_snapshot,
       unit_price: it.unit_price,
       quantity: it.quantity,
       line_total: it.line_total,
@@ -395,6 +571,10 @@ router.get('/orders', async (req, res) => {
 
   // Validate status theo whitelist (giống chỗ đổi trạng thái).
   const { status, q } = req.query;
+  const internalId = req.query.order_id === undefined ? null : Number(req.query.order_id);
+  if (internalId !== null && (!Number.isInteger(internalId) || internalId < 1 || internalId > 2147483647)) {
+    return res.status(400).json({ status: 'error', message: 'order_id không hợp lệ' });
+  }
   let statusVal = null;
   if (status !== undefined && status !== '') {
     if (!ORDER_STATUSES.includes(status)) {
@@ -406,7 +586,7 @@ router.get('/orders', async (req, res) => {
     statusVal = status;
   }
   // Chuẩn hoá search:
-  //  - q toàn CHỮ SỐ  -> coi là MÃ ĐƠN, khớp CHÍNH XÁC o.id = q (ra đúng 1 đơn, không dính 12/20…).
+  //  - q toàn CHỮ SỐ  -> coi là MÃ ĐƠN, khớp mã hiển thị (order_code, fallback id) (không tìm theo chuỗi con).
   //  - còn lại        -> tìm theo email / tên khách bằng LIKE (escape ký tự đặc biệt).
   let qId = null;
   let likeVal = null;
@@ -424,10 +604,11 @@ router.get('/orders', async (req, res) => {
   // Gắn cùng bộ điều kiện WHERE + input cho cả câu COUNT lẫn câu SELECT.
   function applyFilters(request) {
     const clauses = [];
+    if (internalId !== null) { request.input('orderId', sql.Int, internalId); clauses.push('o.id = @orderId'); }
     if (statusVal) { request.input('status', sql.VarChar(20), statusVal); clauses.push('o.status = @status'); }
     if (qId !== null) {
       request.input('qid', sql.Int, qId);
-      clauses.push('o.id = @qid');
+      clauses.push('COALESCE(o.order_code, o.id) = @qid');
     } else if (likeVal) {
       request.input('q', sql.NVarChar(120), likeVal);
       clauses.push("(u.email LIKE @q ESCAPE '\\' OR u.display_name LIKE @q ESCAPE '\\')");
@@ -452,11 +633,14 @@ router.get('/orders', async (req, res) => {
       .input('limit', sql.Int, limit);
     const whereList = applyFilters(listReq);
     const ordersRes = await listReq.query(`
-      SELECT o.id, o.user_id, u.email AS user_email, u.display_name AS user_name,
+      SELECT o.id, o.order_code, o.user_id, u.email AS user_email, u.display_name AS user_name,
              o.status, o.total_amount, o.currency,
              o.VoucherCode AS voucher_code, o.DiscountAmount AS discount_amount,
              o.PaymentMethod AS payment_method,
-             o.shipping_name, o.shipping_phone, o.shipping_address, o.created_at
+             o.shipping_name, o.shipping_phone, o.shipping_address, o.created_at,
+             o.cancel_reason, o.cancelled_at, o.shipping_version, o.shipping_ward, o.shipping_district,
+             o.shipping_city, o.delivery_note, o.shipping_method, o.shipping_fee,
+             o.shipping_provider, o.shipping_service, o.shipping_eta, o.shipping_tracking_code, o.shipping_status
       FROM dbo.orders o
       JOIN dbo.users u ON u.id = o.user_id
       ${whereList}
@@ -465,10 +649,11 @@ router.get('/orders', async (req, res) => {
 
     const orders = ordersRes.recordset;
     const itemsMap = await fetchItemsByOrderIds(pool, orders.map((o) => o.id));
+    const payments = await fetchPayments(pool, orders.map(o => o.id));
     res.json({
       page, limit, total,
       total_pages: Math.ceil(total / limit),
-      orders: orders.map((o) => ({ ...o, items: itemsMap[o.id] || [] })),
+      orders: orders.map((o) => ({ ...o, payment_transaction: payments[o.id] || null, allowed_next_statuses: nextStatuses(o.status), allowed_shipping_statuses: nextShippingStatuses(o), items: itemsMap[o.id] || [] })),
     });
   } catch (err) {
     console.error('[admin] list orders error:', err.message);
@@ -482,47 +667,118 @@ router.put('/orders/:id/status', async (req, res) => {
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
 
   const status = req.body && req.body.status;
-  if (typeof status !== 'string' || !ORDER_STATUSES.includes(status)) {
+  if (!isTargetStatus(status)) {
     return res.status(400).json({
       status: 'error',
-      message: 'status không hợp lệ. Hợp lệ: ' + ORDER_STATUSES.join(', '),
+      message: 'status không hợp lệ',
     });
   }
 
-  const tx = new sql.Transaction(await getPool());
+  let pool;
+  try {
+    pool = await getPool();
+  } catch (err) {
+    console.error('[admin] update order status pool error:', err.code || 'database-error');
+    return res.status(500).json({ status: 'error', message: 'Không cập nhật được trạng thái đơn' });
+  }
+  if (status === 'cancelled') {
+    try {
+      const order = await cancelOrder(pool, { orderId: idc.value, actorUserId: req.user.id });
+      return res.json({ status: 'ok', order: { ...order, allowed_next_statuses: nextStatuses(order.status) } });
+    } catch (error) {
+      if (error instanceof CancelError && error.status < 500) {
+        return res.status(error.status).json({ status: 'error', message: error.message });
+      }
+      console.error('[admin] cancel order error:', error.code || error.message);
+      return res.status(500).json({ status: 'error', message: 'Không cập nhật được trạng thái đơn' });
+    }
+  }
+  const tx = new sql.Transaction(pool);
   try {
     await tx.begin();
-    const upd = await new sql.Request(tx)
+    // Khoá row đến khi commit/rollback. Request B phải đọc status SAU khi A
+    // hoàn tất; điều kiện UPDATE còn chặn trường hợp status đổi giữa hai lệnh.
+    const current = await new sql.Request(tx)
       .input('id', sql.Int, idc.value)
-      .input('status', sql.VarChar(20), status)
-      .query(`
-        UPDATE dbo.orders SET status = @status
-        OUTPUT INSERTED.id, INSERTED.status, INSERTED.total_amount, INSERTED.created_at, INSERTED.user_id
-        WHERE id = @id;`);
-
-    if (upd.recordset.length === 0) {
+      .query('SELECT status, shipping_version, shipping_status FROM dbo.orders WITH (UPDLOCK, HOLDLOCK) WHERE id = @id;');
+    if (current.recordset.length === 0) {
       await tx.rollback();
       return res.status(404).json({ status: 'error', message: 'Không tìm thấy đơn hàng' });
     }
+    const previous = current.recordset[0].status;
+    if (!canTransition(previous, status)) {
+      await tx.rollback();
+      return res.status(409).json({
+        status: 'error', message: `Không thể chuyển trạng thái đơn hàng từ '${previous}' sang '${status}'.`,
+      });
+    }
+    const upd = await new sql.Request(tx)
+      .input('id', sql.Int, idc.value)
+      .input('current', sql.VarChar(20), previous)
+      .input('status', sql.VarChar(20), status)
+      .input('shippingStatus', sql.VarChar(30), shippingForOrderStatus(current.recordset[0], status))
+      .query(`
+        UPDATE dbo.orders SET status = @status, shipping_status = @shippingStatus
+        OUTPUT INSERTED.id, INSERTED.status, INSERTED.total_amount, INSERTED.created_at, INSERTED.user_id
+        WHERE id = @id AND status = @current;`);
+
+    if (upd.recordset.length === 0) {
+      await tx.rollback();
+      return res.status(409).json({ status: 'error', message: 'Trạng thái đơn hàng vừa thay đổi. Vui lòng tải lại.' });
+    }
     const order = upd.recordset[0];
 
-    // Đơn CHUYỂN sang huỷ -> đưa user vào danh sách đen (nếu chưa có). Đây là trạng thái
-    // ĐƯỢC LƯU (không tính động), nên đổi khỏi huỷ sang trạng thái khác KHÔNG tự gỡ lại —
-    // chỉ admin bấm "Gỡ Tài Khoản" (POST /api/admin/blacklist/:userId/release) mới gỡ được.
-    if (status === 'cancelled') {
-      await new sql.Request(tx).input('uid', sql.Int, order.user_id)
-        .query('UPDATE dbo.users SET IsBlacklisted = 1 WHERE id = @uid AND IsBlacklisted = 0;');
-    }
-
+    if (status === 'completed') await completeCodPayment(tx, idc.value);
     await tx.commit();
     res.json({
       status: 'ok',
-      order: { id: order.id, status: order.status, total_amount: order.total_amount, created_at: order.created_at },
+      order: { id: order.id, status: order.status, allowed_next_statuses: nextStatuses(order.status), total_amount: order.total_amount, created_at: order.created_at },
     });
   } catch (err) {
     try { await tx.rollback(); } catch (_) { /* ignore */ }
     console.error('[admin] update order status error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không cập nhật được trạng thái đơn' });
+  }
+});
+
+// Sequential shipping updates share the order lock with cancellation/status changes.
+router.patch('/orders/:id/shipping-status', async (req, res) => {
+  const id = Number(req.params.id);
+  const target = req.body && req.body.shipping_status;
+  if (!Number.isInteger(id) || id < 1 || id > 2147483647 || typeof target !== 'string' ||
+      !['picked_up', 'in_transit', 'out_for_delivery', 'delivered'].includes(target)) {
+    return res.status(400).json({ status: 'error', message: 'Trạng thái vận chuyển không hợp lệ' });
+  }
+  let tx;
+  try {
+    tx = new sql.Transaction(await getPool());
+    await tx.begin();
+    const current = (await new sql.Request(tx).input('id', sql.Int, id).query(`
+      SELECT status, shipping_version, shipping_status FROM dbo.orders WITH (UPDLOCK, HOLDLOCK)
+      WHERE id = @id;`)).recordset[0];
+    if (!current) {
+      await tx.rollback();
+      return res.status(404).json({ status: 'error', message: 'Không tìm thấy đơn hàng' });
+    }
+    if (!nextShippingStatuses(current).includes(target)) {
+      await tx.rollback();
+      return res.status(409).json({ status: 'error', message: 'Không thể chuyển trạng thái vận chuyển. Đơn phải đang xử lý hoặc đang giao và chỉ được tiến một bước.' });
+    }
+    const orderStatus = target === 'delivered' ? 'completed' :
+      (current.status === 'processing' ? 'shipping' : current.status);
+    const updated = (await new sql.Request(tx).input('id', sql.Int, id)
+      .input('status', sql.VarChar(20), orderStatus).input('shippingStatus', sql.VarChar(30), target)
+      .query(`UPDATE dbo.orders SET status = @status, shipping_status = @shippingStatus
+        OUTPUT INSERTED.id, INSERTED.order_code, INSERTED.status, INSERTED.shipping_version, INSERTED.shipping_status
+        WHERE id = @id;`)).recordset[0];
+    if (orderStatus === 'completed') await completeCodPayment(tx, id);
+    await tx.commit();
+    res.json({ status: 'ok', order: { ...updated, allowed_next_statuses: nextStatuses(updated.status),
+      allowed_shipping_statuses: nextShippingStatuses(updated) } });
+  } catch (err) {
+    if (tx) { try { await tx.rollback(); } catch (_) { /* already rolled back */ } }
+    console.error('[admin] shipping status error:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không cập nhật được vận chuyển' });
   }
 });
 
@@ -584,7 +840,7 @@ router.get('/blacklist', async (req, res) => {
     const clauses = ['u.IsBlacklisted = 1'];
     if (qId !== null) {
       request.input('qid', sql.Int, qId);
-      clauses.push('o.id = @qid');
+      clauses.push('COALESCE(o.order_code, o.id) = @qid');
     } else if (likeVal) {
       request.input('q', sql.NVarChar(120), likeVal);
       clauses.push("(u.email LIKE @q ESCAPE '\\' OR u.display_name LIKE @q ESCAPE '\\')");
@@ -609,7 +865,7 @@ router.get('/blacklist', async (req, res) => {
       .input('limit', sql.Int, limit);
     const whereList = applyFilters(listReq);
     const listRes = await listReq.query(`
-        SELECT o.id AS order_id, u.id AS user_id, u.email AS user_email, u.display_name AS user_name,
+        SELECT o.id AS order_id, o.order_code, u.id AS user_id, u.email AS user_email, u.display_name AS user_name,
                o.status, o.total_amount, o.currency, o.PaymentMethod AS payment_method,
                o.shipping_name, o.shipping_phone, o.shipping_address, o.created_at
         FROM dbo.users u
@@ -650,7 +906,7 @@ router.post('/blacklist/:userId/release', async (req, res) => {
 });
 
 // ==== Helpers cho các route thống kê có filter thời gian ==========================
-// Doanh thu CHỈ tính đơn status IN ('paid','shipped','completed') — loại pending + cancelled.
+// Reporting only: doanh thu/sản phẩm/khách mua tính completed; số đơn gồm mọi trạng thái.
 // Danh sách status là literal cố định (không phải input) nên nhúng thẳng an toàn;
 // MỌI giá trị ngày do client truyền đều PARAMETERIZED (request.input) — chống SQL injection.
 
@@ -672,7 +928,7 @@ function parseYMD(s) {
 // số liệu, và khi có đơn mới THẬT thì mốc tự trôi về hiện tại — không phải sửa lại code.
 // LƯU Ý: mốc này chỉ đổi CÁCH CHỌN KHOẢNG. Ngày giờ hiển thị trên UI (cột "Ngày đặt",
 // hoá đơn, trục chart) vẫn là created_at thật của đơn, không bị dịch.
-// CHỈ neo theo đơn có doanh thu ('paid','shipped','completed' — cùng tập với rangeStats).
+// CHỈ neo theo đơn completed, cùng định nghĩa doanh thu của Dashboard/Statistics/CSV.
 // Đơn 'pending'/'cancelled' bị loại có chủ đích: chỉ cần MỘT đơn test đặt hôm nay là mốc
 // nhảy về hiện tại, mọi preset ngắn lại rơi vào vùng trống và biểu đồ rỗng đúng như lỗi
 // mà cách neo này sinh ra để tránh. Đơn test thường nằm ở 'pending' nên loại là đủ.
@@ -680,7 +936,7 @@ function parseYMD(s) {
 async function getAnchorInstant(pool) {
   const r = await pool.request().query(`
     SELECT MAX(created_at) AS mx FROM dbo.orders
-    WHERE status IN ('paid','shipped','completed');`);
+    WHERE status = 'completed';`);
   const mx = r.recordset[0] && r.recordset[0].mx;
   if (mx) return new Date(mx);
 
@@ -700,43 +956,34 @@ function resolveDateRange(query, anchorInstant) {
     // Ngày của mốc neo tính theo giờ VN (khớp quy ước với resolveStatisticsRange).
     const shifted = new Date((anchorInstant || new Date()).getTime() + VN_OFFSET_MS);
     toDate = new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()));
-    fromDate = new Date(toDate.getTime() - 30 * 86400000);
+    fromDate = new Date(toDate.getTime() - 29 * 86400000);
   } else {
     if (!hasFrom || !hasTo) return { ok: false, error: 'Phải truyền cả from và to (YYYY-MM-DD)' };
     fromDate = parseYMD(fromRaw);
     toDate = parseYMD(toRaw);
     if (!fromDate || !toDate) return { ok: false, error: 'from/to phải đúng định dạng YYYY-MM-DD' };
     if (fromDate.getTime() > toDate.getTime()) return { ok: false, error: 'from phải nhỏ hơn hoặc bằng to' };
-    if ((toDate.getTime() - fromDate.getTime()) / 86400000 > 366) {
+    if ((toDate.getTime() - fromDate.getTime()) / 86400000 + 1 > 366) {
       return { ok: false, error: 'Khoảng thời gian tối đa 366 ngày' };
     }
+  }
+  const start = new Date(fromDate.getTime() - VN_OFFSET_MS);
+  const end = new Date(toDate.getTime() + 86400000 - VN_OFFSET_MS);
+  if (start < new Date('0001-01-01T00:00:00Z') || end > new Date('9999-12-31T23:59:59.999Z')) {
+    return { ok: false, error: 'Ngày ngoài phạm vi SQL Server hỗ trợ' };
   }
   return {
     ok: true,
     from: fromDate.toISOString().slice(0, 10),
     to: toDate.toISOString().slice(0, 10),
     fromDate, toDate,
-    start: fromDate,
-    end: new Date(toDate.getTime() + 86400000), // end EXCLUSIVE = to + 1 ngày (gồm trọn ngày 'to')
+    start, end, // VN midnight; end EXCLUSIVE includes the full selected 'to' day.
   };
 }
 
-// Doanh thu / số đơn / số khách (đơn hợp lệ) trong [start, end). Khách = distinct user_id có mua.
+// Reuse one KPI definition for Dashboard and CSV.
 async function rangeStats(pool, start, end) {
-  const r = await pool.request()
-    .input('start', sql.DateTime2, start)
-    .input('end', sql.DateTime2, end)
-    .query(`
-      SELECT COALESCE(SUM(total_amount), 0) AS revenue,
-             COUNT(*)                       AS orders,
-             COUNT(DISTINCT user_id)        AS customers
-      FROM dbo.orders
-      WHERE status IN ('paid','shipped','completed') AND created_at >= @start AND created_at < @end;`);
-  const row = r.recordset[0];
-  const revenue = Number(row.revenue) || 0;
-  const orders = Number(row.orders) || 0;
-  const customers = Number(row.customers) || 0;
-  return { revenue, orders, customers, aov: orders > 0 ? Math.round(revenue / orders) : 0 };
+  return businessReport.summary(pool, start, end);
 }
 
 // ---- GET /api/admin/stats/anchor -------------------------------------------------
@@ -763,34 +1010,34 @@ router.get('/stats', async (req, res) => {
 
     // Kỳ trước: cùng số ngày N, ngay liền trước kỳ hiện tại.
     const N = Math.round((rg.toDate.getTime() - rg.fromDate.getTime()) / 86400000) + 1;
-    const prevStart = new Date(rg.fromDate.getTime() - N * 86400000);
-    const prevEnd = rg.fromDate; // exclusive = from
+    const prevStart = new Date(rg.start.getTime() - N * 86400000);
+    const prevEnd = rg.start; // exclusive = from
 
     const current = await rangeStats(pool, rg.start, rg.end);
     const previous = await rangeStats(pool, prevStart, prevEnd);
 
-    // Doanh thu theo ngày; bù đủ mọi ngày trong khoảng (ngày trống = 0) để chart không hụt cột.
-    const dailyRes = await pool.request()
-      .input('start', sql.DateTime2, rg.start)
-      .input('end', sql.DateTime2, rg.end)
-      .query(`
-        SELECT CONVERT(char(10), created_at, 23) AS d, COALESCE(SUM(total_amount), 0) AS revenue
-        FROM dbo.orders
-        WHERE status IN ('paid','shipped','completed') AND created_at >= @start AND created_at < @end
-        GROUP BY CONVERT(char(10), created_at, 23);`);
-    const byDate = {};
-    for (const x of dailyRes.recordset) byDate[x.d] = Number(x.revenue) || 0;
-
-    const dailyRevenue = [];
-    for (let t = rg.fromDate.getTime(); t <= rg.toDate.getTime(); t += 86400000) {
-      const key = new Date(t).toISOString().slice(0, 10);
-      dailyRevenue.push({ date: key, revenue: byDate[key] || 0 });
-    }
+    const dailyRevenue = await businessReport.dailyRevenue(pool, rg);
 
     res.json({ range: { from: rg.from, to: rg.to }, current, previous, dailyRevenue });
   } catch (err) {
     console.error('[admin] stats error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không tải được số liệu thống kê' });
+  }
+});
+
+// Read-only export data. Uses the exact Dashboard range, KPI and daily grouping.
+router.get('/stats/business-report', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const rg = resolveDateRange(req.query, await getAnchorInstant(pool));
+    if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
+    const summary = await businessReport.summary(pool, rg.start, rg.end);
+    const dailyRevenue = await businessReport.dailyRevenue(pool, rg);
+    const topProducts = await businessReport.products(pool, rg.start, rg.end, 10);
+    res.json({ range: { from: rg.from, to: rg.to }, summary, dailyRevenue, topProducts });
+  } catch (err) {
+    console.error('[admin] business report error:', err.code || 'database-error');
+    res.status(500).json({ status: 'error', message: 'Không tải được báo cáo kinh doanh' });
   }
 });
 
@@ -806,35 +1053,7 @@ router.get('/stats/top-products', async (req, res) => {
     const rg = resolveDateRange(req.query, await getAnchorInstant(pool));
     if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
 
-    const r = await pool.request()
-      .input('start', sql.DateTime2, rg.start)
-      .input('end', sql.DateTime2, rg.end)
-      .input('lim', sql.Int, limit)
-      .query(`
-        SELECT TOP (@lim)
-               p.id, p.name_vi AS name, p.images,
-               SUM(oi.quantity)   AS unitsSold,
-               SUM(oi.line_total) AS revenue
-        FROM dbo.order_items oi
-        JOIN dbo.orders o   ON o.id = oi.order_id
-        JOIN dbo.products p ON p.id = oi.product_id
-        WHERE o.status IN ('paid','shipped','completed') AND o.created_at >= @start AND o.created_at < @end
-        GROUP BY p.id, p.name_vi, p.images
-        ORDER BY unitsSold DESC;`);
-
-    const items = r.recordset.map((row) => {
-      let imageUrl = 'img/breeze.png';
-      if (row.images) {
-        try {
-          const arr = JSON.parse(row.images);
-          if (Array.isArray(arr) && arr.length && typeof arr[0] === 'string' && arr[0].trim()) imageUrl = arr[0];
-        } catch (e) { /* giữ placeholder */ }
-      }
-      return {
-        id: row.id, name: row.name, imageUrl,
-        unitsSold: Number(row.unitsSold) || 0, revenue: Number(row.revenue) || 0,
-      };
-    });
+    const items = await businessReport.products(pool, rg.start, rg.end, limit);
     res.json(items);
   } catch (err) {
     console.error('[admin] top-products error:', err.message);
@@ -868,9 +1087,7 @@ router.get('/stats/order-status', async (req, res) => {
 // ---- GET /api/admin/statistics?range=7d|30d|month|year ---------------------------
 // Thống kê sản phẩm bán được: gom theo SẢN PHẨM (không gộp theo đơn), doanh thu SAU
 // khi phân bổ voucher (đơn không có DiscountAmount thì tỉ lệ = 0, ra đúng line_total).
-// Chỉ tính đơn 'paid' + 'completed' — KHÔNG gồm 'shipped': status là chuỗi admin gán
-// tay qua PUT /orders/:id/status, không gắn với việc đã thu tiền (đơn COD có thể đang
-// "shipped" mà giao hàng chưa thu tiền xong) nên không được coi là doanh thu chắc chắn.
+// Cùng tập completed, snapshot và phân bổ voucher với Dashboard/CSV top products.
 const STATISTICS_RANGE_KEYS = ['7d', '30d', 'month', 'year'];
 
 // "Nửa đêm giờ VN của ngày y-m-d" quy đổi ra Date UTC thật (để so sánh với created_at lưu UTC).
@@ -916,37 +1133,8 @@ router.get('/statistics', async (req, res) => {
   try {
     const pool = await getPool();
     const rg = resolveStatisticsRange(req.query.range, await getAnchorInstant(pool));
-    const r = await pool.request()
-      .input('start', sql.DateTime2, rg.start)
-      .input('end', sql.DateTime2, rg.end)
-      .query(`
-        WITH order_subtotal AS (
-          SELECT order_id, SUM(quantity * unit_price) AS subtotal
-          FROM dbo.order_items
-          GROUP BY order_id
-        )
-        SELECT
-          oi.product_id AS productId,
-          COALESCE(MAX(p.name_vi), MAX(oi.product_name)) AS productName,
-          SUM(oi.quantity) AS quantity,
-          ROUND(SUM(
-            oi.quantity * oi.unit_price *
-            (1 - CASE WHEN os.subtotal > 0 THEN o.DiscountAmount * 1.0 / os.subtotal ELSE 0 END)
-          ), 0) AS revenue
-        FROM dbo.order_items oi
-        JOIN dbo.orders o ON o.id = oi.order_id
-        JOIN order_subtotal os ON os.order_id = oi.order_id
-        LEFT JOIN dbo.products p ON p.id = oi.product_id
-        WHERE o.status IN ('paid', 'completed')
-          AND o.created_at >= @start AND o.created_at < @end
-        GROUP BY oi.product_id
-        ORDER BY revenue DESC;`);
-
-    const items = r.recordset.map((row) => ({
-      productName: row.productName,
-      quantity: Number(row.quantity) || 0,
-      revenue: Number(row.revenue) || 0,
-    }));
+    const products = await businessReport.products(pool, rg.start, rg.end, 2147483647, 'revenue');
+    const items = products.map(row => ({ productName: row.name, quantity: row.unitsSold, revenue: row.revenue }));
     const totalRevenue = items.reduce((sum, it) => sum + it.revenue, 0);
 
     res.json({ range: req.query.range, from: rg.from, to: rg.to, items, totalRevenue });
@@ -991,12 +1179,59 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// ---- GET /api/admin/users/:userId/detail --- hồ sơ và lịch sử mua hàng --------
+router.get('/users/:userId/detail', async (req, res) => {
+  const userId = Number(req.params.userId);
+  if (!Number.isInteger(userId) || userId < 1 || userId > 2147483647) {
+    return res.status(400).json({ status: 'error', message: 'userId phải là số nguyên dương hợp lệ' });
+  }
+  let page = Number(req.query.page);
+  let limit = Number(req.query.limit);
+  page = Number.isSafeInteger(page) && page > 0 ? page : 1;
+  limit = Number.isSafeInteger(limit) && limit > 0 ? Math.min(limit, 100) : 10;
+
+  try {
+    const pool = await getPool();
+    const userRes = await pool.request().input('uid', sql.Int, userId).query(`
+      SELECT id, email, display_name, phone, dob, gender, country, role,
+             created_at, last_login, IsBlacklisted AS is_blacklisted
+      FROM dbo.users WHERE id = @uid;`);
+    if (!userRes.recordset.length) {
+      return res.status(404).json({ status: 'error', message: 'Không tìm thấy người dùng' });
+    }
+
+    // KPI tính trên toàn bộ đơn của khách, độc lập với trang lịch sử đang xem.
+    const statsRes = await pool.request().input('uid', sql.Int, userId).query(`
+      SELECT COUNT(*) AS total_orders,
+             COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completed_orders,
+             COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) AS cancelled_orders,
+             COALESCE(SUM(CASE WHEN status = 'completed' THEN total_amount ELSE 0 END), 0) AS total_spent
+      FROM dbo.orders WHERE user_id = @uid;`);
+    const statistics = statsRes.recordset[0];
+    const total = statistics.total_orders;
+    const totalPages = Math.ceil(total / limit);
+    page = Math.min(page, totalPages || 1);
+    const ordersRes = await pool.request()
+      .input('uid', sql.Int, userId)
+      .input('offset', sql.Int, (page - 1) * limit)
+      .input('limit', sql.Int, limit)
+      .query(`
+        SELECT id, order_code, created_at, total_amount, currency, PaymentMethod AS payment_method, status
+        FROM dbo.orders WHERE user_id = @uid
+        ORDER BY created_at DESC, id DESC
+        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;`);
+    res.json({ user: userRes.recordset[0], statistics, orders: ordersRes.recordset,
+      page, limit, total, total_pages: totalPages });
+  } catch (err) {
+    console.error('[admin] customer detail error:', err.code || 'database-error');
+    res.status(500).json({ status: 'error', message: 'Không tải được chi tiết khách hàng' });
+  }
+});
+
 // ---- POST /api/admin/users/:userId/blacklist --- thêm THỦ CÔNG vào danh sách đen ---
-// Nút này CHỈ dùng để blacklist LẠI một user đã từng bị huỷ đơn trước đó (vd: admin
-// vừa "Gỡ Tài Khoản" nhưng muốn đưa lại). User CHƯA từng có đơn huỷ nào thì bị chặn ở
-// đây — muốn blacklist họ, admin phải vào Hoá Đơn và cập nhật 1 đơn của họ sang trạng
-// thái "Đã huỷ" (tự động blacklist qua PUT /orders/:id/status). Idempotent: user đã
-// blacklist rồi thì vẫn trả ok, không lỗi. Không cho blacklist tài khoản admin.
+// Blacklist là hành động quản trị riêng, KHÔNG tự phát sinh khi hủy đơn.
+// Endpoint vẫn yêu cầu user có đơn cancelled, theo policy cũ. Idempotent;
+// không cho đưa tài khoản admin vào blacklist.
 router.post('/users/:userId/blacklist', async (req, res) => {
   const idc = reqInt(req.params.userId, 1, 'userId');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });

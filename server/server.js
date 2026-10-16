@@ -18,7 +18,7 @@ const path = require('path');
 const express = require('express');
 const { getPool, sql } = require('./db');
 const { initFirebase } = require('./firebase');
-const { buildCors, buildHelmet, buildApiLimiter, allowedOrigins } = require('./middleware/security');
+const { cspNonce, logCspMode, buildCors, buildHelmet, buildApiLimiter, allowedOrigins } = require('./middleware/security');
 
 const categoriesRouter = require('./routes/categories');
 const productsRouter = require('./routes/products');
@@ -43,43 +43,35 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // --- Hardening (Phase 5) -----------------------------------------------------
-// helmet (security headers, CSP tắt vì frontend tĩnh dùng inline script + CDN),
+// helmet (security headers + CSP dùng nonce, BẬT THẬT — xem security.js),
 // CORS whitelist (chỉ origin của client), body JSON giới hạn 100kb (chống payload
 // khổng lồ). Rate limit đặt riêng cho /api ở dưới (không bóp file tĩnh).
+// cspNonce PHẢI đứng trước helmet: header CSP đọc res.locals.cspNonce do nó sinh ra.
+app.use(cspNonce);
 app.use(buildHelmet());
 app.use(buildCors());
+// Báo cáo vi phạm CSP: PHẢI đứng TRƯỚC express.json + limiter chung — nó tự giới hạn
+// body 10kb và có limiter riêng (lý do trong routes/csp-report.js).
+app.use('/api/csp-report', require('./routes/csp-report'));
 app.use(express.json({ limit: '100kb' }));
 app.use('/api', buildApiLimiter());
 console.log('[security] CORS whitelist:', allowedOrigins().join(', '));
+logCspMode();   // CSP_MODE đang áp dụng (và vì sao, nếu bị ép về enforce)
 
 // --- Health check ------------------------------------------------------------
 // Opens (or reuses) the SQL Server pool and runs a trivial query to prove the
 // connection is real, not just that the process is up.
+// Endpoint CÔNG KHAI, không cần token: chỉ trả ok/error. Tên DB, login SQL, thông
+// điệp và mã lỗi của driver là thông tin trinh sát (lộ tên instance, tài khoản, lý do
+// fail) nên chỉ ghi vào log server, không bao giờ gửi ra client.
 app.get('/api/health', async (req, res) => {
   try {
     const pool = await getPool();
-    const result = await pool.request().query(
-      "SELECT DB_NAME() AS db, SUSER_SNAME() AS login, GETDATE() AS serverTime"
-    );
-    const row = result.recordset[0];
-
-    console.log('[health] SQL Server OK ->', row);
-
-    res.json({
-      status: 'ok',
-      database: row.db,
-      login: row.login,
-      serverTime: row.serverTime,
-    });
+    await pool.request().query('SELECT 1 AS ok');
+    res.json({ status: 'ok' });
   } catch (err) {
-    console.error('[health] SQL Server connection FAILED:', err.message);
-
-    res.status(500).json({
-      status: 'error',
-      message: 'Cannot connect to SQL Server',
-      detail: err.message,
-      code: err.code,
-    });
+    console.error('[health] SQL Server connection FAILED:', err.code, err.message);
+    res.status(503).json({ status: 'error' });
   }
 });
 
@@ -115,9 +107,12 @@ app.use('/api/admin', adminRouter);
 // đổi avatar = sinh URL mới, không bao giờ sửa file cũ. Nhờ vậy cache được thoải mái
 // 1 năm + immutable — trình duyệt khỏi revalidate, mà đổi ảnh vẫn thấy ngay lập tức
 // vì URL đã khác. Đây cũng là lý do client KHÔNG cần thêm '?t=' để phá cache.
+// dotfiles:'deny': file tạm lúc ghi avatar mang tiền tố '.' (xem writeFileAtomic trong
+// routes/me.js) — không bao giờ được phục vụ ra ngoài.
 app.use('/avatars', express.static(path.join(__dirname, 'uploads', 'avatars'), {
   maxAge: '1y',
   immutable: true,
+  dotfiles: 'deny',
 }));
 
 // --- Trang EJS ---------------------------------------------------------------
@@ -125,11 +120,47 @@ app.use('/avatars', express.static(path.join(__dirname, 'uploads', 'avatars'), {
 // dẹp, nếu static chạy trước thì nó trả file cũ và route EJS không bao giờ được gọi.
 app.use(require('./routes/pages'));
 
+// --- Chặn file nội bộ trong client/ -------------------------------------------
+// client/ chứa cả thứ KHÔNG phải frontend: test, package*.json, tài liệu .md, và
+// node_modules nếu ai chạy `npm install` trong client/ (đã xoá — frontend không dùng,
+// Firebase nạp từ CDN). express.static phục vụ mọi file nằm trong thư mục nên phải chặn
+// trước nó. Đây là blocklist — hướng lâu dài là whitelist, xem SEC-1 trong CLEANUP.md.
+// So trên ĐƯỜNG DẪN ĐÃ GIẢI như express.static sẽ giải, không so chuỗi URL thô:
+//   - decode trước: '/node%5Fmodules/...' là '/node_modules/...';
+//   - path.join chuẩn hoá '/./' và (trên Windows) coi '\' là dấu phân cách, nên
+//     '/js%5C__tests__/x.js' rơi đúng vào js/__tests__;
+//   - hạ chữ thường: ổ đĩa Windows không phân biệt hoa thường, '/Node_Modules/' vẫn
+//     trúng thư mục thật. Trên Linux việc này chỉ chặn thừa đường dẫn vốn không tồn tại.
+// '..' không cần lo: express.static tự trả 403 khi gặp nó.
+const CLIENT_ROOT = path.join(__dirname, '..', 'client');
+const PRIVATE_STATIC = ['node_modules', 'js/__tests__', 'package.json', 'package-lock.json'];
+
+app.use((req, res, next) => {
+  let decoded;
+  try {
+    decoded = decodeURIComponent(req.path);
+  } catch (e) {
+    return next();   // URL mã hoá hỏng: express.static tự trả 400
+  }
+  const rel = path.relative(CLIENT_ROOT, path.join(CLIENT_ROOT, decoded))
+    .split(path.sep).join('/').toLowerCase();
+  // *.md: tài liệu nội bộ (README...) không bao giờ là thứ trình duyệt cần, và
+  // dotfiles:'deny' không chặn chúng vì tên không bắt đầu bằng dấu chấm.
+  if (rel.endsWith('.md') || PRIVATE_STATIC.some((p) => rel === p || rel.startsWith(p + '/'))) {
+    return res.status(404).type('text/plain').send('Not Found');
+  }
+  next();
+});
+
 // --- Static frontend ---------------------------------------------------------
 // Tiện dev: phục vụ client/ ngay trên cùng origin => js/, css/, img/ và 3 trang .html
 // không migrate (invoice, admin, checkout). 18 trang còn lại do routes/pages.js render.
 // (fetch API cùng origin, không vướng CORS). Production sẽ tách CDN ở Phase 5.
-app.use(express.static(path.join(__dirname, '..', 'client')));
+// dotfiles:'deny' khai báo TƯỜNG MINH thay vì dựa vào mặc định 'ignore' của send 1.x:
+// mọi đường dẫn có một đoạn bắt đầu bằng '.' (/.env, /.git/config, /.vscode/...) đều bị
+// từ chối, kể cả khi dấu chấm nằm ở thư mục giữa. Với fallthrough mặc định, 403 đó rơi
+// xuống 404 chung của Express — client không phân biệt được "bị chặn" hay "không có".
+app.use(express.static(CLIENT_ROOT, { dotfiles: 'deny' }));
 
 // --- Xử lý lỗi tập trung ------------------------------------------------------
 // CORS origin lạ -> 403 rõ ràng (thay vì 500 mặc định). JSON body hỏng/quá lớn -> 400.

@@ -78,9 +78,10 @@ const DEC = sql.Decimal(18, 2);
 
   // Sản phẩm đang bán + giá hiệu lực (sale_price nếu có, không thì price).
   const prodRes = await pool.request().query(`
-    SELECT id, name_vi,
-           (CASE WHEN sale_price IS NOT NULL THEN sale_price ELSE price END) AS unit_price
-    FROM dbo.products WHERE is_active = 1;`);
+    SELECT p.id, v.id AS variant_id, p.name_vi,
+           (CASE WHEN p.sale_price IS NOT NULL THEN p.sale_price ELSE p.price END) AS unit_price
+    FROM dbo.products p JOIN dbo.product_variants v ON v.product_id = p.id AND v.is_base = 1
+    WHERE p.is_active = 1 AND v.is_active = 1;`);
   const products = prodRes.recordset;
   if (!products.length) { console.error('Không có sản phẩm is_active=1 để tạo đơn. Dừng.'); process.exit(1); }
 
@@ -122,7 +123,8 @@ const DEC = sql.Decimal(18, 2);
         const items = chosen.map((p) => {
           const quantity = randInt(1, 3);
           const unit = Number(p.unit_price);
-          return { product_id: p.id, product_name: p.name_vi, unit_price: unit, quantity, line_total: unit * quantity };
+          return { product_id: p.id, variant_id: p.variant_id, product_name: p.name_vi,
+            unit_price: unit, quantity, line_total: unit * quantity };
         });
         const total = items.reduce((s, it) => s + it.line_total, 0); // total_amount TÍNH TỪ ITEMS
 
@@ -145,13 +147,14 @@ const DEC = sql.Decimal(18, 2);
           await new sql.Request(tx)
             .input('order_id', sql.Int, orderId)
             .input('product_id', sql.Int, it.product_id)
+            .input('variant_id', sql.Int, it.variant_id)
             .input('product_name', sql.NVarChar(200), it.product_name)
             .input('unit_price', DEC, it.unit_price)
             .input('quantity', sql.Int, it.quantity)
             .input('line_total', DEC, it.line_total)
             .query(`
-              INSERT INTO dbo.order_items (order_id, product_id, product_name, unit_price, quantity, line_total)
-              VALUES (@order_id, @product_id, @product_name, @unit_price, @quantity, @line_total);`);
+              INSERT INTO dbo.order_items (order_id, product_id, variant_id, product_name, unit_price, quantity, line_total)
+              VALUES (@order_id, @product_id, @variant_id, @product_name, @unit_price, @quantity, @line_total);`);
         }
       }
 

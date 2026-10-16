@@ -15,6 +15,11 @@
    themeSnippet='force-light' là bản rút gọn của admin/invoice (2 trang này không
    migrate, tham số để sẵn cho tương lai).
 
+   NONCE CSP: mọi thẻ script inline ở đây mang thuộc tính nonce lấy từ biến cspNonce
+   (res.locals, sinh mỗi request ở middleware/security.js). CSP chỉ cho chạy script
+   inline có đúng nonce của lần tải đó. Thêm script inline mới vào partial nào cũng
+   phải gắn nonce, không thì bị chặn khi CSP bật thật. Thân snippet không đổi.
+
    Tham số: headVariant, title, i18nTitle, bodyClass, bodyData, baseCss, pageCss,
             themeSnippet
 */
@@ -51,9 +56,9 @@ if (i18nTitle) bodyAttrs += ' data-i18n-doctitle="' + i18nTitle + '"';
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><%= title %></title>
 <% if (themeSnippet === 'auto') { -%>
-    <script>(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
+    <script nonce="<%= cspNonce %>">(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
 <% } else { -%>
-    <script>document.documentElement.setAttribute('data-theme','light');</script>
+    <script nonce="<%= cspNonce %>">document.documentElement.setAttribute('data-theme','light');</script>
 <% } -%>
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
@@ -78,7 +83,7 @@ if (i18nTitle) bodyAttrs += ' data-i18n-doctitle="' + i18nTitle + '"';
 <% pageCss.forEach(function (f) { -%>
     <link rel="stylesheet" type="text/css" href="css/<%= f %>">
 <% }); -%>
-<script>(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
+<script nonce="<%= cspNonce %>">(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <% if (headExtra) { -%>

@@ -860,3 +860,12 @@ html[data-theme="dark"] .co-select:not(:disabled) {
     .voucher-panel { transition: none; }
     .voucher-input-wrap.is-loading .voucher-status::before { animation: none; }
 }
+/* Shipping selection follows the existing checkout form. */
+.co-shipping-option { display: flex; align-items: center; gap: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid var(--c-line); cursor: pointer; min-height: 48px; }
+.co-shipping-option span { min-width: 0; overflow-wrap: anywhere; }
+.co-shipping-option input { flex: none; }
+#f-note { height: auto; resize: vertical; }
+.co-field { min-width: 0; }
+
+.co-shipping-option small { display: block; margin-top: 4px; color: var(--c-muted); }
+.co-shipping-note { font-size: 13px; line-height: 1.5; color: var(--c-muted); }

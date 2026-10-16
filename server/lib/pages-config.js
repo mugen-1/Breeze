@@ -95,9 +95,12 @@ module.exports = {
     bodyClass: 'sitehdr', pageCss: ['auth.css'],
     useUtilsI18n: true, pageJs: ['auth.js'],
   },
+  /* auth.js nạp ở đây CHỈ để chặn submit form (data-action="reset-password"): trước kia
+     là onsubmit="..." inline, CSP chặn. Tính năng gửi mail đặt lại mật khẩu CHƯA có —
+     chặn submit giữ đúng hành vi cũ (không reload trang, không đẩy email lên URL). */
   'forgot-password': {
     view: 'forgot-password', title: 'Quên Mật Khẩu - BREEZE', i18nTitle: 'au.forgotDocTitle',
-    bodyClass: 'sitehdr', pageCss: ['auth.css'],
+    bodyClass: 'sitehdr', pageCss: ['auth.css'], pageJs: ['auth.js'],
   },
   /* Đổi mật khẩu KHÔNG còn là trang riêng (Phase 2B): nó là modal trong chính trang này,
      nên change-password.js nạp ở đây. Phải đứng SAU page-profile.js — file đó export
@@ -109,7 +112,7 @@ module.exports = {
   },
   orders: {
     view: 'orders', title: 'Đơn Hàng Của Tôi - BREEZE', i18nTitle: 'title.orders',
-    bodyClass: 'sitehdr', headExtra: 'orders-style', pageJs: ['page-orders.js'],
+    bodyClass: 'sitehdr', headExtra: 'orders-style', useUtilsI18n: true, pageCss: ['order-payment.css'], pageJs: ['order-shipping.js', 'order-payment.js', 'page-orders.js'],
   },
   cart: {
     view: 'cart', title: 'Giỏ Hàng - BREEZE', i18nTitle: 'title.cart',
@@ -131,11 +134,11 @@ module.exports = {
      location.search y như cũ. Cố ý — đưa tham số URL vào to() là kịch bản biến S-1
      (to() cho qua khoá lạ nguyên văn) thành open redirect thật. */
   product: {
-    view: 'product', headVariant: 'fragment', baseCss: 'sale.css',
+    view: 'product', headVariant: 'standard', baseCss: 'sale.css',
     headExtra: 'product-style',
     title: 'Sản phẩm - BREEZE', i18nTitle: 'pd.docTitle',
-    bodyClass: 'category-page sitehdr',
-    useUtilsI18n: true, pageJs: ['page-product.js'], closeHtml: false,
+    bodyClass: 'category-page sitehdr product-detail-page',
+    useUtilsI18n: true, pageJs: ['page-product.js'], closeHtml: true,
   },
   search: {
     view: 'search',

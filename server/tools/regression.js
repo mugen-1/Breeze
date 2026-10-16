@@ -8,6 +8,7 @@ const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { readCatalog, checkListings } = require('./product-listing-check');
 
 const CLIENT = process.env.BREEZE_CLIENT || path.join(__dirname, '..', '..', 'client');
 const BASE = 'http://localhost:3000';
@@ -64,6 +65,47 @@ function allMatches(re, s) {
   const out = [];
   let m;
   while ((m = re.exec(s)) !== null) out.push(m[1]);
+  return out;
+}
+
+/* URL co duoc mot nguon trong script-src cho phep khong — dung luat khop cua CSP cho
+   2 dang nguon dang dung: 'https://host' (moi duong dan tren host do) va
+   'https://host/duong/dan/' (dau '/' cuoi = moi thu NAM DUOI thu muc do). */
+function allowedBy(url, sources) {
+  return sources.some((s) => {
+    if (!/^https?:\/\//.test(s)) return false;
+    if (s.endsWith('/')) return url.startsWith(s);
+    return new URL(url).origin === s.replace(/\/$/, '');
+  });
+}
+
+/* Loi CSP cua MOT trang (header + HTML) -> mang thong bao, rong = sach. Hang muc 13. */
+function cspIssues(headers, html) {
+  const out = [];
+  const hdr = headers['content-security-policy'];
+  if (!hdr) {
+    out.push(headers['content-security-policy-report-only'] ? 'CSP moi o che do Report-Only' : 'thieu header CSP');
+    return out;
+  }
+  const scriptSrc = (hdr.split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src ')) || '')
+    .split(/\s+/).slice(1);
+  const nonceTok = scriptSrc.find((s) => s.startsWith("'nonce-"));
+  const nonce = nonceTok ? nonceTok.slice(7, -1) : null;
+  (html.match(/<script\b[^>]*>/g) || []).forEach((t) => {
+    const src = (t.match(/\ssrc="([^"]+)"/) || [])[1];
+    if (!src) {
+      const n = (t.match(/\snonce="([^"]+)"/) || [])[1];
+      if (!n) out.push('script inline KHONG co nonce');
+      else if (n !== nonce) out.push('nonce trong HTML khac nonce trong header');
+      return;
+    }
+    if (!/^https?:\/\//.test(src)) return;   // 'self'
+    if (!allowedBy(src, scriptSrc)) out.push('script ngoai allowlist: ' + src);
+    if (!/\sintegrity="sha(256|384|512)-/.test(t)) out.push('script ngoai thieu SRI: ' + src);
+  });
+  const handlers = html.match(/<[a-z][^>]*\son[a-z]+\s*=/gi) || [];
+  if (handlers.length) out.push(handlers.length + ' handler inline on*=');
+  if (/href\s*=\s*["']\s*javascript:/i.test(html)) out.push('co URL javascript:');
   return out;
 }
 
@@ -159,34 +201,16 @@ function row(name, ok, detail) {
   row('API can quyen /api/me -> 401', prot.status === 401, 'HTTP ' + prot.status);
 
   /* 9. so card danh muc / khuyen mai / tim kiem -------------------------------- */
-  /* CHONG CRASH khi DB chet ma server con song ------------------------------------
-     Luc do /api/products tra HTTP 500 kem than JSON bao loi ({status:'error',...}),
-     co truong hop than rong. Truoc day cho nay lam CRASH ca cong cu, mat luon bang ket
-     qua cua 10 hang muc khong dinh gi toi DB — Phase 3 phai chay mot ban sao va lai moi
-     doc duoc so. Hai lop chan duoi day THUAN TUY chong crash, KHONG doi tieu chi
-     pass/fail: doc khong ra danh sach thi coi nhu rong, hang muc 9 do dung nhu no phai do.
-
-     Lop 1 — than khong phai JSON hop le (rong, trang HTML loi, ket noi dut giua chung)
-     thi JSON.parse nem NGAY, truoc khi kip cham toi arr(). */
-  const parseJson = (s) => { try { return JSON.parse(s); } catch (e) { return null; } };
-  const catN = parseJson((await req('GET', BASE + '/api/products?category=sanpham-ao&onsale=0')).body);
-  const saleN = parseJson((await req('GET', BASE + '/api/products?onsale=1')).body);
-  const all = parseJson(pub.body);
-  /* Lop 2 — vá o CHINH ham arr() chu khong o tung cho goi: no duoc goi 5 lan tren 3
-     dong (arr(all) o cho tinh searchN, arr(catN)+arr(saleN) o ca ve dieu kien lan ve
-     chuoi chi tiet) va ca 5 deu chung mot lo hong. Vá mot cho la kin het.
-     x = {status:'error'} -> x.data la undefined; x = null -> doc .data la nem luon. */
-  const arr = (x) => (Array.isArray(x) ? x : (x && Array.isArray(x.data) ? x.data : []));
-  const norm = (s) => String(s == null ? '' : s).toLowerCase().normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').replace(/\s+/g, ' ').trim();
-  const tk = norm('quan').split(' ').filter(Boolean);
-  const searchN = arr(all).filter((p) => {
-    const hay = norm((p.name_vi || '') + ' ' + (p.name_en || ''));
-    return tk.every((t) => hay.indexOf(t) !== -1);
-  }).length;
-  row('so card danh muc / khuyen mai / tim kiem',
-    arr(catN).length === 6 && arr(saleN).length === 14 && searchN === 10,
-    arr(catN).length + ' / ' + arr(saleN).length + ' / ' + searchN);
+  /* Catalog thay doi qua admin; doi chieu ID voi SQL, khong dong dinh so card.
+     HTTP/JSON/SQL loi van danh do hang muc nay va tiep tuc nhung muc con lai. */
+  try {
+    const category = await req('GET', BASE + '/api/products?category=sanpham-ao&onsale=0');
+    const sale = await req('GET', BASE + '/api/products?onsale=1');
+    const result = checkListings(await readCatalog(), { all: pub, category, sale });
+    row('so card danh muc / khuyen mai / tim kiem', result.ok, result.detail);
+  } catch (_) {
+    row('so card danh muc / khuyen mai / tim kiem', false, 'Khong doi chieu duoc Product API / SQL');
+  }
 
   /* 10. 3 trang khong migrate van do static phuc vu --------------------------- */
   const staticOk = NOT_MIGRATED.every((k) => pages[k].status === 200 && pages[k].headers['last-modified']);
@@ -217,6 +241,23 @@ function row(name, ok, detail) {
   /* 12. chot chan hoi quy '.html' chua bi pha -------------------------------- */
   const guard = /group-b-route-keys/.test(fs.readdirSync(path.join(CLIENT, 'js/__tests__')).join(','));
   row('chot chan hoi quy .html con nguyen', guard && testOk, guard ? 'group-b-route-keys.test.js pass' : 'MAT FILE TEST');
+
+  /* 13. CSP that tren HTML that cua 21 trang --------------------------------- */
+  /* May nay khong co headless browser nen khong "mo trang xem Console" duoc. Thay vao
+     do kiem dung nhung gi trinh duyet se kiem, tren HTML server tra ve:
+       - header la Content-Security-Policy (CHAN that), KHONG phai ban Report-Only;
+       - moi <script> inline mang dung nonce cua header (3 trang tinh: phai 0 inline);
+       - 0 handler inline on*=, 0 URL javascript: (CSP chan ca hai);
+       - moi <script src> ngoai nam trong allowlist script-src cua header va co SRI.
+     Chi bat duoc cai nam trong HTML. Cai JS sinh luc chay (fetch, anh dong...) van
+     phai xem log [csp] cua server khi duyet that. */
+  const cspProblems = [];
+  for (const k of ALL_PAGES) {
+    cspIssues(pages[k].headers, pages[k].body).forEach((m) => cspProblems.push(k + ': ' + m));
+  }
+  cspProblems.slice(0, 10).forEach((m) => console.log('   csp: ' + m));
+  row('CSP enforce + nonce + 0 inline + allowlist', cspProblems.length === 0,
+    cspProblems.length ? cspProblems.length + ' loi (xem tren)' : '21/21 trang sach');
 
   /* --- in bang ------------------------------------------------------------- */
   console.log('');

@@ -27,10 +27,14 @@
       return hasFirebase ? firebase.auth().currentUser : null;
     },
 
+    // Chờ bước kiểm tra lại email_verified (nếu đang chạy) rồi mới lấy token — để lệnh
+    // gọi API đầu tiên của trang đã mang token mới. Xem refreshIfNewlyVerified.
     getToken: function () {
       if (!hasFirebase) return Promise.resolve(null);
-      var u = firebase.auth().currentUser;
-      return u ? u.getIdToken() : Promise.resolve(null);
+      return (_verifyCheck || Promise.resolve()).then(function () {
+        var u = firebase.auth().currentUser;
+        return u ? u.getIdToken() : null;
+      });
     },
 
     onChange: function (cb) {
@@ -62,6 +66,27 @@
     },
   };
 
+  /* Cờ email_verified nằm TRONG ID token, mà token chỉ tự làm mới ~1 giờ một lần. Người
+     dùng bấm link xác minh (thường ở tab khác) rồi quay lại: phiên đang có vẫn mang token
+     cũ ghi false, nên server (tự phong admin theo ADMIN_EMAILS) chưa thấy đã xác minh.
+     Vì vậy khi có phiên mà emailVerified còn false: reload() hỏi lại Firebase; nếu nay đã
+     true thì getIdToken(true) lấy token MỚI. getToken() chờ bước này xong mới trả token.
+     Chỉ chạy cho tài khoản CHƯA xác minh, mỗi trang một lần; đã xác minh thì bỏ qua.
+     Không cần làm ngay sau signInWithEmailAndPassword (auth.js): token lúc đó vốn mới.
+     Lỗi (mất mạng...) thì bỏ qua, dùng token hiện có — không được chặn trang. */
+  var _verifyCheck = null;
+  function refreshIfNewlyVerified(user) {
+    if (!user || user.emailVerified) { _verifyCheck = null; return; }
+    _verifyCheck = user.reload()
+      .then(function () {
+        if (user.emailVerified) return user.getIdToken(true);
+      })
+      .catch(function (e) {
+        console.warn('[auth-helper] không kiểm tra lại được email_verified:', e && e.code);
+      })
+      .then(function () { _verifyCheck = null; });
+  }
+
   function emit(user) {
     AuthHelper.ready = true;
     AuthHelper.user = user;
@@ -70,7 +95,12 @@
   }
 
   if (hasFirebase) {
-    firebase.auth().onAuthStateChanged(function (user) { emit(user); });
+    // Kiểm tra lại email_verified TRƯỚC emit: callback nào gọi apiFetch ngay thì getToken()
+    // đã có _verifyCheck để chờ. Bản thân emit không bị trễ — giao diện không phải đợi.
+    firebase.auth().onAuthStateChanged(function (user) {
+      refreshIfNewlyVerified(user);
+      emit(user);
+    });
   } else {
     // Không có Firebase trên trang này: phát 1 lần trạng thái "guest".
     if (document.readyState === 'loading') {

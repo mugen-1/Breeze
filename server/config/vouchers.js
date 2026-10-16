@@ -47,13 +47,12 @@ function calcDiscount(voucher, subtotal) {
 // Đơn đã HUỶ không tính là "đã từng mua": khách từng đặt + áp GIAMGIALANDAU rồi huỷ,
 // lần đặt lại sau vẫn được coi là lần đầu. (Chốt với chủ dự án: kiểm tra thật, không stub.)
 // Đây là SEAM duy nhất cho logic phân loại khách mới — đổi tiêu chí thì chỉ sửa hàm này.
-// pool tuỳ chọn: truyền vào để tái dùng connection (vd trong transaction đặt đơn) hoặc
-// để inject fake pool khi test; bỏ trống thì tự getPool().
-async function isFirstTimeCustomer(userId, pool) {
+// source tuỳ chọn: pool hoặc SQL Transaction (đặt đơn phải đọc cùng transaction).
+async function isFirstTimeCustomer(userId, source) {
   if (userId == null) return false;
-  const p = pool || (await getPool());
-  const r = await p
-    .request()
+  const p = source || (await getPool());
+  const request = typeof p.request === 'function' ? p.request() : new sql.Request(p);
+  const r = await request
     .input('uid', sql.Int, userId)
     .query("SELECT COUNT(*) AS c FROM dbo.orders WHERE user_id = @uid AND status <> 'cancelled';");
   return (r.recordset[0] && r.recordset[0].c) === 0;

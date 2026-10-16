@@ -1,51 +1,39 @@
-# Test cho script phía client
+# Kiểm thử BREEZE
 
-Bộ test cho các file `client/js/page-*.js` được tách ra ở TASK 3 của đợt dọn dẹp
-(xem [../../../CLEANUP.md](../../../CLEANUP.md)).
+## Chạy nhanh sau khi sửa code
 
-## Chạy
+Chạy từ thư mục gốc của project:
 
 ```bash
-node client/js/__tests__/run-all.js     # chạy tất cả
-node client/js/__tests__/page-cart.test.js   # chạy riêng một file
+node client/js/__tests__/run-all.js
+npm --prefix server test
+node server/tools/domdiff.js --selftest
 ```
 
-Không cần cài gì thêm — chỉ dùng Node có sẵn, **không phụ thuộc thư viện ngoài**.
-Thoát với mã khác 0 nếu có case fail.
+Test client chỉ dùng Node có sẵn, không cần trình duyệt hay thư viện test ngoài. `run-all.js` tự tìm toàn bộ `*.test.js` trong thư mục này; thêm file mới không cần sửa danh sách. Test backend dùng `node:test` qua script `server/package.json`.
 
-## Cách hoạt động
+Trên PowerShell có thể dùng `npm.cmd --prefix server test` nếu chính sách thực thi chặn `npm.ps1`.
 
-Các file `page-*.js` là script cổ điển chạy trong trình duyệt (không phải module,
-không `export`). Nên test nạp chúng bằng `vm.runInContext` vào một sandbox có
-**DOM giả** — đủ để chạy `getElementById`, `querySelector`, `classList`,
-`addEventListener`… mà không cần trình duyệt thật hay jsdom.
+## Khi sửa luồng size, giỏ hàng hoặc đặt hàng
 
-| File | Vai trò |
-|---|---|
-| `helpers/dom.js` | DOM giả tối giản (`El`, `makeDoc`) |
-| `helpers/sandbox.js` | `load()` nạp một file `page-*.js` kèm global trình duyệt |
-| `helpers/assert.js` | `check` / `eq` / `note`, tự tổng kết và đặt exit code |
-| `run-all.js` | Chạy hết `*.test.js`, gom kết quả |
+| Lớp kiểm thử | Lệnh | Điều kiện |
+|---|---|---|
+| Frontend UI và helper | `node client/js/__tests__/run-all.js` | Node; DOM giả |
+| Backend, HTTP giả và giao dịch giả | `npm --prefix server test` | Node, dependencies server |
+| SQL tồn kho | `node server/scripts/test-inventory-sql.js` | SQL Server hiện hành; bảng thử tạm |
+| SQL hủy đơn | `node server/scripts/test-cancel-sql.js` | SQL Server hiện hành; bảng thử tạm |
+| Toàn vẹn sản phẩm/đơn | `node server/scripts/verify-product-integrity-sql.js` | SQL Server hiện hành; dòng thử tự dọn |
+| Sổ kho/checkout/cạnh tranh | `node server/scripts/test-inventory-movements-sql.js` | SQL Server hiện hành; dòng thử tự dọn |
+| Biến thể size từ API đến SQL | `node server/scripts/test-size-variants-sql.js` | SQL Server hiện hành; dòng thử tự dọn |
+| Chuỗi migration 003–013 | `node server/scripts/verify-migration-chain.js` | `sqlcmd`, quyền tạo/xóa database tạm; không chạy `--fresh` trên database cửa hàng |
+| Audit dữ liệu hiện hành | `node server/scripts/audit-inventory-movements.js` và `node server/scripts/audit-product-integrity.js` | SQL Server hiện hành; chỉ đọc |
+| Route, asset, i18n, CSP | `node server/tools/regression.js` | Server đang chạy ở cổng 3000 |
+| So DOM EJS với mốc cũ | `node server/tools/verify-all.js` | Git có các commit baseline; chạy selftest trước khi so |
 
-Phần tử nào code đọc **ngay lúc parse** thì test phải tạo sẵn **trước khi** gọi
-`load()` — xem `page-search.test.js` và `page-product.test.js` làm mẫu.
+Các script SQL tích hợp tự tạo dữ liệu thử và dọn trong `finally`; vẫn nên chạy lần lượt để dễ xác định lỗi. `verify-all.js` hiện báo 2/18 trang lệch ở product/orders vì giao diện của các task sau EJS đã đổi; đừng sửa `KNOWN`/baseline chỉ để làm xanh kết quả. Dùng diff để xem nội dung thay đổi có chủ ý hay không.
 
-## Giới hạn cần biết
+## Bộ test client hoạt động thế nào
 
-DOM giả **không phải trình duyệt thật**. Nó không có layout, không CSS, không
-cascade sự kiện. Những thứ sau **test này không kiểm được**, phải mở trình duyệt:
+Script client là JS cổ điển trên trình duyệt, không phải module. `helpers/sandbox.js` nạp file thật bằng `vm.runInContext` vào `helpers/dom.js` (DOM giả). `helpers/assert.js` tổng hợp assertion và đặt exit code. Nếu code đọc DOM ngay lúc parse, fixture phải dựng DOM trước `load()`; xem `page-search.test.js` và `page-product.test.js`.
 
-- Giao diện, dark/light mode, responsive, FOUC
-- Việc in hoá đơn (`window.print()` + `@media print`)
-- Thứ tự thực thi thật giữa các thẻ `<script>` trên cùng một trang
-- Hành vi `defer` / `async`
-
-Đổi lại nó chạy trong vài giây và bắt được lỗi logic — chính là loại lỗi mà việc
-tách file dễ gây ra nhất.
-
-## Khi sửa code phía client
-
-Chạy `run-all.js` trước khi commit. Nếu một case fail mà bạn tin là code đúng, hãy
-kiểm tra **stub trước** — trong lúc làm TASK 3 đã có 6 lần báo đỏ hoá ra đều do DOM
-giả thiếu thứ gì đó (thiếu `CustomEvent`, sai tên endpoint, API trả
-`{addresses:[...]}` chứ không phải mảng trần…), không phải code sai.
+Test DOM giả kiểm tra logic và HTML được sinh ra, nhưng không xác nhận CSS, responsive, focus thực trên trình duyệt, bản in, hay thứ tự thực thi của các thẻ `<script>`. Các phần đó cần checklist duyệt tay trong `CHECKLIST-EJS.md` và `CHECKLIST-CHANGE-PASSWORD.md`.

@@ -3,7 +3,7 @@
    duyệt, bố cục bản in do @media print trong <style> của invoice.html lo. */
 const { check, eq } = require('./helpers/assert');
 const { load, wait } = require('./helpers/sandbox');
-const { makeDoc } = require('./helpers/dom');
+const { El, makeDoc } = require('./helpers/dom');
 
 const ORDER = {
   id: 42, user_id: 3, shipping_name: 'Nguyen A', shipping_phone: '0900',
@@ -21,7 +21,7 @@ function setup(search, res) {
   const acts = [];
   let onChangeCb = null;
   const r = load('page-invoice.js', {
-    deps: ['routes.js', 'utils-format.js', 'utils-i18n.js'],
+    deps: ['routes.js', 'order-shipping.js', 'utils-format.js', 'utils-i18n.js'],
     doc: doc,
     window: {
       location: { search: search },
@@ -63,8 +63,28 @@ const donCo = (body) => ({ body: { orders: [body] } });
   // Đơn hợp lệ
   r = setup('?orderId=42', donCo(ORDER));
   r.login({ uid: 'u' }); await wait();
-  eq('goi dung endpoint tra cuu don', r.acts[0][1], '/api/admin/orders?q=42&limit=1');
+  eq('goi dung endpoint tra cuu don', r.acts[0][1], '/api/admin/orders?order_id=42&limit=1');
   eq('ten khach hang', g(r, 'inv-customer').textContent, 'Nguyen A');
+  eq('legacy shipping method unknown', g(r, 'inv-shipping-method').textContent, '—');
+  eq('legacy fee unknown, no invented free method', g(r, 'inv-shipping-fee').textContent, '—');
+  const shippingOrder = { ...ORDER, shipping_name: '<img src=x onerror=alert(1)>',
+    shipping_address: '<script>alert(1)</script>', delivery_note: '<b>Call</b>',
+    shipping_ward: 'Ward', shipping_district: 'District', shipping_city: 'City',
+    shipping_method: 'STANDARD', shipping_fee: 20000, total_amount: 470000 };
+  const shipped = setup('?orderId=42', donCo(shippingOrder));
+  shipped.login({ uid: 'u' }); await wait();
+  eq('invoice recipient uses textContent for XSS', g(shipped, 'inv-customer').textContent, shippingOrder.shipping_name);
+  eq('invoice note uses textContent for XSS', g(shipped, 'inv-note').textContent, shippingOrder.delivery_note);
+  eq('invoice full snapshot address', g(shipped, 'inv-address').textContent, shippingOrder.shipping_address + ', Ward, District, City');
+  eq('invoice stored fee', g(shipped, 'inv-shipping-fee').textContent, '20.000₫');
+  eq('invoice stored total', g(shipped, 'inv-total').textContent, '470.000₫');
+  const zeroFee = setup('?orderId=42', donCo({ ...shippingOrder, shipping_fee: 0, total_amount: 450000 }));
+  zeroFee.login({ uid: 'u' }); await wait();
+  eq('invoice preserves old zero fee snapshot', g(zeroFee, 'inv-shipping-fee').textContent, '0₫');
+  eq('invoice preserves old total after fee fix', g(zeroFee, 'inv-total').textContent, '450.000₫');
+  const noRecipient = setup('?orderId=42', donCo({ ...ORDER, shipping_name: null, user_name: 'Current profile' }));
+  noRecipient.login({ uid: 'u' }); await wait();
+  eq('invoice never substitutes current profile for missing snapshot', g(noRecipient, 'inv-customer').textContent, '—');
   eq('ngay dinh dang dd-mm-yyyy', g(r, 'inv-date').textContent, '05-07-2026');
   eq('ma don co dau #', g(r, 'inv-id').textContent, '#42');
   eq('tam tinh = tong line_total', g(r, 'inv-subtotal').textContent, '500.000₫');
@@ -77,6 +97,15 @@ const donCo = (body) => ({ body: { orders: [body] } });
   eq('tai xong -> hien noi dung', g(r, 'inv-content').hidden, false);
   eq('tai xong -> hien nut in', g(r, 'inv-actions').hidden, false);
   eq('dat document.title theo ma don', r.sandbox.document.title, 'inv.docTitleN{"id":42}');
+
+  const sizedOrder = JSON.parse(JSON.stringify(ORDER));
+  sizedOrder.items[0].size_snapshot = '42.5';
+  const sized = setup('?orderId=42', donCo(sizedOrder));
+  sized.login({ uid: 'u' }); await wait();
+  check('hoa don hien size da luu trong don, ke ca size thap phan',
+    g(sized, 'inv-items').innerHTML.includes('pd.thSize: 42.5'));
+  check('don cu khong co size thi khong hien dong size',
+    !g(r, 'inv-items').innerHTML.includes('pd.thSize'));
 
   /* Ẩn/hiện dòng giảm giá phải dựa trên GIÁ TRỊ, không phải sự tồn tại của field.
      Điều kiện thật trong code: if (discount > 0 || o.voucher_code) */
@@ -118,4 +147,20 @@ const donCo = (body) => ({ body: { orders: [body] } });
   eq('money la global dung chung tu utils-format.js', typeof r.sandbox.money, 'function');
   eq('esc la global dung chung tu utils-format.js', typeof r.sandbox.esc, 'function');
   eq('t la global dung chung tu utils-i18n.js', typeof r.sandbox.t, 'function');
+
+  // Nút Đóng / In qua data-action (thay onclick="window.close()/print()" inline — CSP chặn)
+  const calls = [];
+  r.win.print = function () { calls.push('print'); };
+  r.win.close = function () { calls.push('close'); };
+  function btn(action) {
+    const b = El('button');
+    b.setAttribute('data-action', action);
+    b._closest = { '[data-action]': b };
+    return b;
+  }
+  r.doc.fire('click', { target: btn('inv-print') });
+  r.doc.fire('click', { target: btn('inv-close') });
+  r.doc.fire('click', { target: btn('cart-qty') });   // action của trang khác
+  r.doc.fire('click', { target: El('div') });
+  eq('nut In -> window.print, nut Dong -> window.close, con lai bo qua', calls, ['print', 'close']);
 })();

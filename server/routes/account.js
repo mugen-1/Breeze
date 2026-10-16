@@ -130,8 +130,9 @@ router.delete('/', verifyFirebaseToken, passwordLimiter, async (req, res) => {
     return res.status(500).json({ status: 'error', message: 'Không kiểm tra được đơn hàng' });
   }
 
-  // (d) Xóa Firebase Auth TRƯỚC: vô hiệu token ngay lập tức -> phiên còn sống ở thiết bị khác
-  // không thể tái tạo row user qua upsert của verifyFirebaseToken. Nếu lỗi -> dừng, DB chưa đụng.
+  // (d) Xóa Firebase Auth TRƯỚC. Middleware dùng verifyIdToken(token, true) để từ chối
+  // token cũ; khi SQL chưa có row, nó kiểm tra lại dưới khoá transaction trước INSERT.
+  // Xoá Firebase đơn thuần KHÔNG làm chữ ký JWT cũ mất hiệu lực. Nếu lỗi -> dừng, DB chưa đụng.
   try {
     await getAuth().deleteUser(uid);
   } catch (err) {

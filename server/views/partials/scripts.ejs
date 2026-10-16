@@ -18,6 +18,13 @@
    .is-active mới hiện — dời xuống cuối thì hero trắng trơn tới khi Firebase SDK +
    i18n.js (95KB) + cart.js nạp xong. Xem pages/index.ejs.
 
+   SRI: 2 script Firebase mang integrity (sha384) + crossorigin="anonymous" — CDN bị sửa
+   file là trình duyệt từ chối chạy. ĐỔI PHIÊN BẢN thì phải: (1) sửa đường dẫn phiên bản
+   trong script-src của CSP (middleware/security.js — nó chỉ cho đúng thư mục 9.23.0),
+   (2) tính lại hash (cùng hash ở admin.html, checkout.html, invoice.html, và 2 dòng SRI
+   trong KNOWN của tools/domdiff.js):
+     curl -s URL | openssl dgst -sha384 -binary | openssl base64 -A
+
    Tham số:
      useUtilsI18n (mặc định false) — utils-i18n.js chỉ có ở 7/21 trang cũ. Bật thêm cho
                                      trang không cần là thêm 1 request + 1 thẻ <script>
@@ -30,8 +37,8 @@ var useUtilsI18n = _v('useUtilsI18n', false);
 var pageJs       = _v('pageJs', []);
 var closeHtml    = _v('closeHtml', true);
 -%>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" integrity="sha384-ajMUFBUFMCyjh8uxJg6bkGcKe9RTolyjwbxB3yES0QQMenP3Oztj/W9vA2SJPcIh" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" integrity="sha384-xD1t9dGSVKobUztxDkv6xUI0H4AnFz0NxwlgDJJ7FDlblG9xxr1Z9iauCZuJYj6p" crossorigin="anonymous"></script>
     <script src="js/firebase-config.js"></script>
     <script src="js/api-config.js"></script>
     <script src="js/routes.js"></script>

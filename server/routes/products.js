@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const { getPool, sql } = require('../db');
+const { sizeProfile, sellableVariant, SIZE_CONFIGURED_SQL, COLOR_CONFIGURED_SQL } = require('../lib/size-variants');
 
 const EFFECTIVE_PRICE = '(CASE WHEN p.sale_price IS NOT NULL THEN p.sale_price ELSE p.price END)';
 
@@ -18,7 +19,9 @@ const SORT_MAP = {
 };
 
 const SELECT_COLS = `
-  p.id, c.slug AS category_slug, p.name_vi, p.name_en,
+  p.id, p.slug, p.is_active, ${SIZE_CONFIGURED_SQL} AS size_configured,
+  ${COLOR_CONFIGURED_SQL} AS color_configured,
+  c.slug AS category_slug, p.name_vi, p.name_en,
   p.price, p.sale_price, p.stock, p.images,
   p.description_vi, p.description_en`;
 
@@ -41,10 +44,52 @@ function mapProduct(row) {
     price: row.price,
     sale_price: row.sale_price,
     stock: row.stock,
+    available: row.stock > 0,
+    size_configured: !!row.size_configured,
+    color_configured: !!row.color_configured,
+    colors: row.colors || [],
+    variants: row.variants || [],
     images,
     description_vi: row.description_vi,
     description_en: row.description_en,
   };
+}
+
+async function customerProducts(pool, rows) {
+  if (!rows.length) return [];
+  const request = pool.request();
+  const ids = rows.map((p, i) => { request.input('p' + i, sql.Int, p.id); return '@p' + i; });
+  const all = (await request.query(`SELECT v.id, v.product_id, v.size, v.color, v.stock, v.is_base,
+      v.is_active, c.is_active AS color_active, c.label AS color_label
+    FROM dbo.product_variants v LEFT JOIN dbo.product_colors c
+      ON c.product_id=v.product_id AND c.color_key=v.color
+    WHERE v.product_id IN (${ids.join(',')});`)).recordset;
+  const colorRequest = pool.request();
+  const colorIds = rows.map((p, i) => { colorRequest.input('c' + i, sql.Int, p.id); return '@c' + i; });
+  const colors = (await colorRequest.query(`SELECT c.id, c.product_id, c.color_key, c.label,
+      c.swatch_hex, c.is_active, i.image_path, i.sort_order, i.is_primary
+    FROM dbo.product_colors c LEFT JOIN dbo.product_color_images i ON i.color_id=c.id
+    WHERE c.product_id IN (${colorIds.join(',')})
+    ORDER BY c.id, i.is_primary DESC, i.sort_order, i.id;`)).recordset;
+  return rows.map(p => {
+    const sellable = all.filter(v => v.product_id === p.id && sellableVariant(p, v));
+    const sizes = sizeProfile(p).sizes;
+    sellable.sort((a, b) => (a.color || '').localeCompare(b.color || '') || sizes.indexOf(a.size) - sizes.indexOf(b.size));
+    const availableColors = [];
+    for (const row of colors.filter(c => c.product_id === p.id && c.is_active)) {
+      let color = availableColors.find(c => c.key === row.color_key);
+      if (!color) {
+        color = { key: row.color_key, label: row.label, swatch_hex: row.swatch_hex,
+          images: [], available: sellable.some(v => v.color === row.color_key && v.stock > 0) };
+        availableColors.push(color);
+      }
+      if (row.image_path) color.images.push(row.image_path);
+    }
+    return mapProduct({ ...p, stock: sellable.reduce((sum, v) => sum + v.stock, 0),
+      colors: availableColors,
+      variants: sellable.map(v => ({ id: v.id, size: v.size, color: v.color,
+        color_label: v.color_label, available: v.stock > 0 })) });
+  });
 }
 
 // Validate 1 tham số giá (số nguyên >= 0). Trả { ok, value } hoặc { ok:false }.
@@ -121,7 +166,7 @@ router.get('/', async (req, res) => {
       ORDER BY ${orderBy};`;
 
     const result = await request.query(query);
-    res.json(result.recordset.map(mapProduct));
+    res.json(await customerProducts(pool, result.recordset));
   } catch (err) {
     console.error('[products] list error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không tải được danh sách sản phẩm' });
@@ -145,12 +190,12 @@ router.get('/:id', async (req, res) => {
         SELECT ${SELECT_COLS}
         FROM dbo.products p
         JOIN dbo.categories c ON c.id = p.category_id
-        WHERE p.id = @id;`);
+        WHERE p.id = @id AND p.is_active = 1;`);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Không tìm thấy sản phẩm' });
     }
-    res.json(mapProduct(result.recordset[0]));
+    res.json((await customerProducts(pool, result.recordset))[0]);
   } catch (err) {
     console.error('[products] detail error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không tải được sản phẩm' });

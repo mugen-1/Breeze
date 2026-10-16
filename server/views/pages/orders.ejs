@@ -26,10 +26,34 @@
 
         <!-- Đang tải / lỗi -->
         <div class="orders-notice" id="orders-status" style="display:none;"></div>
+        <div class="orders-flash" id="orders-flash" role="status" hidden></div>
 
         <!-- Danh sách đơn -->
         <div id="orders-list"></div>
 
         <a href="index.html" class="orders-continue" id="orders-continue" style="display:none;">← Tiếp tục mua sắm</a>
+    </div>
+
+    <div class="orders-cancel-overlay" id="orders-cancel-overlay" hidden>
+        <section class="orders-cancel-dialog" role="dialog" aria-modal="true" aria-labelledby="orders-cancel-title" tabindex="-1">
+            <h2 id="orders-cancel-title">Hủy đơn hàng?</h2>
+            <p id="orders-cancel-confirm">Bạn có chắc muốn hủy đơn hàng này?</p>
+            <label for="orders-cancel-reason" id="orders-cancel-reason-label">Lý do hủy</label>
+            <select id="orders-cancel-reason">
+                <option value="">Chọn lý do</option>
+                <option value="wrong_item">Đặt nhầm sản phẩm</option>
+                <option value="change_item">Muốn thay đổi size/sản phẩm</option>
+                <option value="change_address">Muốn thay đổi địa chỉ giao hàng</option>
+                <option value="no_longer_needed">Không còn nhu cầu</option>
+                <option value="other">Khác</option>
+            </select>
+            <label for="orders-cancel-details" id="orders-cancel-details-label" hidden>Chi tiết lý do</label>
+            <textarea id="orders-cancel-details" maxlength="180" rows="3" hidden></textarea>
+            <p class="orders-cancel-error" id="orders-cancel-error" role="alert" hidden></p>
+            <div class="orders-cancel-actions">
+                <button type="button" class="orders-cancel-back" id="orders-cancel-back" data-action="order-cancel-close">Quay lại</button>
+                <button type="button" class="orders-cancel-submit" id="orders-cancel-submit" data-action="order-cancel-submit">Xác nhận hủy</button>
+            </div>
+        </section>
     </div>
 

@@ -40,13 +40,24 @@ function dangKy() {
         return;
     }
 
+    // Gửi email xác minh ngay sau khi tạo tài khoản: server chỉ tự phong admin cho email
+    // đã xác minh (email_verified), nên thiếu bước này thì không ai chứng minh được mình
+    // sở hữu hộp thư. Gửi lỗi (vd auth/too-many-requests) KHÔNG được chặn phần còn lại:
+    // tài khoản đã tạo xong rồi, nên vẫn lưu tên hiển thị và chỉ đổi câu thông báo.
     auth.createUserWithEmailAndPassword(email, matKhau)
         .then((userCredential) => {
-            return userCredential.user.updateProfile({ displayName: ten });
+            const user = userCredential.user;
+            return user.sendEmailVerification()
+                .then(() => true, (err) => {
+                    console.error('[auth] không gửi được email xác minh:', err && err.code);
+                    return false;
+                })
+                .then((sent) => user.updateProfile({ displayName: ten }).then(() => sent));
         })
-        .then(() => {
-            showMessage('signup-msg', t('au.signupOk'), false);
-            setTimeout(() => { window.location.href = window.BreezeRoutes.to('login'); }, 1500);
+        .then((sent) => {
+            // Câu nhắc kiểm tra email dài hơn -> chờ lâu hơn trước khi chuyển trang.
+            showMessage('signup-msg', t(sent ? 'au.signupVerify' : 'au.signupOk'), false);
+            setTimeout(() => { window.location.href = window.BreezeRoutes.to('login'); }, sent ? 3500 : 1500);
         })
         .catch((error) => {
             showMessage('signup-msg', authError(error), true);
@@ -103,13 +114,45 @@ function dangXuat() {
     });
 }
 
+// Form đăng nhập / đăng ký / quên mật khẩu: data-action trên <form> chọn việc cần làm,
+// thay cho onsubmit="event.preventDefault(); ..." inline cũ (CSP chặn handler inline).
+// Gắn ở document (sự kiện submit nổi bọt) nên không phụ thuộc thứ tự nạp so với markup.
+// reset-password: tính năng gửi mail đặt lại CHƯA làm — chỉ chặn submit như trước
+// (trước đây gọi guiEmailDatLai() không tồn tại, cũng không làm gì ngoài lỗi console).
+const FORM_ACTIONS = {
+    'login': () => dangNhap(),
+    'signup': () => dangKy(),
+    'reset-password': () => {},
+};
+document.addEventListener('submit', (e) => {
+    const act = e.target && e.target.getAttribute && e.target.getAttribute('data-action');
+    // hasOwnProperty: 'constructor', 'toString'... là khoá kế thừa, không phải hành động.
+    if (!act || !Object.prototype.hasOwnProperty.call(FORM_ACTIONS, act)) return;
+    e.preventDefault();
+    FORM_ACTIONS[act]();
+});
+
+// Dựng thẻ <a> bằng DOM API, KHÔNG dùng innerHTML: displayName do người dùng tự đặt lúc
+// đăng ký, ghép thẳng vào HTML là XSS (tên kiểu '<img src=x onerror=...>'). textContent
+// luôn ra chữ thuần. Handler gắn bằng addEventListener chứ không phải onclick="..." để
+// không vướng Content-Security-Policy (CSP chặn mọi handler inline).
+// Hiện KHÔNG trang nào có #nav-login nên khối này chưa chạy — giữ để an toàn nếu markup
+// quay lại.
 auth.onAuthStateChanged((user) => {
     const navLogin = document.getElementById('nav-login');
     if (!navLogin) return;
+    const a = document.createElement('a');
     if (user) {
-        const ten = user.displayName || user.email;
-        navLogin.innerHTML = `<a href="javascript:void(0);" onclick="dangXuat()" style="color:#fff">${ten} | Dang xuat</a>`;
+        a.href = '#';
+        a.style.color = '#fff';
+        a.textContent = (user.displayName || user.email) + ' | Dang xuat';
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            dangXuat();
+        });
     } else {
-        navLogin.innerHTML = `<a href="${window.BreezeRoutes.to('login')}">Dang nhap / Dang ky</a>`;
+        a.href = window.BreezeRoutes.to('login');
+        a.textContent = 'Dang nhap / Dang ky';
     }
+    navLogin.replaceChildren(a);
 });

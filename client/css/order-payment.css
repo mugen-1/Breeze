@@ -1,0 +1,14 @@
+.order-payment { margin-block: 18px; padding: 18px; border: 1px solid var(--c-line, #aaa); border-radius: 8px; }
+.order-payment h3 { margin: 0 0 12px; font-size: 1rem; }
+.order-payment dl { margin: 0; }
+.order-payment dl > div { display: flex; gap: 16px; justify-content: space-between; padding-block: 4px; }
+.order-payment dt { flex-shrink: 0; }
+.order-payment dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.payment-simulation-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.payment-simulation-actions button { padding: 10px 16px; border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; border-radius: 4px; font: inherit; }
+.payment-simulation-actions button:disabled { opacity: .5; cursor: wait; }
+#co-payment-simulation { margin-top: 24px; }
+#co-checkout-grid[hidden] { display: none; }
+#co-payment-simulation:focus { outline: 2px solid currentColor; outline-offset: 4px; }
+.payment-simulation-message { margin-block: 12px; }
+@media (max-width: 480px) { .order-payment dl > div { flex-direction: column; gap: 2px; } .order-payment dd { text-align: left; } }

@@ -4,12 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Thanh Toán - BREEZE</title>
-    <script>(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
+    <script src="js/theme-boot.js"></script>
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="css/global.css">
     <link rel="stylesheet" type="text/css" href="css/checkout.css">
+    <link rel="stylesheet" href="css/order-payment.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
@@ -41,7 +42,7 @@
             </header>
 
             <!-- Grid 2 cột: form (trái) + order summary sticky (phải) -->
-            <div class="co-checkout-grid">
+            <div class="co-checkout-grid" id="co-checkout-grid">
 
             <form id="co-form" novalidate>
 
@@ -63,14 +64,14 @@
                     <div class="co-row co-row-2">
                         <div class="co-field">
                             <label class="co-label" for="f-firstname"><span data-i18n="co.firstname">Tên</span> <span class="co-req" aria-hidden="true">*</span></label>
-                            <input class="co-input" id="f-firstname" name="firstname" type="text"
+                            <input class="co-input" maxlength="75" id="f-firstname" name="firstname" type="text"
                                    autocomplete="given-name" required aria-required="true"
                                    aria-describedby="f-name-help f-firstname-err">
                             <p class="co-err" id="f-firstname-err" role="alert" hidden></p>
                         </div>
                         <div class="co-field">
                             <label class="co-label" for="f-lastname"><span data-i18n="co.lastname">Họ</span> <span class="co-req" aria-hidden="true">*</span></label>
-                            <input class="co-input" id="f-lastname" name="lastname" type="text"
+                            <input class="co-input" maxlength="74" id="f-lastname" name="lastname" type="text"
                                    autocomplete="family-name" required aria-required="true"
                                    aria-describedby="f-name-help f-lastname-err">
                             <p class="co-err" id="f-lastname-err" role="alert" hidden></p>
@@ -81,17 +82,17 @@
                     <!-- Số điện thoại -->
                     <div class="co-field">
                         <label class="co-label" for="f-phone"><span data-i18n="co.phone">Số điện thoại</span> <span class="co-req" aria-hidden="true">*</span></label>
-                        <input class="co-input" id="f-phone" name="phone" type="tel"
+                        <input class="co-input" maxlength="30" id="f-phone" name="phone" type="tel"
                                inputmode="tel" autocomplete="tel" required aria-required="true"
                                aria-describedby="f-phone-help f-phone-err" placeholder="VD: 0901234567" data-i18n-ph="co.phonePh">
-                        <p class="co-help" id="f-phone-help" data-i18n="co.phoneHelp">Định dạng số điện thoại Việt Nam (10 số, bắt đầu 03/05/07/08/09)</p>
+                        <p class="co-help" id="f-phone-help" data-i18n="co.phoneHelp">Số điện thoại Việt Nam hoặc quốc tế có mã quốc gia (ví dụ +84).</p>
                         <p class="co-err" id="f-phone-err" role="alert" hidden></p>
                     </div>
 
                     <!-- Số nhà/Tên đường -->
                     <div class="co-field">
                         <label class="co-label" for="f-street"><span data-i18n="co.street">Số nhà / Tên đường</span> <span class="co-req" aria-hidden="true">*</span></label>
-                        <input class="co-input" id="f-street" name="street" type="text"
+                        <input class="co-input" maxlength="200" id="f-street" name="street" type="text"
                                autocomplete="address-line1" required aria-required="true"
                                aria-describedby="f-street-help f-street-err">
                         <p class="co-help" id="f-street-help" data-i18n="co.streetHelp">Ví dụ: 33 Lê Duẩn, ...</p>
@@ -101,7 +102,7 @@
                     <!-- Tên tòa nhà/Số tầng (optional) -->
                     <div class="co-field">
                         <label class="co-label" for="f-building"><span data-i18n="co.building">Tên tòa nhà / Số tầng</span> <span class="co-optional" data-i18n="com.optional">(không bắt buộc)</span></label>
-                        <input class="co-input" id="f-building" name="building" type="text"
+                        <input class="co-input" maxlength="198" id="f-building" name="building" type="text"
                                autocomplete="address-line2" aria-describedby="f-building-help">
                         <p class="co-help" id="f-building-help" data-i18n="co.buildingHelp">Ví dụ: Tòa nhà chung cư ..., tầng 5</p>
                     </div>
@@ -110,18 +111,12 @@
                     <div class="co-row co-row-2">
                         <div class="co-field">
                             <label class="co-label" for="f-city"><span data-i18n="co.city">Thành phố / Tỉnh</span> <span class="co-req" aria-hidden="true">*</span></label>
-                            <select class="co-input co-select" id="f-city" name="city" required aria-required="true"
-                                    aria-describedby="f-city-err">
-                                <option value="">-- Chọn --</option>
-                            </select>
+                            <input class="co-input" id="f-city" name="city" type="text" maxlength="120" required aria-required="true" aria-describedby="f-city-err">
                             <p class="co-err" id="f-city-err" role="alert" hidden></p>
                         </div>
                         <div class="co-field">
                             <label class="co-label" for="f-district"><span data-i18n="co.district">Quận / Huyện</span> <span class="co-req" aria-hidden="true">*</span></label>
-                            <select class="co-input co-select" id="f-district" name="district" required aria-required="true"
-                                    aria-describedby="f-district-err" disabled>
-                                <option value="">-- Chọn --</option>
-                            </select>
+                            <input class="co-input" id="f-district" name="district" type="text" maxlength="120" required aria-required="true" aria-describedby="f-district-err">
                             <p class="co-err" id="f-district-err" role="alert" hidden></p>
                         </div>
                     </div>
@@ -130,18 +125,12 @@
                     <div class="co-row co-row-2">
                         <div class="co-field">
                             <label class="co-label" for="f-ward"><span data-i18n="co.ward">Phường / Xã</span> <span class="co-req" aria-hidden="true">*</span></label>
-                            <select class="co-input co-select" id="f-ward" name="ward" required aria-required="true"
-                                    aria-describedby="f-ward-err" disabled>
-                                <option value="">-- Chọn --</option>
-                            </select>
+                            <input class="co-input" id="f-ward" name="ward" type="text" maxlength="120" required aria-required="true" aria-describedby="f-ward-err">
                             <p class="co-err" id="f-ward-err" role="alert" hidden></p>
                         </div>
                         <div class="co-field">
-                            <label class="co-label" for="f-postal"><span data-i18n="co.postal">Mã bưu chính</span> <span class="co-req" aria-hidden="true">*</span></label>
-                            <select class="co-input co-select" id="f-postal" name="postal" required aria-required="true"
-                                    aria-describedby="f-postal-err" disabled>
-                                <option value="">-- Chọn --</option>
-                            </select>
+                            <label class="co-label" for="f-postal"><span data-i18n="co.postal">Mã bưu chính</span> <span class="co-optional" data-i18n="com.optional">(không bắt buộc)</span></label>
+                            <input class="co-input" id="f-postal" name="postal" type="text" maxlength="20" aria-describedby="f-postal-err">
                             <p class="co-err" id="f-postal-err" role="alert" hidden></p>
                         </div>
                     </div>
@@ -151,6 +140,17 @@
                         <label class="co-label" for="f-country" data-i18n="co.country">Quốc gia</label>
                         <input class="co-input" id="f-country" name="country" type="text"
                                value="Việt Nam" data-i18n-value="com.vietnam" disabled aria-disabled="true">
+                    </div>
+                </section>
+
+                <section class="co-section" aria-labelledby="co-ship-h">
+                    <h2 class="co-section-title" id="co-ship-h" data-i18n="ship.methods">Phương thức giao hàng</h2>
+                    <div id="co-shipping-methods" role="radiogroup" aria-labelledby="co-ship-h" tabindex="-1"></div>
+                    <p class="co-err" id="f-shipping-err" role="alert" hidden></p>
+                    <div class="co-field">
+                        <label class="co-label" for="f-note" data-i18n="ship.note">Ghi chú giao hàng (không bắt buộc)</label>
+                        <textarea class="co-input" id="f-note" name="delivery_note" maxlength="500" rows="3" aria-describedby="f-note-err"></textarea>
+                        <p class="co-err" id="f-note-err" role="alert" hidden></p>
                     </div>
                 </section>
 
@@ -240,7 +240,7 @@
                         </div>
                         <div class="co-oi-row">
                             <span data-i18n="co.shipping">Giao hàng</span>
-                            <span id="co-oi-ship" data-i18n="com.free">Miễn phí</span>
+                            <span id="co-oi-ship">—</span>
                         </div>
 
                         <!-- Voucher / mã giảm giá — dòng "Giảm giá" vừa hiện số giảm vừa là NÚT mở/đóng panel. Hành vi ở js/voucher.js -->
@@ -283,12 +283,18 @@
             </div>
 
             </div><!-- /.co-checkout-grid -->
+            <section id="co-payment-simulation" hidden tabindex="-1">
+                <h2 id="co-payment-heading"></h2>
+                <div id="co-payment-details"></div>
+                <p id="co-payment-message" class="payment-simulation-message" role="status"></p>
+                <a id="co-payment-continue" href="orders.html" data-i18n="paymenttx.continue">Xem đơn hàng</a>
+            </section>
         </div>
     </main>
 
     <!-- Firebase + auth + cart + checkout -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" integrity="sha384-ajMUFBUFMCyjh8uxJg6bkGcKe9RTolyjwbxB3yES0QQMenP3Oztj/W9vA2SJPcIh" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" integrity="sha384-xD1t9dGSVKobUztxDkv6xUI0H4AnFz0NxwlgDJJ7FDlblG9xxr1Z9iauCZuJYj6p" crossorigin="anonymous"></script>
     <script src="js/firebase-config.js"></script>
     <script src="js/api-config.js"></script>
     <script src="js/routes.js"></script>
@@ -299,6 +305,7 @@
     <script src="js/utils-i18n.js"></script>
     <script src="js/account-menu.js"></script>
     <script src="js/cart.js"></script>
+    <script src="js/order-payment.js"></script>
     <script src="js/checkout.js"></script>
     <script src="js/voucher.js"></script>
 </body>

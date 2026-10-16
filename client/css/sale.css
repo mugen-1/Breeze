@@ -1541,6 +1541,8 @@ section:not(.hero) {
     color: var(--c-ink);
 }
 .cart-qty button:hover { background: var(--c-cream); }
+/* Nút "+" bị khoá khi số lượng chạm trần 99 (cart.js: CART_MAX_QTY). */
+.cart-qty button:disabled { opacity: .35; cursor: not-allowed; background: none; }
 .cart-qty span {
     min-width: 30px;
     text-align: center;

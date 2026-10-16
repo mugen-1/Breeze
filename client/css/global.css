@@ -1778,6 +1778,10 @@ section:not(.hero) {
     color: var(--c-ink);
 }
 .cart-qty button:hover { background: var(--c-cream); }
+/* Nút "+" bị khoá khi số lượng chạm trần 99 (cart.js: CART_MAX_QTY). .qty-btn là nút
+   của bảng trong cart.html — kiểu gốc của nó nằm ở partials/cart-style.ejs. */
+.cart-qty button:disabled { opacity: .35; cursor: not-allowed; background: none; }
+.qty-btn:disabled { opacity: .35; cursor: not-allowed; }
 .cart-qty span {
     min-width: 30px;
     text-align: center;

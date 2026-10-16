@@ -11,7 +11,6 @@
             return (v === key && fallback != null) ? fallback : v;
         }
 
-        var ORDER_STATUSES = ['pending', 'paid', 'shipped', 'completed', 'cancelled'];
         function statusLabel(s) { return tr('st.' + s, null, s); }
         // Đồng bộ đúng tên hiển thị với 4 lựa chọn ở UI checkout (client/checkout.html).
         function paymentLabel(m) { return m ? tr('pay.' + m, null, '—') : '—'; }
@@ -30,6 +29,22 @@
             return window.AuthHelper.apiFetch(path, opts);
         }
 
+        // Ảnh lỗi — thay cho onerror="..." inline trong chuỗi HTML (CSP chặn handler inline).
+        // 'error' của <img> không nổi bọt nên bắt ở pha capture.
+        //   .adm-thumb (bảng sản phẩm) : ẩn ảnh, giữ chỗ trống như cũ.
+        //   #top-products img          : đổi sang ảnh dự phòng, đúng MỘT lần — ảnh dự phòng
+        //                                đang thiếu (P-1), không chặn thì lỗi -> đổi -> lỗi lặp.
+        var TOP_IMG_FALLBACK = 'img/breeze.png';
+        document.addEventListener('error', function (e) {
+            var img = e.target;
+            if (!img || img.tagName !== 'IMG' || !img.closest) return;
+            if (img.classList.contains('adm-thumb')) {
+                img.style.visibility = 'hidden';
+            } else if (img.closest('#top-products') && img.getAttribute('src') !== TOP_IMG_FALLBACK) {
+                img.src = TOP_IMG_FALLBACK;
+            }
+        }, true);
+
         var _toastTimer = null;
         function toast(msg, isErr) {
             var t = $('toast');
@@ -47,7 +62,7 @@
             $('panel').style.display = 'none';
             $('bar-right').style.visibility = 'hidden';
             document.body.classList.toggle('adm-authed', which === 'panel');
-            if (which !== 'panel') closeDrawer();
+            if (which !== 'panel') { _exportEpoch++; closeDrawer(); closeCustomerDetail(); }
             if (which === 'panel') {
                 $('panel').style.display = 'block';
                 $('bar-right').style.visibility = 'visible';
@@ -84,6 +99,12 @@
                 case 'users': loadUsers(_userPage); break;
                 case 'blacklist': loadBlacklist(_blacklistPage); break;
                 default: loadDashboard();
+            }
+            if ($('inventory-modal').classList.contains('open') && _inventoryData) renderInventory(_inventoryData);
+            if (_sizesData) renderSizesAdmin(_sizesData);
+            if (_customerId) {
+                if (_customerData) renderCustomerDetail(_customerData);
+                else $('customer-message').textContent = tr(_customerMessageKey);
             }
         }
 
@@ -196,7 +217,7 @@
             var cat = catById[p.category_id];
             var catName = cat ? cat.name_vi : (p.category_slug || p.category_id);
             var img = (p.images && p.images.length) ? p.images[0] : '';
-            var thumb = img ? '<img class="adm-thumb" src="' + esc(img) + '" alt="" onerror="this.style.visibility=\'hidden\'">' : '<span class="adm-thumb"></span>';
+            var thumb = img ? '<img class="adm-thumb" src="' + esc(img) + '" alt="">' : '<span class="adm-thumb"></span>';
             return '<tr>' +
                 '<td class="num">' + p.id + '</td>' +
                 '<td>' + thumb + '</td>' +
@@ -209,17 +230,29 @@
                 '<td>' + (p.is_active ? '<span class="pill on">' + tr('adm.pillOn') + '</span>' : '<span class="pill off">' + tr('adm.pillOff') + '</span>') + '</td>' +
                 '<td><div class="adm-actions">' +
                     '<button type="button" class="adm-btn ghost small" data-edit="' + p.id + '">' + tr('com.edit') + '</button>' +
+                    '<button type="button" class="adm-btn ghost small" data-inventory="' + p.id + '">' + tr('adm.inventoryHistory') + '</button>' +
+                    (p.size_kind !== 'base-only' || p.size_configured ? '<button type="button" class="adm-btn ghost small" data-sizes="' + p.id + '">' + tr('adm.manageSizes') + '</button>' : '') +
+                    '<button type="button" class="adm-btn ghost small" data-colors="' + p.id + '">' + tr('adm.manageColors') + '</button>' +
                     '<button type="button" class="adm-btn danger small" data-del="' + p.id + '">' + tr('com.delete') + '</button>' +
                 '</div></td>' +
             '</tr>';
         }
 
         function attachProdRowHandlers() {
+            $('prod-body').querySelectorAll('[data-sizes]').forEach(function (b) {
+                b.addEventListener('click', function () { openSizes(_prodCache[b.getAttribute('data-sizes')], b); });
+            });
+            $('prod-body').querySelectorAll('[data-colors]').forEach(function (b) {
+                b.addEventListener('click', function () { openColors(_prodCache[b.getAttribute('data-colors')], b); });
+            });
             $('prod-body').querySelectorAll('[data-edit]').forEach(function (b) {
                 b.addEventListener('click', function () { openModal(_prodCache[b.getAttribute('data-edit')]); });
             });
             $('prod-body').querySelectorAll('[data-del]').forEach(function (b) {
                 b.addEventListener('click', function () { deleteProduct(_prodCache[b.getAttribute('data-del')]); });
+            });
+            $('prod-body').querySelectorAll('[data-inventory]').forEach(function (b) {
+                b.addEventListener('click', function () { openInventory(_prodCache[b.getAttribute('data-inventory')], b); });
             });
         }
 
@@ -258,9 +291,281 @@
         }
         var _prodCache = {};
 
+        // --- Inventory history (admin only) ---------------------------------
+        var _inventoryProduct = null, _inventoryData = null, _inventoryPage = 1, _inventoryTrigger = null;
+        function openInventory(p, trigger) {
+            if (!p) return;
+            _inventoryProduct = p;
+            _inventoryTrigger = trigger;
+            _inventoryData = null;
+            $('inventory-modal').classList.add('open');
+            loadInventory(1);
+            $('inventory-close').focus();
+        }
+        function closeInventory() {
+            $('inventory-modal').classList.remove('open');
+            if (_inventoryTrigger && _inventoryTrigger.focus) _inventoryTrigger.focus();
+            _inventoryTrigger = null;
+            _inventoryProduct = null;
+            _inventoryData = null;
+        }
+        function loadInventory(page) {
+            _inventoryPage = page;
+            var requestedId = _inventoryProduct.id;
+            $('inventory-title').textContent = tr('adm.inventoryTitle', { name: _inventoryProduct.name_vi });
+            $('inventory-body').innerHTML = '<tr><td colspan="6" class="adm-loading">' + tr('com.loading') + '</td></tr>';
+            $('inventory-pager').innerHTML = '';
+            return api('/api/admin/products/' + _inventoryProduct.id + '/inventory-movements?page=' + page + '&limit=20')
+                .then(function (r) { if (!r.ok) throw new Error('inventory ' + r.status); return r.json(); })
+                .then(function (data) {
+                    if (!_inventoryProduct || _inventoryProduct.id !== requestedId || _inventoryPage !== page) return;
+                    _inventoryData = data; renderInventory(data);
+                })
+                .catch(function (e) {
+                    if (!_inventoryProduct || _inventoryProduct.id !== requestedId || _inventoryPage !== page) return;
+                    console.error('[admin] inventory history lỗi:', e);
+                    $('inventory-body').innerHTML = '<tr><td colspan="6" class="adm-empty">' + tr('adm.inventoryError') + '</td></tr>';
+                });
+        }
+        function renderInventory(data) {
+            var list = data.movements || [];
+            $('inventory-title').textContent = tr('adm.inventoryTitle', { name: _inventoryProduct.name_vi });
+            $('inventory-body').innerHTML = list.length ? list.map(function (m) {
+                var ref = m.order_reference_id != null ? '#' + (m.order_code == null ? m.order_reference_id : m.order_code) : (m.reason || '—');
+                return '<tr><td>' + fmtDate(m.created_at) + '</td>' +
+                    '<td>' + esc(tr('adm.inv.' + m.movement_type, null, m.movement_type)) +
+                    (m.size ? '<br><small>' + tr('pd.thSize') + ': ' + esc(m.size) + '</small>' : '') +
+                    (m.color ? '<br><small>' + tr('co.metaColor') + ': ' + esc(m.color) + '</small>' : '') + '</td>' +
+                    '<td class="num">' + (m.quantity_delta > 0 ? '+' : '') + m.quantity_delta + '</td>' +
+                    '<td class="num">' + m.stock_before + '</td><td class="num">' + m.stock_after + '</td>' +
+                    '<td>' + esc(ref) + '</td></tr>';
+            }).join('') : '<tr><td colspan="6" class="adm-empty">' + tr('adm.inventoryEmpty') + '</td></tr>';
+            var pages = data.total_pages || 1;
+            $('inventory-pager').innerHTML =
+                '<button type="button" id="inv-prev"' + (_inventoryPage <= 1 ? ' disabled' : '') + '>' + tr('adm.pgPrev') + '</button>' +
+                '<span>' + tr('adm.pgPage') + ' ' + _inventoryPage + ' / ' + pages + '</span>' +
+                '<button type="button" id="inv-next"' + (_inventoryPage >= pages ? ' disabled' : '') + '>' + tr('adm.pgNext') + '</button>';
+            $('inv-prev').addEventListener('click', function () { loadInventory(_inventoryPage - 1); });
+            $('inv-next').addEventListener('click', function () { loadInventory(_inventoryPage + 1); });
+        }
+
+        // --- Size management: same modal/table/button styles as product admin.
+        var _sizesProduct = null, _sizesData = null, _sizesTrigger = null, _sizesBusy = false;
+        function openSizes(p, trigger) {
+            if (!p || _sizesBusy) return;
+            _sizesProduct = p; _sizesTrigger = trigger; _sizesData = null;
+            $('sizes-error').textContent = '';
+            $('sizes-body').innerHTML = '';
+            $('sizes-summary').textContent = tr('com.loading');
+            $('sizes-reason').value = '';
+            $('sizes-modal').classList.add('open');
+            $('sizes-close').focus();
+            loadSizes();
+        }
+        function closeSizes() {
+            if (_sizesBusy) return;
+            $('sizes-modal').classList.remove('open');
+            if (_sizesTrigger) _sizesTrigger.focus();
+            _sizesProduct = null; _sizesData = null;
+        }
+        function loadSizes() {
+            var id = _sizesProduct.id;
+            return api('/api/admin/products/' + id + '/sizes')
+                .then(function (r) { if (!r.ok) throw new Error(tr('adm.inventoryError')); return r.json(); })
+                .then(function (data) { if (_sizesProduct && _sizesProduct.id === id) renderSizesAdmin(data); })
+                .catch(function (e) { if (_sizesProduct && _sizesProduct.id === id) $('sizes-error').textContent = e.message; });
+        }
+        function renderSizesAdmin(data) {
+            _sizesData = data;
+            var base = data.variants.find(function (v) { return v.is_base; });
+            var rows = data.variants.filter(function (v) { return !v.is_base; });
+            var missing = data.allowed_sizes.filter(function (s) { return !rows.some(function (v) { return v.size === s; }); });
+            $('sizes-title').textContent = tr('adm.manageSizes') + ' — ' + data.product.name_vi;
+            $('sizes-summary').textContent = tr('adm.sizeSummary', { total: data.product.stock, base: base ? base.stock : 0 });
+            $('sizes-add').innerHTML = missing.map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
+            $('sizes-create').disabled = $('sizes-create-all').disabled = !missing.length || !data.product.is_active;
+            $('sizes-allocate').disabled = !rows.length || !base || base.stock === 0;
+            $('sizes-body').innerHTML = rows.map(function (v) {
+                return '<tr data-size-row="' + v.id + '"><td>' + esc(v.size) + '</td>' +
+                    '<td><input type="number" min="0" max="2147483647" step="1" data-size-stock="' + v.id + '" value="' + v.stock + '" aria-label="' + esc(tr('adm.sizeStock') + ' ' + v.size) + '"></td>' +
+                    '<td><input type="checkbox" data-size-active="' + v.id + '"' + (v.is_active ? ' checked' : '') + ' aria-label="' + esc(tr('adm.sizeActive') + ' ' + v.size) + '"></td>' +
+                    '<td><input type="number" min="0" step="1" data-size-allocation="' + v.id + '" value="0" aria-label="' + esc(tr('adm.sizeAllocate') + ' ' + v.size) + '"></td>' +
+                    '<td><button type="button" class="adm-btn ghost small" data-size-save="' + v.id + '">' + tr('com.save') + '</button></td></tr>';
+            }).join('');
+        }
+        function mutateSizes(suffix, method, body) {
+            if (_sizesBusy || !_sizesProduct) return;
+            _sizesBusy = true;
+            $('sizes-error').textContent = '';
+            return api('/api/admin/products/' + _sizesProduct.id + '/' + suffix, { method: method, body: JSON.stringify(body) })
+                .then(function (r) { return r.json().then(function (data) { if (!r.ok) throw new Error(data.message || tr('com.netErr')); return data; }); })
+                .then(function (data) { renderSizesAdmin(data); loadProducts(); })
+                .catch(function (e) { $('sizes-error').textContent = e.message; return loadSizes(); })
+                .finally(function () { _sizesBusy = false; });
+        }
+        function createSizes(all) {
+            if (!_sizesData) return;
+            var sizes = all ? _sizesData.allowed_sizes.filter(function (s) {
+                return !_sizesData.variants.some(function (v) { return v.size === s; });
+            }) : [$('sizes-add').value];
+            return mutateSizes('sizes', 'POST', { sizes: sizes });
+        }
+        function allocateSizes() {
+            if (!_sizesData || _sizesBusy) return;
+            var list = [];
+            $('sizes-body').querySelectorAll('[data-size-allocation]').forEach(function (input) {
+                var qty = Number(input.value);
+                if (qty !== 0) list.push({ variant_id: Number(input.getAttribute('data-size-allocation')), quantity: qty });
+            });
+            var total = list.reduce(function (sum, x) { return sum + x.quantity; }, 0);
+            return confirmDialog(tr('adm.sizeConfirm', { total: total })).then(function (ok) {
+                if (ok) return mutateSizes('size-allocation', 'POST', { allocations: list });
+            });
+        }
+        function saveSize(e) {
+            var btn = e.target.closest('[data-size-save]');
+            if (!btn || !_sizesData) return;
+            var id = Number(btn.getAttribute('data-size-save'));
+            var v = _sizesData.variants.find(function (x) { return x.id === id; });
+            return mutateSizes('sizes/' + id, 'PUT', {
+                stock: Number($('sizes-body').querySelector('[data-size-stock="' + id + '"]').value),
+                expected_stock: v.stock,
+                is_active: $('sizes-body').querySelector('[data-size-active="' + id + '"]').checked,
+                reason: $('sizes-reason').value.trim()
+            });
+        }
+
+        // --- Color management: one modal, same table/buttons/confirmation pattern. ---
+        var _colorsProduct = null, _colorsData = null, _colorsTrigger = null, _colorsBusy = false;
+        function openColors(p, trigger) {
+            if (!p || _colorsBusy) return;
+            _colorsProduct = p; _colorsTrigger = trigger; _colorsData = null;
+            $('colors-error').textContent = '';
+            $('colors-body').innerHTML = '';
+            $('colors-summary').textContent = tr('com.loading');
+            $('colors-name').value = $('colors-hex').value = $('colors-reason').value = '';
+            $('colors-modal').classList.add('open');
+            $('colors-close').focus();
+            loadColors();
+        }
+        function closeColors() {
+            if (_colorsBusy) return;
+            $('colors-modal').classList.remove('open');
+            if (_colorsTrigger) _colorsTrigger.focus();
+            _colorsProduct = _colorsData = null;
+        }
+        function loadColors() {
+            var id = _colorsProduct.id;
+            return api('/api/admin/products/' + id + '/colors')
+                .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.message); return d; }); })
+                .then(function (d) { if (_colorsProduct && _colorsProduct.id === id) renderColorsAdmin(d); })
+                .catch(function (e) { $('colors-error').textContent = e.message || tr('com.netErr'); });
+        }
+        function renderColorsAdmin(data) {
+            _colorsData = data;
+            $('colors-title').textContent = tr('adm.manageColors') + ' — ' + data.product.name_vi;
+            $('colors-summary').textContent = tr('adm.colorSummary', { total: data.product.stock,
+                source: data.variants.filter(function (v) { return v.color == null; }).reduce(function (s, v) { return s + v.stock; }, 0) });
+            var missing = data.allowed_sizes.filter(function (s) { return !data.variants.some(function (v) { return v.size === s; }); });
+            $('colors-size-row').hidden = !data.colors.length || !missing.length;
+            $('colors-size').innerHTML = missing.map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
+            $('colors-allocate').disabled = !data.colors.length;
+            $('colors-body').innerHTML = data.colors.length ? data.colors.map(function (c) {
+                var rows = c.variants.map(function (v) {
+                    var source = data.variants.find(function (x) { return x.color == null &&
+                        (v.size == null ? x.is_base : x.size === v.size); });
+                    return '<tr><td>' + esc(v.size || '—') + '</td><td>' + esc(v.sku) + '</td>' +
+                        '<td><input type="number" min="0" step="1" data-color-stock="' + v.id + '" value="' + v.stock + '"></td>' +
+                        '<td><input type="checkbox" data-color-variant-active="' + v.id + '"' + (v.is_active ? ' checked' : '') + '></td>' +
+                        '<td>' + (source ? source.stock : '—') + '</td>' +
+                        '<td><input type="number" min="0" step="1" data-color-allocation="' + v.id + '" value="0"' + (source && source.stock ? '' : ' disabled') + '></td>' +
+                        '<td><button type="button" class="adm-btn ghost small" data-color-variant-save="' + v.id + '">' + tr('com.save') + '</button></td></tr>';
+                }).join('');
+                var images = c.images.map(function (im) {
+                    return '<div class="adm-color-head" data-color-image="' + im.id + '">' +
+                        '<img src="' + esc(im.image_path) + '" alt="">' +
+                        '<span>' + esc(im.image_path) + '</span>' +
+                        '<input type="number" min="0" step="1" data-image-order="' + im.id + '" value="' + im.sort_order + '" aria-label="' + tr('adm.imageOrder') + '">' +
+                        '<label><input type="radio" name="primary-' + c.id + '" data-image-primary="' + im.id + '"' + (im.is_primary ? ' checked' : '') + '> ' + tr('adm.primaryImage') + '</label>' +
+                        '<button type="button" class="adm-btn ghost small" data-image-save="' + im.id + '" data-color-id="' + c.id + '">' + tr('com.save') + '</button>' +
+                        '<button type="button" class="adm-btn ghost small" data-image-delete="' + im.id + '" data-color-id="' + c.id + '">' + tr('com.delete') + '</button></div>';
+                }).join('');
+                return '<section class="adm-color-card" data-color-card="' + c.id + '">' +
+                    '<div class="adm-color-head"><input type="text" maxlength="80" data-color-label="' + c.id + '" value="' + esc(c.label) + '">' +
+                    '<input type="text" maxlength="7" class="adm-color-hex" data-color-hex="' + c.id + '" value="' + esc(c.swatch_hex || '') + '" placeholder="#000000">' +
+                    '<label><input type="checkbox" data-color-active="' + c.id + '"' + (c.is_active ? ' checked' : '') + '> ' + tr('adm.sizeActive') + '</label>' +
+                    '<button type="button" class="adm-btn ghost small" data-color-save="' + c.id + '">' + tr('com.save') + '</button></div>' +
+                    '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>' + tr('pd.thSize') + '</th><th>SKU</th><th>' + tr('adm.sizeStock') +
+                    '</th><th>' + tr('adm.sizeActive') + '</th><th>' + tr('adm.colorSource') + '</th><th>' + tr('adm.sizeAllocate') + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+                    '<div class="adm-color-images"><strong>' + tr('adm.colorImages') + '</strong>' +
+                    (images || '<p class="hint">' + tr('adm.noColorImages') + '</p>') +
+                    '<div class="adm-color-head"><input type="text" data-image-path="' + c.id + '" placeholder="img/products/' + esc(data.product.slug) + '/' + esc(c.color_key) + '-01.webp">' +
+                    '<button type="button" class="adm-btn ghost small" data-image-add="' + c.id + '">' + tr('adm.addImage') + '</button></div></div></section>';
+            }).join('') : '<p class="hint">' + tr('adm.noColors') + '</p>';
+        }
+        function mutateColors(suffix, method, body) {
+            if (!_colorsProduct || _colorsBusy) return;
+            _colorsBusy = true; $('colors-error').textContent = '';
+            return api('/api/admin/products/' + _colorsProduct.id + '/' + suffix,
+                { method: method, body: JSON.stringify(body || {}) })
+                .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.message); return d; }); })
+                .then(function (d) { renderColorsAdmin(d); loadProducts(); })
+                .catch(function (e) { $('colors-error').textContent = e.message || tr('com.netErr'); return loadColors(); })
+                .finally(function () { _colorsBusy = false; });
+        }
+        function colorBodyClick(e) {
+            if (!_colorsData || _colorsBusy) return;
+            var b = e.target.closest('button'); if (!b) return;
+            var id = Number(b.getAttribute('data-color-save'));
+            if (id) return mutateColors('colors/' + id, 'PUT', {
+                label: $('colors-body').querySelector('[data-color-label="' + id + '"]').value,
+                swatch_hex: $('colors-body').querySelector('[data-color-hex="' + id + '"]').value,
+                is_active: $('colors-body').querySelector('[data-color-active="' + id + '"]').checked });
+            id = Number(b.getAttribute('data-color-variant-save'));
+            if (id) {
+                var v = _colorsData.variants.find(function (x) { return x.id === id; });
+                return mutateColors('color-variants/' + id, 'PUT', {
+                    stock: Number($('colors-body').querySelector('[data-color-stock="' + id + '"]').value),
+                    expected_stock: v.stock,
+                    is_active: $('colors-body').querySelector('[data-color-variant-active="' + id + '"]').checked,
+                    reason: $('colors-reason').value.trim() });
+            }
+            id = Number(b.getAttribute('data-image-add'));
+            if (id) return mutateColors('colors/' + id + '/images', 'POST', {
+                image_path: $('colors-body').querySelector('[data-image-path="' + id + '"]').value.trim() });
+            id = Number(b.getAttribute('data-image-save'));
+            if (id) return mutateColors('colors/' + b.getAttribute('data-color-id') + '/images/' + id, 'PUT', {
+                sort_order: Number($('colors-body').querySelector('[data-image-order="' + id + '"]').value),
+                is_primary: $('colors-body').querySelector('[data-image-primary="' + id + '"]').checked });
+            id = Number(b.getAttribute('data-image-delete'));
+            if (id) return confirmDialog(tr('adm.removeImageConfirm')).then(function (ok) {
+                if (ok) return mutateColors('colors/' + b.getAttribute('data-color-id') + '/images/' + id, 'DELETE');
+            });
+        }
+        function allocateColors() {
+            if (!_colorsData || _colorsBusy) return;
+            var list = [];
+            $('colors-body').querySelectorAll('[data-color-allocation]').forEach(function (input) {
+                var quantity = Number(input.value), id = Number(input.getAttribute('data-color-allocation'));
+                if (!quantity) return;
+                var target = _colorsData.variants.find(function (v) { return v.id === id; });
+                var source = _colorsData.variants.find(function (v) { return v.color == null &&
+                    (target.size == null ? v.is_base : v.size === target.size); });
+                if (source) list.push({ source_variant_id: source.id, target_variant_id: id, quantity: quantity,
+                    expected_source_stock: source.stock, expected_target_stock: target.stock });
+            });
+            var total = list.reduce(function (n, x) { return n + x.quantity; }, 0);
+            if (!total) return;
+            return confirmDialog(tr('adm.colorConfirm', { total: total })).then(function (ok) {
+                if (ok) return mutateColors('color-allocation', 'POST', { allocations: list });
+            });
+        }
+
         // --- Product modal ---------------------------------------------------
         function openModal(p) {
             $('modal-err').style.display = 'none';
+            $('f-stock').readOnly = !!(p && (p.size_configured || p.color_configured));
+            $('size-stock-hint').hidden = !(p && (p.size_configured || p.color_configured));
             if (p) {
                 $('modal-title').textContent = tr('adm.modalEdit', { id: p.id });
                 $('f-id').value = p.id;
@@ -275,16 +580,66 @@
                 $('f-desc-en').value = p.description_en || '';
                 $('f-active').checked = !!p.is_active;
                 if (p.category_id != null) $('f-category').value = String(p.category_id);
+                $('stock-reason-field').hidden = !!(p.size_configured || p.color_configured);
             } else {
                 $('modal-title').textContent = tr('adm.modalAdd');
                 $('prod-form').reset();
                 $('f-id').value = '';
                 $('f-stock').value = '0';
                 $('f-active').checked = true;
+                $('stock-reason-field').hidden = true;
             }
+            $('f-stock-reason').value = '';
+            $('f-stock-reason').required = false;
             $('prod-modal').classList.add('open');
         }
         function closeModal() { $('prod-modal').classList.remove('open'); }
+
+        // --- Confirm modal dùng chung (thay window.confirm) -------------------
+        var FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+        var _confirmTrigger = null;   // phần tử đã mở modal, để trả focus về khi đóng
+        var _confirmResolve = null;   // resolve() của Promise confirmDialog() đang chờ
+
+        // resolve(true) khi bấm Xác nhận; resolve(false) khi Huỷ / Esc / click ra backdrop.
+        // opts.danger: true -> nút Xác nhận đổi sang biến thể đỏ (adm-btn danger).
+        function confirmDialog(message, opts) {
+            return new Promise(function (resolve) {
+                _confirmResolve = resolve;
+                _confirmTrigger = document.activeElement;
+                // textContent, không innerHTML: message có nội suy tên sản phẩm từ dữ liệu (adm.confirmDelProd).
+                $('confirm-message').textContent = message;
+                $('confirm-ok').classList.toggle('danger', !!(opts && opts.danger));
+                $('confirm-modal').classList.add('open');
+                setTimeout(function () { var b = $('confirm-cancel'); if (b) b.focus(); }, 0);
+            });
+        }
+
+        function closeConfirm(result) {
+            $('confirm-modal').classList.remove('open');
+            if (_confirmTrigger && _confirmTrigger.focus) { try { _confirmTrigger.focus(); } catch (e) { /* bỏ qua */ } }
+            _confirmTrigger = null;
+            var resolve = _confirmResolve;
+            _confirmResolve = null;
+            if (resolve) resolve(result);
+        }
+
+        // Focus trap + ESC — cùng pattern onModalKeydown đã dùng ở modal địa chỉ
+        // (change-password.js / payment-methods.js). Gắn trên chính #confirm-modal
+        // (không phải document) nên chỉ nổ khi phần tử đang focus nằm trong modal.
+        function onConfirmKeydown(e) {
+            if (e.key === 'Escape' || e.keyCode === 27) { e.preventDefault(); closeConfirm(false); return; }
+            if (e.key !== 'Tab' && e.keyCode !== 9) return;
+            var modal = $('confirm-modal');
+            var nodes = modal.querySelectorAll(FOCUSABLE);
+            var list = [];
+            for (var i = 0; i < nodes.length; i++) {
+                if (nodes[i].offsetWidth > 0 || nodes[i].offsetHeight > 0 || nodes[i] === document.activeElement) list.push(nodes[i]);
+            }
+            if (!list.length) return;
+            var first = list[0], last = list[list.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
 
         function parseImages(str) {
             return String(str || '').split(/[\n,]/).map(function (s) { return s.trim(); }).filter(Boolean);
@@ -308,6 +663,8 @@
                 is_active: $('f-active').checked
             };
             var isEdit = !!id;
+            if (isEdit && _prodCache[id] && (_prodCache[id].size_configured || _prodCache[id].color_configured)) delete body.stock;
+            if (isEdit) body.stock_reason = $('f-stock-reason').value.trim();
             var path = isEdit ? ('/api/admin/products/' + id) : '/api/admin/products';
             var method = isEdit ? 'PUT' : 'POST';
 
@@ -334,21 +691,24 @@
 
         function deleteProduct(p) {
             if (!p) return;
-            if (!window.confirm(tr('adm.confirmDelProd', { name: p.name_vi }))) return;
-            api('/api/admin/products/' + p.id, { method: 'DELETE' })
-                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-                .then(function (res) {
-                    if (!res.ok) { toast((res.j && res.j.message) || tr('adm.delFail'), true); return; }
-                    toast(res.j.mode === 'soft' ? tr('adm.softDeleted') : tr('adm.prodDeleted'));
-                    loadProducts();
-                })
-                .catch(function (e) { console.error(e); toast(tr('com.netErr'), true); });
+            confirmDialog(tr('adm.confirmDelProd', { name: p.name_vi }), { danger: true }).then(function (ok) {
+                if (!ok) return;
+                api('/api/admin/products/' + p.id, { method: 'DELETE' })
+                    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                    .then(function (res) {
+                        if (!res.ok) { toast((res.j && res.j.message) || tr('adm.delFail'), true); return; }
+                        toast(res.j.mode === 'soft' ? tr('adm.softDeleted') : tr('adm.prodDeleted'));
+                        loadProducts();
+                    })
+                    .catch(function (e) { console.error(e); toast(tr('com.netErr'), true); });
+            });
         }
 
         // --- Orders ----------------------------------------------------------
         var _orderPage = 1;
         var _orderFilters = { status: '', q: '' };  // gửi xuống server; lọc TOÀN BỘ đơn, không chỉ 1 trang
         var _orderSearchTimer = null;
+        var _orderRequest = 0;
 
         // Đọc trạng thái filter/search từ UI vào _orderFilters.
         function readOrderFilters() {
@@ -365,14 +725,25 @@
             return '/api/admin/orders?' + params.join('&');
         }
 
-        function loadOrders(page) {
+        function loadOrders(page, revealId, exactId) {
+            var request = ++_orderRequest;
             _orderPage = page || 1;
             $('order-body').innerHTML = skeletonRows(7, 8);
             $('order-pager').innerHTML = '';
-            return api(orderQuery())
+            return api(exactId ? '/api/admin/orders?order_id=' + encodeURIComponent(revealId) + '&limit=1' : orderQuery())
                 .then(function (r) { if (!r.ok) throw new Error('orders ' + r.status); return r.json(); })
-                .then(renderOrders)
+                .then(function (data) {
+                    if (request !== _orderRequest) return;
+                    renderOrders(data);
+                    if (revealId) {
+                        var row = $('oi-' + revealId);
+                        var toggle = $('order-body').querySelector('[data-toggle="' + revealId + '"]');
+                        if (row) row.style.display = 'table-row';
+                        if (toggle) toggle.focus();
+                    }
+                })
                 .catch(function (e) {
+                    if (request !== _orderRequest) return;
                     console.error('[admin] load orders lỗi:', e);
                     $('order-body').innerHTML = '<tr><td colspan="7" class="adm-empty">' + tr('adm.errLoadOrders') + '</td></tr>';
                 });
@@ -386,12 +757,18 @@
         }
 
         // Dựng HTML cho 1 đơn (hàng chính + hàng chi tiết ẩn). Giữ nguyên markup cũ.
-        function orderRowHTML(o) {
-            var opts = ORDER_STATUSES.map(function (s) {
-                return '<option value="' + s + '"' + (s === o.status ? ' selected' : '') + '>' + statusLabel(s) + '</option>';
+        function statusOptions(current, next) {
+            return [current].concat(Array.isArray(next) ? next : []).map(function (s) {
+                return '<option value="' + esc(s) + '"' + (s === current ? ' selected' : '') + '>' + esc(statusLabel(s)) + '</option>';
             }).join('');
+        }
+        function orderRowHTML(o) {
+            var next = Array.isArray(o.allowed_next_statuses) ? o.allowed_next_statuses : [];
+            var opts = statusOptions(o.status, next);
             var itemRows = (o.items || []).map(function (it) {
-                return '<tr><td class="inner">' + esc(it.product_name) + '</td>' +
+                return '<tr><td class="inner">' + esc(it.product_name) +
+                    (it.size_snapshot ? '<br><small>' + tr('pd.thSize') + ': ' + esc(it.size_snapshot) + '</small>' : '') +
+                    (it.color_snapshot ? '<br><small>' + tr('co.metaColor') + ': ' + esc(it.color_snapshot) + '</small>' : '') + '</td>' +
                     '<td class="inner">' + money(it.unit_price) + '</td>' +
                     '<td class="inner">' + it.quantity + '</td>' +
                     '<td class="inner">' + money(it.line_total) + '</td></tr>';
@@ -402,32 +779,59 @@
                 ? '<p class="oi-voucher">' + tr('adm.voucherLine') + ' <strong>' + esc(o.voucher_code || '—') +
                   '</strong> · ' + tr('adm.discountWord') + ' ' + money(o.discount_amount || 0) + '</p>'
                 : '';
+            var cancelLine = o.cancel_reason
+                ? '<p class="oi-voucher">' + tr('adm.cancelReason') + ': ' + esc(o.cancel_reason) + '</p>'
+                : '';
             // Đơn không có/không nhận diện được hình thức thanh toán -> "—" (không để trống vỡ bảng).
             // Tên biến KHÁC tên hàm paymentLabel() — trùng tên thì `var` hoisted sẽ che
             // mất hàm ngay trong scope này và ném TypeError, làm rỗng cả bảng đơn hàng.
             var payLabel = esc(paymentLabel(o.payment_method));
             var invoiceBtn = '<button type="button" class="adm-btn ghost small" data-invoice="' + o.id + '">' + tr('adm.btnInvoice') + '</button> ';
             return '<tr>' +
-                    '<td class="num">' + o.id + '</td>' +
+                    '<td class="num">' + esc(window.BreezeOrderShipping.code(o)) + '</td>' +
                     '<td>' + esc(cust) + '</td>' +
                     '<td>' + fmtDate(o.created_at) + '</td>' +
                     '<td>' + payLabel + '</td>' +
                     '<td class="num">' + money(o.total_amount) + '</td>' +
-                    '<td><select class="status-sel" data-order="' + o.id + '">' + opts + '</select></td>' +
+                    '<td><select class="status-sel" data-order="' + o.id + '" data-order-code="' + esc(window.BreezeOrderShipping.code(o)) + '" data-current="' + esc(o.status) + '"' +
+                        (next.length ? '' : ' disabled') + '>' + opts + '</select></td>' +
                     '<td style="white-space:nowrap;">' +
                         '<button type="button" class="adm-btn ghost small" data-toggle="' + o.id + '">' + tr('adm.btnDetail') + '</button> ' +
                         invoiceBtn +
-                        '<button type="button" class="adm-btn danger small" data-del-order="' + o.id + '">' + tr('com.delete') + '</button>' +
+                        '<button type="button" class="adm-btn danger small" data-del-order="' + o.id + '" data-order-code="' + esc(window.BreezeOrderShipping.code(o)) + '">' + tr('com.delete') + '</button>' +
                     '</td>' +
                 '</tr>' +
                 '<tr class="oi-detail" id="oi-' + o.id + '" style="display:none;"><td colspan="7">' +
                     '<table><thead><tr><th>' + tr('adm.thProdName') + '</th><th>' + tr('adm.thUnitPrice') + '</th><th>' + tr('adm.thQtyShort') + '</th><th>' + tr('adm.thLineTotal') + '</th></tr></thead>' +
                     '<tbody>' + (itemRows || '<tr><td class="inner" colspan="4">' + tr('adm.noLines') + '</td></tr>') + '</tbody></table>' +
+                    window.BreezeOrderShipping.details(o) + shippingControls(o) +
+                    window.BreezeOrderPayment.details(o, false) +
                     voucherLine +
+                    cancelLine +
                 '</td></tr>';
         }
 
+        function shippingControls(o) {
+            if (o.shipping_version !== 2) return '';
+            var next = o.allowed_shipping_statuses || [];
+            return '<label class="adm-shipping-control">' + esc(tr('ship.update')) +
+                ' <select data-shipping-order="' + o.id + '"' + (next.length ? '' : ' disabled') + '>' +
+                [o.shipping_status].concat(next).map(function (s) {
+                    return '<option value="' + esc(s) + '">' + esc(tr('ship.status.' + s)) + '</option>';
+                }).join('') + '</select></label>';
+        }
+
         function attachOrderRowHandlers() {
+            $('order-body').querySelectorAll('[data-shipping-order]').forEach(function (sel) {
+                sel.addEventListener('change', function () {
+                    var id = sel.getAttribute('data-shipping-order');
+                    sel.disabled = true;
+                    api('/api/admin/orders/' + id + '/shipping-status', { method: 'PATCH', body: JSON.stringify({ shipping_status: sel.value }) })
+                        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || tr('adm.updFail')); }); })
+                        .catch(function (e) { toast(e.message || tr('com.netErr'), true); })
+                        .then(function () { loadOrders(_orderPage, id); });
+                });
+            });
             $('order-body').querySelectorAll('.status-sel').forEach(function (sel) {
                 sel.addEventListener('change', function () { changeStatus(sel.getAttribute('data-order'), sel.value, sel); });
             });
@@ -477,36 +881,49 @@
         }
 
         function deleteOrder(orderId, btn) {
-            if (!window.confirm(tr('adm.confirmDelOrder'))) return;
-            btn.disabled = true;
-            api('/api/admin/orders/' + orderId, { method: 'DELETE' })
-                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-                .then(function (res) {
-                    if (!res.ok) { toast((res.j && res.j.message) || tr('adm.delOrderFail'), true); btn.disabled = false; return; }
-                    toast(tr('adm.orderDeleted', { id: orderId }));
-                    loadOrders(_orderPage); // tải lại trang hiện tại
-                })
-                .catch(function (e) { console.error(e); toast(tr('com.netErr'), true); btn.disabled = false; });
+            confirmDialog(tr('adm.confirmDelOrder'), { danger: true }).then(function (ok) {
+                if (!ok) return;
+                btn.disabled = true;
+                api('/api/admin/orders/' + orderId, { method: 'DELETE' })
+                    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                    .then(function (res) {
+                        if (!res.ok) { toast((res.j && res.j.message) || tr('adm.delOrderFail'), true); btn.disabled = false; return; }
+                        toast(tr('adm.orderDeleted', { id: btn.getAttribute('data-order-code') || orderId }));
+                        loadOrders(_orderPage); // tải lại trang hiện tại
+                    })
+                    .catch(function (e) { console.error(e); toast(tr('com.netErr'), true); btn.disabled = false; });
+            });
         }
 
         function changeStatus(orderId, status, sel) {
             var prev = sel.getAttribute('data-current') || '';
+            var canChange = true;
             sel.disabled = true;
             api('/api/admin/orders/' + orderId + '/status', { method: 'PUT', body: JSON.stringify({ status: status }) })
-                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
                 .then(function (res) {
-                    if (!res.ok) { toast((res.j && res.j.message) || tr('adm.updFail'), true); if (prev) sel.value = prev; return; }
+                    if (!res.ok) {
+                        toast((res.j && res.j.message) || tr('adm.updFail'), true);
+                        if (prev) sel.value = prev;
+                        if (res.status === 409) loadOrders(_orderPage);
+                        return;
+                    }
+                    var order = res.j && res.j.order;
+                    var next = order && order.allowed_next_statuses;
+                    sel.innerHTML = statusOptions(status, next);
                     sel.setAttribute('data-current', status);
-                    toast(tr('adm.statusUpdated', { id: orderId }));
+                    canChange = Array.isArray(next) && next.length > 0;
+                    toast(tr('adm.statusUpdated', { id: sel.getAttribute('data-order-code') || orderId }));
+                    loadOrders(_orderPage, orderId);
                 })
                 .catch(function (e) { console.error(e); toast(tr('com.netErr'), true); if (prev) sel.value = prev; })
-                .then(function () { sel.disabled = false; });
+                .then(function () { sel.disabled = !canChange; });
         }
 
         // --- Dashboard -------------------------------------------------------
         // ===== Dashboard — KPI cards + chart, filter theo khoảng ngày =====
         var _dashRange = null;   // {from, to} đang xem
-        var _lastDaily = [];     // dailyRevenue gần nhất (dùng cho Xuất CSV)
+        var _exporting = false, _exportEpoch = 0;
         var KPI_VAL_IDS = ['kpi-revenue-val', 'kpi-orders-val', 'kpi-customers-val', 'kpi-aov-val'];
         var VN_MONTHS = ['thg 1', 'thg 2', 'thg 3', 'thg 4', 'thg 5', 'thg 6', 'thg 7', 'thg 8', 'thg 9', 'thg 10', 'thg 11', 'thg 12'];
         var EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -609,9 +1026,10 @@
             var q = '?from=' + encodeURIComponent(range.from) + '&to=' + encodeURIComponent(range.to);
             return api('/api/admin/stats' + q)
                 .then(function (r) { if (!r.ok) throw new Error('stats ' + r.status); return r.json(); })
-                .then(renderStats)
+                .then(function (data) { if (range === _dashRange) renderStats(data); })
                 .catch(function (e) {
                     console.error('[admin] load stats lỗi:', e);
+                    if (range !== _dashRange) return;
                     kpiSkeleton(false);
                     KPI_VAL_IDS.forEach(function (id) { if ($(id)) $(id).textContent = '—'; });
                     renderRevenueChart([]);
@@ -629,22 +1047,41 @@
             var sub = $('dash-range');
             if (sub && s.range) sub.textContent = fmtRangeLabel(s.range.from, s.range.to);
 
-            _lastDaily = s.dailyRevenue || [];
-            renderRevenueChart(_lastDaily);
+            renderRevenueChart(s.dailyRevenue || []);
         }
 
-        // Xuất dailyRevenue đang xem ra CSV (client-side, Blob) — không cần route backend.
-        function exportCsv() {
-            if (!_lastDaily.length) return;
-            var rows = [[tr('adm.csvDate'), tr('adm.csvRevenue')]].concat(_lastDaily.map(function (d) { return [d.date, d.revenue]; }));
-            var csv = rows.map(function (r) { return r.join(','); }).join('\n');
-            var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = tr('adm.csvFile') + '_' + (_dashRange ? _dashRange.from + '_' + _dashRange.to : 'export') + '.csv';
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        // Fetch an authorized report for the selected Dashboard range. No stale cached CSV.
+        async function exportCsv() {
+            if (_exporting || !_dashRange || !document.body.classList.contains('adm-authed')) return;
+            var range = { from: _dashRange.from, to: _dashRange.to }, epoch = _exportEpoch;
+            var button = $('dash-export'), label = button && button.querySelector('[data-i18n]');
+            _exporting = true;
+            if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
+            if (label) label.textContent = tr('report.exporting');
+            var url = null;
+            try {
+                var response = await api('/api/admin/stats/business-report?from=' + encodeURIComponent(range.from) + '&to=' + encodeURIComponent(range.to));
+                if (!response.ok) throw new Error('report');
+                var data = await response.json();
+                if (epoch !== _exportEpoch || !document.body.classList.contains('adm-authed')) return;
+                if (!_dashRange || range.from !== _dashRange.from || range.to !== _dashRange.to) {
+                    toast(tr('report.rangeChanged'), true); return;
+                }
+                if (!data.range || data.range.from !== range.from || data.range.to !== range.to) throw new Error('report range');
+                var csv = window.BreezeBusinessCsv.create(data, tr);
+                url = URL.createObjectURL(new Blob([csv.content], { type: 'text/csv;charset=utf-8;' }));
+                var link = document.createElement('a');
+                link.href = url; link.download = csv.filename;
+                document.body.appendChild(link);
+                try { link.click(); } finally { document.body.removeChild(link); }
+            } catch (_) {
+                if (epoch === _exportEpoch && document.body.classList.contains('adm-authed')) toast(tr('report.error'), true);
+            } finally {
+                if (url) setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+                _exporting = false;
+                if (button) { button.disabled = false; button.removeAttribute('aria-busy'); }
+                if (label) label.textContent = tr('adm.exportCsv');
+            }
         }
 
         // --- Revenue chart (Chart.js) — dữ liệu dailyRevenue [{date, revenue}] ---
@@ -776,7 +1213,7 @@
             tb.innerHTML = orders.map(function (o) {
                 var cust = o.user_email || o.user_name || ('user #' + o.user_id);
                 return '<tr>' +
-                    '<td class="num">' + o.id + '</td>' +
+                    '<td class="num">' + esc(window.BreezeOrderShipping.code(o)) + '</td>' +
                     '<td>' + esc(cust) + '</td>' +
                     '<td>' + fmtDate(o.created_at) + '</td>' +
                     '<td>' + statusPill(o.status) + '</td>' +
@@ -787,9 +1224,9 @@
 
         // ===== Widget: Trạng thái đơn (donut) =====
         var _statusChart = null;
-        var STATUS_ORDER = ['completed', 'paid', 'shipped', 'pending', 'cancelled'];
+        var STATUS_ORDER = ['completed', 'shipping', 'processing', 'confirmed', 'pending', 'cancelled', 'paid', 'shipped'];
         // Sắc độ trung tính (giữ tông luxury Breeze) — không dùng màu rực rỡ.
-        var STATUS_COLORS = { completed: '#1C1B19', paid: '#57534E', shipped: '#78716C', pending: '#A8A29E', cancelled: '#D6D3D1' };
+        var STATUS_COLORS = { completed: '#1C1B19', shipping: '#78716C', processing: '#57534E', confirmed: '#8A8178', pending: '#A8A29E', cancelled: '#D6D3D1', paid: '#57534E', shipped: '#78716C' };
 
         function loadOrderStatus(range) {
             var l = $('status-loading'), e = $('status-empty'), c = $('status-chart'), center = $('status-total'), leg = $('status-legend');
@@ -893,7 +1330,7 @@
             el.innerHTML = arr.map(function (p) {
                 var name = esc(p.name || '');
                 return '<li>' +
-                    '<img src="' + esc(p.imageUrl || 'img/breeze.png') + '" alt="' + name + '" onerror="this.src=\'img/breeze.png\'">' +
+                    '<img src="' + esc(p.imageUrl || TOP_IMG_FALLBACK) + '" alt="' + name + '">' +
                     '<div class="top-main"><div class="top-name">' + name + '</div></div>' +
                     '<div class="top-side">' +
                         '<div class="top-units">' + Number(p.unitsSold || 0).toLocaleString('vi-VN') + ' ' + tr('adm.topSold') + '</div>' +
@@ -907,14 +1344,14 @@
         var _userPage = 1;
         function loadUsers(page) {
             _userPage = page || 1;
-            $('user-body').innerHTML = skeletonRows(6, 8);
+            $('user-body').innerHTML = skeletonRows(7, 8);
             $('user-pager').innerHTML = '';
             return api('/api/admin/users?page=' + _userPage + '&limit=20')
                 .then(function (r) { if (!r.ok) throw new Error('users ' + r.status); return r.json(); })
                 .then(renderUsers)
                 .catch(function (e) {
                     console.error('[admin] load users lỗi:', e);
-                    $('user-body').innerHTML = '<tr><td colspan="6" class="adm-empty">' + tr('adm.errLoadUsers') + '</td></tr>';
+                    $('user-body').innerHTML = '<tr><td colspan="7" class="adm-empty">' + tr('adm.errLoadUsers') + '</td></tr>';
                 });
         }
 
@@ -928,7 +1365,7 @@
             var users = (data && data.users) || [];
             $('user-count').textContent = '(' + ((data && data.total) || 0) + ')';
             if (!users.length) {
-                $('user-body').innerHTML = '<tr><td colspan="6" class="adm-empty">' + tr('adm.emptyUsers') + '</td></tr>';
+                $('user-body').innerHTML = '<tr><td colspan="7" class="adm-empty">' + tr('adm.emptyUsers') + '</td></tr>';
                 $('user-pager').innerHTML = '';
                 return;
             }
@@ -949,6 +1386,7 @@
                     '<td>' + (u.created_at ? fmtDate(u.created_at) : '—') + '</td>' +
                     '<td>' + (u.last_login ? fmtDate(u.last_login) : '—') + '</td>' +
                     '<td>' + blCell + '</td>' +
+                    '<td><button type="button" class="adm-btn ghost small" data-customer-detail="' + u.id + '">' + tr('adm.btnDetail') + '</button></td>' +
                 '</tr>';
             }).join('');
 
@@ -966,19 +1404,147 @@
             if (next) next.addEventListener('click', function () { loadUsers(_userPage + 1); });
         }
 
+        // --- Customer Detail: read-only, independent from user-list pagination. ---
+        var _customerId = null, _customerPage = 1, _customerData = null;
+        var _customerRequest = 0, _customerTrigger = null, _customerMessageKey = 'com.loading';
+
+        function openCustomerDetail(userId, trigger) {
+            _customerTrigger = trigger;
+            _customerId = userId;
+            $('customer-modal').classList.add('open');
+            document.body.classList.add('customer-detail-open');
+            $('customer-close').focus();
+            return loadCustomerDetail(1);
+        }
+
+        function closeCustomerDetail() {
+            if (!_customerId) return;
+            // Switching language reloads the user table and can replace the opener.
+            var trigger = _customerTrigger;
+            if (trigger && trigger.isConnected === false) {
+                trigger = $('user-body').querySelector('[data-customer-detail="' + _customerId + '"]') ||
+                    document.querySelector('.adm-nav-item[data-nav="users"]');
+            }
+            ++_customerRequest; // A response arriving after close must not restore private data.
+            _customerId = null;
+            _customerData = null;
+            $('customer-modal').classList.remove('open');
+            document.body.classList.remove('customer-detail-open');
+            $('customer-content').hidden = true;
+            $('customer-info').innerHTML = '';
+            $('customer-orders').innerHTML = '';
+            if (trigger) trigger.focus();
+            _customerTrigger = null;
+        }
+
+        function loadCustomerDetail(page) {
+            if (!_customerId) return;
+            var request = ++_customerRequest;
+            _customerPage = page;
+            _customerData = null;
+            _customerMessageKey = 'com.loading';
+            $('customer-close').focus();
+            $('customer-content').hidden = true;
+            $('customer-retry').hidden = true;
+            $('customer-message').hidden = false;
+            $('customer-message').classList.remove('customer-error');
+            $('customer-message').textContent = tr(_customerMessageKey);
+            $('customer-modal').setAttribute('aria-busy', 'true');
+            return api('/api/admin/users/' + encodeURIComponent(_customerId) + '/detail?page=' + page + '&limit=10')
+                .then(function (r) {
+                    if (!r.ok) { var error = new Error('customer detail'); error.status = r.status; throw error; }
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (request !== _customerRequest) return;
+                    _customerData = data;
+                    _customerPage = data.page;
+                    renderCustomerDetail(data);
+                    $('customer-modal').setAttribute('aria-busy', 'false');
+                })
+                .catch(function (error) {
+                    if (request !== _customerRequest) return;
+                    _customerMessageKey = error.status === 404 ? 'adm.customerNotFound' : 'adm.customerLoadError';
+                    $('customer-message').textContent = tr(_customerMessageKey);
+                    $('customer-message').classList.add('customer-error');
+                    $('customer-retry').hidden = error.status === 404;
+                    $('customer-modal').setAttribute('aria-busy', 'false');
+                });
+        }
+
+        function renderCustomerDetail(data) {
+            var u = data.user, stats = data.statistics;
+            var dob = u.dob ? new Date(u.dob).toLocaleDateString(lang() === 'en' ? 'en-GB' : 'vi-VN', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+            var fields = [
+                ['adm.customerId', u.id], ['pf.fullname', u.display_name], ['adm.thEmail', u.email],
+                ['pf.phone', u.phone], ['pf.dob', dob],
+                ['pf.gender', u.gender === 'male' ? tr('pf.genderMale') : u.gender === 'female' ? tr('pf.genderFemale') : '—'],
+                ['pf.country', u.country ? tr('pf.c' + u.country, null, u.country) : '—'],
+                ['adm.thRole', u.role === 'admin' ? tr('adm.roleAdmin') : tr('adm.roleCustomer')],
+                ['pf.createdAt', u.created_at ? fmtDate(u.created_at) : '—'],
+                ['pf.lastLogin', u.last_login ? fmtDate(u.last_login) : '—'],
+                ['adm.customerStatus', tr(u.is_blacklisted ? 'adm.inBlacklist' : 'adm.customerActive')]
+            ];
+            $('customer-info').innerHTML = fields.map(function (field) {
+                return '<div><dt>' + esc(tr(field[0])) + '</dt><dd>' + esc(field[1] == null || field[1] === '' ? '—' : field[1]) + '</dd></div>';
+            }).join('');
+            $('customer-total-orders').textContent = stats.total_orders;
+            $('customer-completed').textContent = stats.completed_orders;
+            $('customer-cancelled').textContent = stats.cancelled_orders;
+            $('customer-spent').textContent = money(stats.total_spent);
+            $('customer-orders').innerHTML = data.orders.length ? data.orders.map(function (o) {
+                return '<tr><td class="num">#' + esc(window.BreezeOrderShipping.code(o)) + '</td><td>' + esc(fmtDate(o.created_at)) + '</td>' +
+                    '<td class="num">' + money(o.total_amount) + '</td><td>' + esc(paymentLabel(o.payment_method)) + '</td>' +
+                    '<td>' + esc(statusLabel(o.status)) + '</td><td><button type="button" class="adm-btn ghost small" data-customer-order="' + o.id + '">' +
+                    tr('adm.customerViewOrder') + '</button></td></tr>';
+            }).join('') : '<tr><td colspan="6" class="adm-empty">' + tr('adm.customerEmptyOrders') + '</td></tr>';
+            $('customer-page').textContent = tr('adm.pgPage') + ' ' + data.page + ' / ' + (data.total_pages || 1);
+            $('customer-prev').disabled = data.page <= 1;
+            $('customer-next').disabled = data.page >= data.total_pages;
+            $('customer-pager').hidden = data.total === 0;
+            $('customer-message').hidden = true;
+            $('customer-content').hidden = false;
+        }
+
+        function viewCustomerOrder(orderId) {
+            if (!_customerData || !_customerData.orders.some(function (o) { return String(o.id) === orderId; })) return;
+            var displayCode = window.BreezeOrderShipping.code(_customerData.orders.find(function (o) { return String(o.id) === orderId; }));
+            closeCustomerDetail();
+            var nav = document.querySelector('.adm-nav-item[data-nav="orders"]');
+            if (nav) nav.click();
+            if (_orderSearchTimer) clearTimeout(_orderSearchTimer);
+            $('order-status-filter').value = '';
+            $('order-search').value = String(displayCode);
+            readOrderFilters();
+            return loadOrders(1, orderId, true);
+        }
+
+        function onCustomerKeydown(e) {
+            if (e.key === 'Escape') { e.preventDefault(); closeCustomerDetail(); return; }
+            if (e.key !== 'Tab') return;
+            var nodes = Array.prototype.filter.call($('customer-modal').querySelectorAll(FOCUSABLE), function (el) {
+                return !el.hidden && !el.closest('[hidden]');
+            });
+            var first = nodes[0], last = nodes[nodes.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+
         // Thêm THỦ CÔNG 1 user vào danh sách đen (độc lập với huỷ đơn) — ảnh hưởng
         // quyền mua hàng của user nên xác nhận trước.
         function addToBlacklist(userId, btn) {
-            if (!window.confirm(tr('adm.confirmBl'))) return;
-            btn.disabled = true;
-            api('/api/admin/users/' + userId + '/blacklist', { method: 'POST' })
-                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-                .then(function (res) {
-                    if (!res.ok) { toast((res.j && res.j.message) || tr('adm.blFail'), true); btn.disabled = false; return; }
-                    toast(tr('adm.blOk'));
-                    loadUsers(_userPage); // tải lại — dòng này đổi từ nút sang badge
-                })
-                .catch(function (e) { console.error(e); toast(tr('com.netErr'), true); btn.disabled = false; });
+            confirmDialog(tr('adm.confirmBl')).then(function (ok) {
+                if (!ok) return;
+                btn.disabled = true;
+                api('/api/admin/users/' + userId + '/blacklist', { method: 'POST' })
+                    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                    .then(function (res) {
+                        if (!res.ok) { toast((res.j && res.j.message) || tr('adm.blFail'), true); btn.disabled = false; return; }
+                        toast(tr('adm.blOk'));
+                        loadUsers(_userPage); // tải lại — dòng này đổi từ nút sang badge
+                    })
+                    .catch(function (e) { console.error(e); toast(tr('com.netErr'), true); btn.disabled = false; });
+            });
         }
 
         // --- Danh sách Đen (đơn ĐÃ HUỶ của user đang bị blacklist, theo ĐƠN) --
@@ -1032,7 +1598,7 @@
                     ? '<span class="pill off">' + tr('adm.noCancelled') + '</span>'
                     : statusPill(o.status);
                 return '<tr>' +
-                    '<td class="num">' + (noOrder ? '—' : o.order_id) + '</td>' +
+                    '<td class="num">' + (noOrder ? '—' : esc(o.order_code == null ? o.order_id : o.order_code)) + '</td>' +
                     '<td>' + esc(cust) + '</td>' +
                     '<td>' + (noOrder ? '—' : fmtDate(o.created_at)) + '</td>' +
                     '<td>' + (noOrder ? '—' : esc(paymentLabel(o.payment_method))) + '</td>' +
@@ -1060,16 +1626,18 @@
 
         // Gỡ 1 user khỏi danh sách đen — ảnh hưởng quyền user nên xác nhận trước.
         function releaseUser(userId, btn) {
-            if (!window.confirm(tr('adm.confirmRelease'))) return;
-            btn.disabled = true;
-            api('/api/admin/blacklist/' + userId + '/release', { method: 'POST' })
-                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-                .then(function (res) {
-                    if (!res.ok) { toast((res.j && res.j.message) || tr('adm.relFail'), true); btn.disabled = false; return; }
-                    toast(tr('adm.relOk'));
-                    loadBlacklist(_blacklistPage); // tải lại — mọi dòng của user này biến mất khỏi bảng
-                })
-                .catch(function (e) { console.error(e); toast(tr('com.netErr'), true); btn.disabled = false; });
+            confirmDialog(tr('adm.confirmRelease')).then(function (ok) {
+                if (!ok) return;
+                btn.disabled = true;
+                api('/api/admin/blacklist/' + userId + '/release', { method: 'POST' })
+                    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                    .then(function (res) {
+                        if (!res.ok) { toast((res.j && res.j.message) || tr('adm.relFail'), true); btn.disabled = false; return; }
+                        toast(tr('adm.relOk'));
+                        loadBlacklist(_blacklistPage); // tải lại — mọi dòng của user này biến mất khỏi bảng
+                    })
+                    .catch(function (e) { console.error(e); toast(tr('com.netErr'), true); btn.disabled = false; });
+            });
         }
 
         // --- Thống kê sản phẩm bán được --------------------------------------
@@ -1178,9 +1746,115 @@
                 loadOrders(1);
                 if (os) os.focus();
             });
+
+            // --- Phím tắt Ctrl/⌘ + K: nhảy vào ô search; Esc: thoát focus ---------
+            // navigator.platform đã deprecated -> đọc userAgent. iPadOS 13+ cũng khai
+            // 'Macintosh', nhưng bàn phím rời của iPad cũng dùng ⌘ nên hiện ⌘ vẫn đúng.
+            var kbdHint = $('search-kbd');
+            if (kbdHint) kbdHint.style.display = 'none';
+
+            // Chỉ cướp phím khi đã qua gate admin (#bar-right hiện). Ở state-login /
+            // state-forbidden thì KHÔNG preventDefault, để Ctrl+K vẫn là phím tắt mặc
+            // định của trình duyệt.
+            function searchShortcutReady() {
+                var bar = $('bar-right');
+                return !!bar && window.getComputedStyle(bar).visibility === 'visible';
+            }
+
+            document.addEventListener('keydown', function (e) {
+                // Chỉ khớp 'k' thường: Ctrl+Shift+K là devtools của Chrome/Firefox, không đụng.
+                if (e.key !== 'k' || !(e.metaKey || e.ctrlKey)) return;
+                if (!searchShortcutReady()) return;
+                var el = $('top-search');
+                if (!el) return;
+                e.preventDefault();
+                el.focus();
+                el.select();
+            });
+
+            if (topSearch) topSearch.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape') return;
+                // <input type="search"> mặc định XOÁ sạch nội dung khi bấm Esc. Chặn lại:
+                // Esc ở đây chỉ để thoát focus, chữ đã gõ giữ nguyên (Ctrl+K rồi Enter
+                // vẫn tìm được như cũ).
+                e.preventDefault();
+                topSearch.blur();
+            });
             $('btn-cancel').addEventListener('click', closeModal);
+            $('user-body').addEventListener('click', function (e) {
+                var button = e.target.closest('[data-customer-detail]');
+                if (button) openCustomerDetail(button.getAttribute('data-customer-detail'), button);
+            });
+            $('customer-close').addEventListener('click', closeCustomerDetail);
+            $('customer-retry').addEventListener('click', function () { loadCustomerDetail(_customerPage); });
+            $('customer-prev').addEventListener('click', function () { if (_customerData && _customerPage > 1) loadCustomerDetail(_customerPage - 1); });
+            $('customer-next').addEventListener('click', function () { if (_customerData && _customerPage < _customerData.total_pages) loadCustomerDetail(_customerPage + 1); });
+            $('customer-orders').addEventListener('click', function (e) {
+                var button = e.target.closest('[data-customer-order]');
+                if (button) viewCustomerOrder(button.getAttribute('data-customer-order'));
+            });
+            $('customer-modal').addEventListener('click', function (e) { if (e.target === $('customer-modal')) closeCustomerDetail(); });
+            $('customer-modal').addEventListener('keydown', onCustomerKeydown);
             $('prod-form').addEventListener('submit', submitProduct);
+            $('f-stock').addEventListener('input', function () {
+                var p = _prodCache[$('f-id').value];
+                $('f-stock-reason').required = !!p && Number($('f-stock').value) !== Number(p.stock);
+            });
             $('prod-modal').addEventListener('click', function (e) { if (e.target === $('prod-modal')) closeModal(); });
+            $('inventory-close').addEventListener('click', closeInventory);
+            $('sizes-close').addEventListener('click', closeSizes);
+            $('sizes-create').addEventListener('click', function () { createSizes(false); });
+            $('sizes-create-all').addEventListener('click', function () { createSizes(true); });
+            $('sizes-allocate').addEventListener('click', allocateSizes);
+            $('sizes-body').addEventListener('click', saveSize);
+            $('sizes-modal').addEventListener('click', function (e) { if (e.target === $('sizes-modal')) closeSizes(); });
+            $('sizes-modal').addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') { e.preventDefault(); closeSizes(); return; }
+                if (e.key !== 'Tab') return;
+                var nodes = $('sizes-modal').querySelectorAll(FOCUSABLE);
+                if (!nodes.length) return;
+                var first = nodes[0], last = nodes[nodes.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            });
+            $('colors-close').addEventListener('click', closeColors);
+            $('colors-create').addEventListener('click', function () {
+                mutateColors('colors', 'POST', { label: $('colors-name').value, swatch_hex: $('colors-hex').value });
+            });
+            $('colors-add-size').addEventListener('click', function () {
+                mutateColors('color-sizes', 'POST', { size: $('colors-size').value });
+            });
+            $('colors-allocate').addEventListener('click', allocateColors);
+            $('colors-body').addEventListener('click', colorBodyClick);
+            $('colors-modal').addEventListener('click', function (e) { if (e.target === $('colors-modal')) closeColors(); });
+            $('colors-modal').addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') { e.preventDefault(); closeColors(); return; }
+                if (e.key !== 'Tab') return;
+                var nodes = $('colors-modal').querySelectorAll(FOCUSABLE);
+                if (!nodes.length) return;
+                if (e.shiftKey && document.activeElement === nodes[0]) { e.preventDefault(); nodes[nodes.length - 1].focus(); }
+                else if (!e.shiftKey && document.activeElement === nodes[nodes.length - 1]) { e.preventDefault(); nodes[0].focus(); }
+            });
+            $('inventory-modal').addEventListener('click', function (e) { if (e.target === $('inventory-modal')) closeInventory(); });
+            $('inventory-modal').addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') { e.preventDefault(); closeInventory(); }
+                if (e.key !== 'Tab') return;
+                var nodes = $('inventory-modal').querySelectorAll(FOCUSABLE);
+                var visible = [];
+                for (var i = 0; i < nodes.length; i++) {
+                    if (nodes[i].offsetWidth > 0 || nodes[i].offsetHeight > 0 || nodes[i] === document.activeElement) visible.push(nodes[i]);
+                }
+                if (!visible.length) return;
+                if (e.shiftKey && document.activeElement === visible[0]) {
+                    e.preventDefault(); visible[visible.length - 1].focus();
+                } else if (!e.shiftKey && document.activeElement === visible[visible.length - 1]) {
+                    e.preventDefault(); visible[0].focus();
+                }
+            });
+            $('confirm-cancel').addEventListener('click', function () { closeConfirm(false); });
+            $('confirm-ok').addEventListener('click', function () { closeConfirm(true); });
+            $('confirm-modal').addEventListener('click', function (e) { if (e.target === $('confirm-modal')) closeConfirm(false); });
+            $('confirm-modal').addEventListener('keydown', onConfirmKeydown);
             $('btn-logout').addEventListener('click', function () {
                 if (window.firebase && firebase.auth) firebase.auth().signOut();
                 setTimeout(function () { window.location.href = window.BreezeRoutes.to('login'); }, 200);

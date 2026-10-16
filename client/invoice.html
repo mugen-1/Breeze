@@ -11,7 +11,7 @@
          chữ đổi theo token còn nền giấy vẫn trắng -> tương phản hỏng, gần như không
          đọc được (đã dựng thử và chụp lại ở TASK 8.3).
          ĐỪNG "đồng bộ" chỗ này với các trang khác. -->
-    <script>document.documentElement.setAttribute('data-theme','light');</script>
+    <script src="js/theme-boot.js" data-theme-mode="light"></script>
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,7 +64,7 @@
 
         /* --- Thông tin khách --- */
         .inv-meta { margin-bottom: 26px; }
-        .inv-meta p { margin: 7px 0; font-size: 14px; }
+        .inv-meta p { overflow-wrap: anywhere; white-space: pre-wrap; margin: 7px 0; font-size: 14px; }
         .inv-meta .lbl { color: var(--c-muted, #6b6b6b); }
 
         /* --- Bảng sản phẩm --- */
@@ -135,8 +135,8 @@
 <body data-i18n-doctitle="inv.docTitle">
     <div class="inv-actions" id="inv-actions" hidden>
         <div id="lang-switcher-host"></div>
-        <button type="button" class="inv-btn ghost" onclick="window.close()" data-i18n="com.close">Đóng</button>
-        <button type="button" class="inv-btn" onclick="window.print()" data-i18n="inv.print">In hoá đơn</button>
+        <button type="button" class="inv-btn ghost" data-action="inv-close" data-i18n="com.close">Đóng</button>
+        <button type="button" class="inv-btn" data-action="inv-print" data-i18n="inv.print">In hoá đơn</button>
     </div>
 
     <div class="inv-sheet">
@@ -157,6 +157,8 @@
                 <p><span class="lbl" data-i18n="inv.customer">Khách hàng:</span> <span id="inv-customer"></span></p>
                 <p><span class="lbl" data-i18n="inv.phone">Số điện thoại:</span> <span id="inv-phone"></span></p>
                 <p><span class="lbl" data-i18n="inv.address">Địa chỉ:</span> <span id="inv-address"></span></p>
+                <p><span class="lbl" data-i18n="ship.methods">Phương thức giao hàng</span>: <span id="inv-shipping-method"></span></p>
+                <p><span class="lbl" data-i18n="ship.note">Ghi chú giao hàng</span>: <span id="inv-note"></span></p>
                 <p><span class="lbl" data-i18n="inv.date">Ngày lập HĐ:</span> <span id="inv-date" class="num"></span></p>
                 <p><span class="lbl" data-i18n="inv.orderNo">Mã đơn:</span> <span id="inv-id" class="num"></span></p>
             </div>
@@ -183,6 +185,10 @@
                     <span class="lbl" id="inv-discount-label" data-i18n="inv.discount">Giảm giá:</span>
                     <span class="num" id="inv-discount"></span>
                 </div>
+                <div class="inv-sum-row">
+                    <span class="lbl" data-i18n="ship.fee">Phí vận chuyển</span>
+                    <span class="num" id="inv-shipping-fee"></span>
+                </div>
                 <div class="inv-sum-row total">
                     <span data-i18n="inv.total">Tổng tiền:</span>
                     <span class="num" id="inv-total"></span>
@@ -195,8 +201,8 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" integrity="sha384-ajMUFBUFMCyjh8uxJg6bkGcKe9RTolyjwbxB3yES0QQMenP3Oztj/W9vA2SJPcIh" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" integrity="sha384-xD1t9dGSVKobUztxDkv6xUI0H4AnFz0NxwlgDJJ7FDlblG9xxr1Z9iauCZuJYj6p" crossorigin="anonymous"></script>
     <script src="js/firebase-config.js"></script>
     <script src="js/api-config.js"></script>
     <script src="js/routes.js"></script>
@@ -205,6 +211,7 @@
     <script src="js/i18n.js"></script>
     <script src="js/utils-format.js"></script>
     <script src="js/utils-i18n.js"></script>
+    <script src="js/order-shipping.js"></script>
     <script src="js/page-invoice.js"></script>
 </body>
 </html>

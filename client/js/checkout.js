@@ -22,11 +22,23 @@
     function money(n) { return num(n) + '₫'; }               // kèm ký hiệu: 2.900.000₫
     var PLACEHOLDER_IMG = 'img/breeze.png';
 
+    // Ảnh sản phẩm lỗi -> ảnh dự phòng, đúng MỘT lần (thay cho onerror="this.onerror=null;
+    // this.src=..." inline — CSP chặn handler inline). 'error' của <img> không nổi bọt nên
+    // bắt ở pha capture. Đã là ảnh dự phòng mà vẫn lỗi (P-1: img/breeze.png đang thiếu)
+    // thì dừng, không lặp.
+    document.addEventListener('error', function (e) {
+        var img = e.target;
+        if (!img || !img.classList || !img.classList.contains('co-oi-thumb')) return;
+        if (img.getAttribute('src') === PLACEHOLDER_IMG) return;
+        img.src = PLACEHOLDER_IMG;
+    }, true);
+
 
     // ---------- PHASE 2: key định danh duy nhất (phòng thủ) ----------
     // Có biến thể -> `${id}__${size}__${color}`; không có -> id; thiếu cả id -> `name:<name>` (fallback).
     // name KHÔNG bao giờ dùng một mình để định danh khi item đã có id.
     function itemKey(it) {
+        if (it.variant_id) return 'variant:' + it.variant_id;
         var base = (it.id != null && it.id !== '') ? String(it.id) : ('name:' + (it.name || ''));
         var size = it.size || '', color = it.color || '';
         return (size || color) ? (base + '__' + size + '__' + color) : base;
@@ -74,8 +86,7 @@
         meta.push(t('co.metaQty') + ': ' + it.quantity);
         return '' +
             '<div class="co-oi-item">' +
-                '<img class="co-oi-thumb" src="' + esc(it.image) + '" alt="" ' +
-                     'onerror="this.onerror=null;this.src=\'' + PLACEHOLDER_IMG + '\'">' +
+                '<img class="co-oi-thumb" src="' + esc(it.image) + '" alt="">' +
                 '<div class="co-oi-info">' +
                     '<p class="co-oi-name">' + esc(it.name) + '</p>' +
                     '<p class="co-oi-meta">' + meta.join(' · ') + '</p>' +
@@ -88,12 +99,36 @@
     }
 
     // ---------- 2 + PHASE 5: render tóm tắt giỏ + tổng tiền + badge ----------
-    var SHIPPING_FEE = 0; // "Miễn phí" — đổi tại đây nếu sau này data có phí ship
+    var shippingMethods = [], selectedShipping = null;
+    function renderShippingMethods() {
+        var box = $('co-shipping-methods');
+        if (!box) return;
+        box.innerHTML = shippingMethods.map(function (m) {
+            return '<label class="co-shipping-option"><input type="radio" name="shipping" value="' + esc(m.key) + '"' +
+                (selectedShipping && selectedShipping.key === m.key ? ' checked' : '') + '> <span>' +
+                esc(t(m.label_key)) + ' — ' + money(m.fee) + '<small>' + esc(t(m.eta_key)) + '</small></span></label>';
+        }).join('') + '<p class="co-shipping-note">' + esc(t('ship.simulation')) + '</p>';
+    }
+    function loadShippingMethods() {
+        if (!(window.AuthHelper && window.AuthHelper.apiFetch)) return;
+        window.AuthHelper.apiFetch('/api/orders/shipping-methods').then(function (r) {
+            if (!r.ok) throw new Error('shipping methods');
+            return r.json();
+        }).then(function (methods) {
+            if (!Array.isArray(methods) || !methods.length || methods.some(function (m) {
+                return typeof m.key !== 'string' || typeof m.label_key !== 'string' || typeof m.eta_key !== 'string' || !Number.isInteger(m.fee) || m.fee < 0;
+            })) throw new Error('shipping methods');
+            shippingMethods = methods;
+            selectedShipping = methods[0];
+            renderShippingMethods(); renderSummary();
+            document.dispatchEvent(new CustomEvent('checkout:shipping'));
+        }).catch(function () { showFormMsg(t('ship.loadError'), 'err'); });
+    }
     function renderSummary() {
         var items = normalizeItems(getCartSafe());
         var subtotal = items.reduce(function (s, it) { return s + it.lineTotal; }, 0);
         var count = items.reduce(function (s, it) { return s + it.quantity; }, 0);
-        var ship = SHIPPING_FEE;
+        var ship = selectedShipping ? selectedShipping.fee : 0;
         var total = subtotal + ship;
 
         // Danh sách item (hoặc trạng thái rỗng — không crash, không vỡ layout)
@@ -109,7 +144,7 @@
             oiCountEl = $('co-oi-count'), oiTotalEl = $('co-oi-total');
         if (oiCountEl) oiCountEl.textContent = count;                 // = tổng quantity, không phải số dòng
         if (subEl) subEl.textContent = money(subtotal);
-        if (shipEl) shipEl.textContent = ship > 0 ? money(ship) : t('com.free');
+        if (shipEl) shipEl.textContent = selectedShipping ? money(ship) : '—';
         if (oiTotalEl) oiTotalEl.textContent = money(total);
 
         // Hero (đang ẩn) + nút "Đặt hàng": HTML đã có sẵn ký hiệu ₫ -> chỉ set phần số.
@@ -157,6 +192,14 @@
         window.AuthHelper.apiFetch('/api/me')
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (me) {
+                if (me && user === _lastUser) {
+                    var parts = (me.display_name || '').trim().split(/\s+/);
+                    if (!$('f-firstname').value && !$('f-lastname').value && parts[0]) {
+                        $('f-firstname').value = parts.pop();
+                        $('f-lastname').value = parts.join(' ');
+                    }
+                    if (!$('f-phone').value) $('f-phone').value = me.phone || '';
+                }
                 if (me && me.role === 'admin') {
                     adminGuarded = true;
                     window.alert(t('co.adminBlocked'));
@@ -169,89 +212,37 @@
     // ---------- Redirect nếu giỏ rỗng ----------
     // Giỏ server nạp bất đồng bộ sau khi Firebase auth xong => hoãn kiểm tra để
     // tránh redirect nhầm khi giỏ chưa kịp về. Mỗi 'cartchange' huỷ hẹn cũ.
+    var createdOrder = null, paymentBusy = false;
+    function renderPayment() {
+        if (!createdOrder) return;
+        $('co-payment-heading').textContent = t('paymenttx.checkout', { id: createdOrder.order_code });
+        $('co-payment-details').innerHTML = window.BreezeOrderPayment.details(createdOrder, true, paymentBusy);
+        $('co-payment-continue').textContent = t('paymenttx.continue');
+    }
+    async function simulatePayment(action) {
+        if (paymentBusy || !window.BreezeOrderPayment.canSimulate(createdOrder)) return;
+        paymentBusy = true; $('co-payment-message').textContent = ''; renderPayment();
+        try {
+            createdOrder.payment_transaction = await window.BreezeOrderPayment.simulate(createdOrder.id, action.getAttribute('data-outcome'));
+        } catch (_) { $('co-payment-message').textContent = t('paymenttx.error'); }
+        finally { paymentBusy = false; renderPayment(); }
+    }
+    document.addEventListener('click', function (event) {
+        var action = event.target && event.target.closest && event.target.closest('[data-action]');
+        if (action && action.getAttribute('data-action') === 'order-payment-simulate') simulatePayment(action);
+    });
     var emptyTimer = null;
     function scheduleEmptyCheck(delay) {
         if (emptyTimer) clearTimeout(emptyTimer);
         emptyTimer = setTimeout(function () {
-            if (getCartSafe().length === 0) {
+            if (!createdOrder && getCartSafe().length === 0) {
                 window.location.replace(window.BreezeRoutes.to('cart'));
             }
         }, delay);
     }
 
-    // ---------- 4. Cascading dữ liệu địa chỉ (static tối thiểu) ----------
-    // Cấu trúc: Tỉnh -> Quận -> { wards:[], postal:[] }. Dữ liệu đầy đủ để prompt sau.
-    var VN_ADDRESS = {
-        'TP. Hồ Chí Minh': {
-            'Quận 1': { wards: ['Phường Bến Nghé', 'Phường Bến Thành', 'Phường Đa Kao'], postal: ['700000', '710000'] },
-            'Quận 3': { wards: ['Phường 1', 'Phường 6', 'Phường Võ Thị Sáu'], postal: ['720000'] },
-            'TP. Thủ Đức': { wards: ['Phường Linh Trung', 'Phường Hiệp Bình Chánh'], postal: ['713300', '713400'] }
-        },
-        'Hà Nội': {
-            'Quận Hoàn Kiếm': { wards: ['Phường Hàng Bạc', 'Phường Hàng Bồ', 'Phường Cửa Đông'], postal: ['100000'] },
-            'Quận Ba Đình': { wards: ['Phường Điện Biên', 'Phường Kim Mã', 'Phường Ngọc Hà'], postal: ['110000', '118000'] }
-        },
-        'Đà Nẵng': {
-            'Quận Hải Châu': { wards: ['Phường Thạch Thang', 'Phường Hải Châu 1'], postal: ['550000'] },
-            'Quận Thanh Khê': { wards: ['Phường An Khê', 'Phường Xuân Hà'], postal: ['551000'] }
-        }
-    };
-
-    function fillOptions(sel, values, placeholder) {
-        sel.innerHTML = '';
-        var opt0 = document.createElement('option');
-        opt0.value = '';
-        opt0.textContent = placeholder;
-        sel.appendChild(opt0);
-        values.forEach(function (v) {
-            var o = document.createElement('option');
-            o.value = v; o.textContent = v;
-            sel.appendChild(o);
-        });
-    }
-
-    function resetSelect(sel, placeholder) {
-        fillOptions(sel, [], placeholder);
-        sel.disabled = true;
-    }
-
-    function initAddressCascade() {
-        var citySel = $('f-city'), distSel = $('f-district'),
-            wardSel = $('f-ward'), postalSel = $('f-postal');
-        if (!citySel) return;
-
-        fillOptions(citySel, Object.keys(VN_ADDRESS), t('com.select'));
-        resetSelect(distSel, t('com.select'));
-        resetSelect(wardSel, t('com.select'));
-        resetSelect(postalSel, t('com.select'));
-
-        citySel.addEventListener('change', function () {
-            var city = citySel.value;
-            resetSelect(distSel, t('com.select'));
-            resetSelect(wardSel, t('com.select'));
-            resetSelect(postalSel, t('com.select'));
-            if (city && VN_ADDRESS[city]) {
-                fillOptions(distSel, Object.keys(VN_ADDRESS[city]), t('com.select'));
-                distSel.disabled = false;
-            }
-        });
-
-        distSel.addEventListener('change', function () {
-            var city = citySel.value, dist = distSel.value;
-            resetSelect(wardSel, t('com.select'));
-            resetSelect(postalSel, t('com.select'));
-            var node = city && dist && VN_ADDRESS[city] && VN_ADDRESS[city][dist];
-            if (node) {
-                fillOptions(wardSel, node.wards, t('com.select'));
-                wardSel.disabled = false;
-                fillOptions(postalSel, node.postal, t('com.select'));
-                postalSel.disabled = false;
-            }
-        });
-    }
-
     // ---------- Validation ----------
-    // SĐT Việt Nam: 10 số, bắt đầu 0 và số thứ 2 ∈ {3,5,7,8,9}. Chấp nhận +84 (đổi về 0).
+    // Accept domestic and international numbers; API validates the normalized value again.
     function normalizePhone(v) {
         var s = (v || '').replace(/[\s.\-()]/g, '');
         if (s.indexOf('+84') === 0) s = '0' + s.slice(3);
@@ -259,7 +250,7 @@
         return s;
     }
     function isValidVNPhone(v) {
-        return /^0[35789]\d{8}$/.test(normalizePhone(v));
+        return /^(?:0\d{9,10}|\+[1-9]\d{7,14})$/.test(normalizePhone(v));
     }
 
     function setError(inputEl, errEl, msg) {
@@ -284,7 +275,7 @@
         ['f-city', 'f-city-err', function (v) { return v ? null : t('co.errCity'); }],
         ['f-district', 'f-district-err', function (v) { return v ? null : t('co.errDistrict'); }],
         ['f-ward', 'f-ward-err', function (v) { return v ? null : t('co.errWard'); }],
-        ['f-postal', 'f-postal-err', function (v) { return v ? null : t('co.errPostal'); }]
+        ['f-note', 'f-note-err', function (v) { return v.length <= 500 ? null : t('ship.invalid'); }]
     ];
 
     function validateForm() {
@@ -293,11 +284,15 @@
         REQUIRED_FIELDS.forEach(function (f) {
             var input = $(f[0]), err = $(f[1]);
             var val = input ? input.value.trim() : '';
-            var msg = f[2](val);
+            var msg = input && input.maxLength > 0 && val.length > input.maxLength ? t('ship.invalid') : f[2](val);
             setError(input, err, msg);
             if (msg && !firstInvalid) firstInvalid = input;
         });
 
+        if (!selectedShipping) {
+            setError(null, $('f-shipping-err'), t('ship.loadError'));
+            if (!firstInvalid) firstInvalid = $('co-shipping-methods');
+        }
         // Payment (radio)
         var payErr = $('f-pay-err');
         var payChecked = document.querySelector('input[name="payment"]:checked');
@@ -322,6 +317,7 @@
     function initForm() {
         var form = $('co-form');
         if (!form) return;
+        var submitting = false;
 
         // Xoá lỗi khi người dùng sửa lại field.
         REQUIRED_FIELDS.forEach(function (f) {
@@ -337,10 +333,15 @@
         function updatePayGate() {
             var checked = document.querySelector('input[name="payment"]:checked');
             if (submitBtn) {
-                submitBtn.disabled = !checked;
-                submitBtn.setAttribute('aria-disabled', checked ? 'false' : 'true');
+                submitBtn.disabled = submitting || !!createdOrder || !checked || !selectedShipping;
+                submitBtn.setAttribute('aria-disabled', submitBtn.disabled ? 'true' : 'false');
             }
         }
+        document.addEventListener('checkout:shipping', updatePayGate);
+        $('co-shipping-methods').addEventListener('change', function (e) {
+            selectedShipping = shippingMethods.find(function (m) { return m.key === e.target.value; }) || null;
+            renderSummary(); updatePayGate();
+        });
         updatePayGate();
 
         document.querySelectorAll('input[name="payment"]').forEach(function (r) {
@@ -353,6 +354,7 @@
 
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+            if (submitting || createdOrder) return;
 
             if (getCartSafe().length === 0) {
                 showFormMsg(t('acc.cartEmpty'), 'err');
@@ -369,7 +371,8 @@
             // Validate OK -> tạo đơn thật qua Orders API (server đọc dbo.cart_items để dựng đơn).
             var btn = form.querySelector('.co-submit');
             function enableBtn() {
-                if (btn) { btn.disabled = false; btn.setAttribute('aria-disabled', 'false'); }
+                submitting = false;
+                updatePayGate();
             }
             function disableBtn() {
                 if (btn) { btn.disabled = true; btn.setAttribute('aria-disabled', 'true'); }
@@ -381,12 +384,12 @@
                 shipping_name: ($('f-lastname') ? $('f-lastname').value.trim() : '') + ' ' +
                                ($('f-firstname') ? $('f-firstname').value.trim() : ''),
                 shipping_phone: normalizePhone($('f-phone') ? $('f-phone').value : ''),
-                shipping_address: [
-                    $('f-street') ? $('f-street').value.trim() : '',
-                    $('f-ward') ? $('f-ward').value.trim() : '',
-                    $('f-district') ? $('f-district').value.trim() : '',
-                    $('f-city') ? $('f-city').value.trim() : ''
-                ].filter(Boolean).join(', '),
+                shipping_address: [$('f-street').value.trim(), $('f-building').value.trim()].filter(Boolean).join(', '),
+                shipping_ward: $('f-ward').value.trim(),
+                shipping_district: $('f-district').value.trim(),
+                shipping_city: $('f-city').value.trim(),
+                delivery_note: $('f-note').value.trim(),
+                shipping_method: selectedShipping.key,
                 paymentMethod: payChecked ? payChecked.value : ''
             };
 
@@ -401,6 +404,7 @@
                 return;
             }
 
+            submitting = true;
             disableBtn(); // chống double-submit trước khi gọi API
 
             window.AuthHelper.apiFetch('/api/orders', {
@@ -414,25 +418,39 @@
                 var data = r.data || {};
 
                 if (r.status === 201) {
+                    createdOrder = data.order || {};
+                    if (emptyTimer) clearTimeout(emptyTimer);
                     if (typeof window.refreshCart === 'function') window.refreshCart();
                     if (window.BreezeVoucher && window.BreezeVoucher.clear) window.BreezeVoucher.clear();
                     var order = data.order || {};
                     var okMsg = data.voucherDropped
-                        ? t('co.msgOkVoucherDropped', { id: order.id })
-                        : t('co.msgOk', { id: order.id });
+                        ? t('co.msgOkVoucherDropped', { id: order.order_code == null ? order.id : order.order_code })
+                        : t('co.msgOk', { id: order.order_code == null ? order.id : order.order_code });
                     showFormMsg(okMsg, 'ok');
-                    setTimeout(function () { window.location.href = window.BreezeRoutes.to('orders'); }, data.voucherDropped ? 2200 : 1200);
+                    if (window.BreezeOrderPayment && window.BreezeOrderPayment.canSimulate(createdOrder)) {
+                        $('co-checkout-grid').hidden = true;
+                        $('co-payment-simulation').hidden = false;
+                        renderPayment(); $('co-payment-simulation').focus();
+                    } else {
+                        setTimeout(function () { window.location.href = window.BreezeRoutes.to('orders'); }, data.voucherDropped ? 2200 : 1200);
+                    }
                     return; // giữ nút disabled vì đang rời trang
                 }
 
                 if (r.status === 400) {
-                    showFormMsg(data.message || t('co.msgEmptyCart'), 'err');
+                    showFormMsg(data.error === 'INVALID_SHIPPING' ? t('ship.invalid') : (data.message || t('co.msgEmptyCart')), 'err');
+                    enableBtn();
+                    return;
+                }
+
+                if (data.error === 'ORDER_CODE_LIMIT') {
+                    showFormMsg(t('co.orderCodeLimit'), 'err');
                     enableBtn();
                     return;
                 }
 
                 if (r.status === 409) {
-                    var lines = (data.items || []).map(function (it) {
+                    var lines = (data.error === 'PRODUCT_UNAVAILABLE' ? [] : (data.items || [])).map(function (it) {
                         return t('co.msgStockLine', { name: it.name, stock: it.stock, want: it.requested });
                     });
                     showFormMsg((data.message || t('co.msgStock')) +
@@ -465,7 +483,6 @@
 
     // ---------- init ----------
     document.addEventListener('DOMContentLoaded', function () {
-        initAddressCascade();
         initForm();
         renderSummary();
 
@@ -475,23 +492,23 @@
             scheduleEmptyCheck(400);
         });
 
-        // Đổi VI/EN: dựng lại phần do JS sinh (tóm tắt, lời chào) + nhãn "-- Chọn --"
-        // của 4 select địa chỉ (giữ nguyên lựa chọn hiện tại).
+        // Translate dynamic content while retaining the entered address and method.
         document.addEventListener('langchange', function () {
             renderSummary();
             renderUser(_lastUser);
-            ['f-city', 'f-district', 'f-ward', 'f-postal'].forEach(function (id) {
-                var sel = $(id);
-                if (sel && sel.options.length && sel.options[0].value === '') {
-                    sel.options[0].textContent = t('com.select');
-                }
-            });
+            renderShippingMethods();
+            if (createdOrder && window.BreezeOrderPayment) renderPayment();
         });
 
         // Trạng thái đăng nhập: cập nhật greeting/email; sau khi auth sẵn sàng thì
         // mới kiểm tra giỏ rỗng (chừa thời gian cho giỏ server nạp).
         if (window.AuthHelper && typeof window.AuthHelper.onChange === 'function') {
             window.AuthHelper.onChange(function (user) {
+                if (!user) {
+                    window.location.replace(window.BreezeRoutes.to('login', { redirect: 'checkout' }));
+                    return;
+                }
+                loadShippingMethods();
                 renderUser(user);
                 renderSummary();
                 scheduleEmptyCheck(user ? 1200 : 300); // logged-in: chờ giỏ server

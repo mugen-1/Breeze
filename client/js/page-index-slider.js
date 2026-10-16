@@ -3,7 +3,9 @@
 // RÀNG BUỘC VỊ TRÍ: file này đọc .mySlides/.dot/.hero/.hero-scroll và chạy
 // render(0) + play() NGAY LÚC PARSE, nên thẻ script phải đứng ngay sau markup
 // của hero như cũ. Dời xuống cuối body sẽ làm slide đầu hiện trễ.
-// window.currentSlide được gọi từ onclick của các .dot trong HTML.
+// Click vào .dot gắn bằng addEventListener theo THỨ TỰ dot (dot thứ i -> slide i),
+// thay cho onclick="currentSlide(i)" inline cũ — CSP chặn handler inline.
+// window.currentSlide vẫn giữ global cho ai gọi từ ngoài.
 
 (function () {
     var slides = document.getElementsByClassName("mySlides");
@@ -38,6 +40,9 @@
         render(n);
         play();
     };
+    Array.prototype.forEach.call(dots, function (dot, i) {
+        dot.addEventListener("click", function () { window.currentSlide(i); });
+    });
 
     render(0);
     play();

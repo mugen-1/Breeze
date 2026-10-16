@@ -60,13 +60,14 @@
             : '<div class="product-price">' + money(p.price) + '</div>';
 
         var stock = Number(p.stock);
-        var soldOut = Number.isFinite(stock) && stock <= 0;
+        var soldOut = p.available === false || (Number.isFinite(stock) && stock <= 0);
         var stockAttr = Number.isFinite(stock) ? stock : '';
 
         return '' +
             '<li>' +
                 '<div class="product-item reveal in' + (soldOut ? ' is-soldout' : '') + '"' +
-                     ' data-id="' + p.id + '" data-stock="' + stockAttr + '">' +
+                     ' data-id="' + p.id + '" data-stock="' + stockAttr + '" data-size-configured="' + !!p.size_configured + '"' +
+                     (!p.size_configured && p.variants && p.variants[0] ? ' data-variant-id="' + p.variants[0].id + '"' : '') + '>' +
                     '<div class="product-top">' +
                         '<a href="' + window.BreezeRoutes.product(p.id) + '" class="product-thumb">' +
                             '<img class="thumb-default" src="' + esc(imgDefault) + '" alt="' + nameEsc + '">' +

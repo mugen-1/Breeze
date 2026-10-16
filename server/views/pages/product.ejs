@@ -15,34 +15,47 @@
         <!-- .product-item để addToCart(this) đọc được name/price/img -->
         <div class="product-item" id="pd-root">
             <div class="pd-layout">
-                <!-- Gallery -->
-                <div class="pd-gallery">
+                <!-- Gallery lấy ảnh của màu được chọn, fallback về ảnh sản phẩm. -->
+                <div class="pd-gallery" aria-label="Bộ ảnh sản phẩm" data-i18n-aria="pd.gallery">
                     <div class="pd-main">
-                        <img id="pd-main-img" src="img/gc40.png" alt="">
+                        <img id="pd-main-img" alt="" hidden>
+                        <div class="pd-gallery-empty" id="pd-gallery-empty" aria-hidden="true">BREEZE</div>
+                        <div class="pd-gallery-nav">
+                            <button type="button" id="pd-prev" aria-label="Ảnh trước" data-i18n-aria="pd.prevImage" disabled><span aria-hidden="true">←</span></button>
+                            <button type="button" id="pd-next" aria-label="Ảnh tiếp" data-i18n-aria="pd.nextImage" disabled><span aria-hidden="true">→</span></button>
+                        </div>
                     </div>
-                    <div class="pd-thumbs" id="pd-thumbs">
+                    <div class="pd-thumbs" id="pd-thumbs" aria-label="Ảnh thu nhỏ" data-i18n-aria="pd.thumbnails">
                         <!-- thumbnail được render bằng JS theo ?id -->
                     </div>
                 </div>
 
                 <!-- Thông tin -->
                 <div class="pd-info">
+                    <p class="pd-category" id="pd-category"></p>
                     <h1 class="pd-title product-name" id="pd-name">Sản phẩm</h1>
                     <div class="pd-price product-price" id="pd-price">0đ</div>
-                    <p class="pd-desc" id="pd-desc"></p>
+
+                    <div class="pd-color-group" id="pd-color-group" hidden>
+                        <span class="pd-size-label" data-i18n="pd.chooseColor">Chọn màu</span>
+                        <div class="pd-colors" id="pd-colors"></div>
+                    </div>
 
                     <div class="pd-size-head">
                         <span class="pd-size-label" data-i18n="pd.chooseSize">Chọn size</span>
-                        <button type="button" class="pd-guide-link" id="sg-open" data-i18n="pd.sizeGuide">Bảng size</button>
+                        <button type="button" class="pd-guide-link" id="sg-open" data-i18n="pd.sizeGuide" style="display:none">Bảng size</button>
                     </div>
                     <div class="pd-sizes" id="pd-sizes">
-                        <button type="button" class="pd-size" data-size="S">S</button>
-                        <button type="button" class="pd-size selected" data-size="M">M</button>
-                        <button type="button" class="pd-size" data-size="L">L</button>
-                        <button type="button" class="pd-size" data-size="XL">XL</button>
+                        <!-- Size được nạp từ product variants; không chọn sẵn. -->
                     </div>
 
-                    <button type="button" class="pd-add" onclick="addToCart(this)">Thêm vào giỏ</button>
+                    <p class="pd-selection-status" id="pd-selection-status" role="status" aria-live="polite"></p>
+                    <button type="button" class="pd-add" data-action="add-to-cart" disabled>Thêm vào giỏ</button>
+
+                    <section class="pd-detail" id="pd-detail" hidden>
+                        <h2 data-i18n="pd.details">Chi tiết sản phẩm</h2>
+                        <p class="pd-desc" id="pd-desc"></p>
+                    </section>
                 </div>
             </div>
         </div>

@@ -111,7 +111,7 @@ eq('Khong file nao ngoai routes.js con dung ten file .html lam khoa/ve so sanh',
    'checkout' vi no chi lay doan cuoi duong dan. Dieu do vo hai o day, nhung ai dung
    keyOf() de "kiem tra hop le" roi dieu huong toi CHINH input thi se thung. */
 function dichDenCua(redirect, isAdmin) {
-  // Mo phong dung logic auth.js dong 82-92
+  // Mo phong dung logic auth.js dong 93-103
   if (R.keyOf(redirect) === 'checkout') return R.to('checkout');
   return R.to(isAdmin ? 'admin' : 'index');
 }
