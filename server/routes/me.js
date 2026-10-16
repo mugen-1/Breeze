@@ -15,6 +15,7 @@ const router = express.Router();
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { buildUserActionLimiter } = require('../middleware/security');
 const { getPool, sql } = require('../db');
+const { MAX_IMAGE_BYTES: AVATAR_MAX_BYTES, ALLOWED_MIME, detectImage, writeFileAtomic } = require('../lib/image-upload');
 
 // Cột trả về cho client — dùng chung mọi nơi SELECT lại user sau khi ghi.
 const USER_COLS = `id, firebase_uid, email, display_name, role, created_at, last_login,
@@ -150,8 +151,6 @@ function removeOldAvatar(oldUrl, keepFileName) {
   if (oldName === keepFileName) return;                 // trùng file vừa ghi -> giữ lại
   fs.promises.unlink(path.join(AVATAR_DIR, oldName)).catch(() => {});
 }
-const AVATAR_MAX_BYTES = 2 * 1024 * 1024;          // 2MB
-const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp'];   // SVG bị loại (XSS)
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -169,41 +168,6 @@ const avatarLimiter = buildUserActionLimiter({
   limit: 10,
   message: 'Bạn đã đổi ảnh đại diện quá nhiều lần, vui lòng thử lại sau ít phút',
 });
-
-/* Ghi file NGUYÊN TỬ: ghi ra file tạm rồi rename đè lên file thật.
-   Vì sao không writeFile thẳng: mọi user dùng CHUNG một tên file ({uid}.webp) và file
-   này đang được express.static phục vụ. writeFile mở với flag 'w' => TRUNCATE file cũ
-   rồi mới ghi, nên có một khoảng thời gian file rỗng/dở dang; request GET
-   /avatars/{uid}.webp rơi đúng lúc đó sẽ nhận ảnh hỏng.
-   rename() là nguyên tử ở tầng filesystem: người đọc luôn thấy TRỌN VẸN ảnh cũ hoặc
-   ảnh mới, không có trạng thái ở giữa.
-   Tên tạm phải DUY NHẤT để 2 upload đồng thời của cùng một user không đè temp của nhau.
-   Prefix '.' để express.static (dotfiles:'deny', khai ở server.js) không bao giờ phục vụ file tạm. */
-async function writeFileAtomic(finalPath, buf) {
-  const dir = path.dirname(finalPath);
-  const tmpPath = path.join(
-    dir,
-    '.' + path.basename(finalPath) + '.' + process.pid + '-' + Date.now() +
-      '-' + Math.random().toString(36).slice(2, 8) + '.tmp'
-  );
-  try {
-    await fs.promises.writeFile(tmpPath, buf);
-    // Windows: MoveFileEx có thể trả EPERM/EBUSY nếu file đích đang bị mở đọc ngay
-    // khoảnh khắc đó -> thử lại vài lần thay vì fail luôn.
-    for (let i = 0; ; i++) {
-      try {
-        await fs.promises.rename(tmpPath, finalPath);
-        return;
-      } catch (err) {
-        if (i >= 4 || (err.code !== 'EPERM' && err.code !== 'EBUSY' && err.code !== 'EACCES')) throw err;
-        await new Promise((r) => setTimeout(r, 40 * (i + 1)));
-      }
-    }
-  } catch (err) {
-    await fs.promises.unlink(tmpPath).catch(() => {});   // dọn temp nếu hỏng giữa chừng
-    throw err;
-  }
-}
 
 // Bọc multer để lỗi (quá dung lượng...) trả JSON gọn thay vì ném ra error handler chung.
 function uploadAvatar(req, res, next) {
@@ -236,8 +200,7 @@ router.post('/avatar', verifyFirebaseToken, avatarLimiter, uploadAvatar, async (
 
   try {
     // file-type là ESM-only -> dynamic import trong async handler (repo là commonjs).
-    const { fileTypeFromBuffer } = await import('file-type');
-    const ft = await fileTypeFromBuffer(req.file.buffer);
+    const ft = await detectImage(req.file.buffer);
     // SVG không có magic bytes -> ft undefined -> bị loại ở đây luôn.
     if (!ft || ALLOWED_MIME.indexOf(ft.mime) < 0) {
       return res.status(415).json({

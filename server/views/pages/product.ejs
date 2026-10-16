@@ -51,6 +51,9 @@
 
                     <p class="pd-selection-status" id="pd-selection-status" role="status" aria-live="polite"></p>
                     <button type="button" class="pd-add" data-action="add-to-cart" disabled>Thêm vào giỏ</button>
+                    <button type="button" class="pd-review" id="pd-review-open" aria-haspopup="dialog" aria-controls="pd-review-dialog" data-i18n="pd.reviewProduct" disabled>Đánh giá sản phẩm</button>
+                    <p class="pd-review-hint" id="pd-review-access" role="status" hidden></p>
+                    <a id="pd-review-login" data-i18n="com.signin" hidden>Đăng nhập</a>
 
                     <section class="pd-detail" id="pd-detail" hidden>
                         <h2 data-i18n="pd.details">Chi tiết sản phẩm</h2>
@@ -60,6 +63,40 @@
             </div>
         </div>
     </div>
+
+    <!-- ===== ĐÁNH GIÁ SẢN PHẨM ===== -->
+    <section class="pd-wrap pd-reviews" id="pd-reviews" aria-labelledby="pd-reviews-heading">
+        <h2 id="pd-reviews-heading" data-i18n="pd.reviewSectionTitle">Đánh giá sản phẩm</h2>
+        <div class="pd-reviews-summary" id="pd-reviews-summary" role="group" hidden>
+            <p class="pd-reviews-score" id="pd-reviews-score" aria-hidden="true">— / 5</p>
+            <span class="pd-reviews-stars" id="pd-reviews-stars" aria-hidden="true">☆☆☆☆☆</span>
+            <p class="pd-reviews-total" id="pd-reviews-total" data-i18n="pd.reviewNoReviews">Chưa có đánh giá</p>
+        </div>
+        <div class="pd-reviews-filters" id="pd-reviews-filters" role="group" aria-label="Lọc đánh giá" data-i18n-aria="pd.reviewFilters">
+            <button type="button" class="pd-reviews-filter is-active" data-review-filter="all" aria-pressed="true" aria-controls="pd-reviews-list" data-i18n="pd.reviewFilterAll">Tất cả</button>
+            <button type="button" class="pd-reviews-filter" data-review-filter="5" aria-pressed="false" aria-controls="pd-reviews-list" data-i18n="pd.reviewFilter5">5 sao</button>
+            <button type="button" class="pd-reviews-filter" data-review-filter="4" aria-pressed="false" aria-controls="pd-reviews-list" data-i18n="pd.reviewFilter4">4 sao</button>
+            <button type="button" class="pd-reviews-filter" data-review-filter="3" aria-pressed="false" aria-controls="pd-reviews-list" data-i18n="pd.reviewFilter3">3 sao</button>
+            <button type="button" class="pd-reviews-filter" data-review-filter="2" aria-pressed="false" aria-controls="pd-reviews-list" data-i18n="pd.reviewFilter2">2 sao</button>
+            <button type="button" class="pd-reviews-filter" data-review-filter="1" aria-pressed="false" aria-controls="pd-reviews-list" data-i18n="pd.reviewFilter1">1 sao</button>
+            <button type="button" class="pd-reviews-filter" data-review-filter="images" aria-pressed="false" aria-controls="pd-reviews-list" data-i18n="pd.reviewFilterImages">Có hình ảnh</button>
+        </div>
+        <div class="pd-reviews-list" id="pd-reviews-list"></div>
+        <p class="pd-reviews-loading" id="pd-reviews-loading" role="status" data-i18n="pd.reviewListLoading" hidden>Đang tải đánh giá…</p>
+        <div class="pd-reviews-error" id="pd-reviews-error" role="alert" hidden>
+            <p data-i18n="pd.reviewListError">Không thể tải đánh giá.</p>
+            <button type="button" class="pd-reviews-page" id="pd-reviews-retry" data-i18n="pd.reviewRetry">Thử lại</button>
+        </div>
+        <div class="pd-reviews-empty" id="pd-reviews-empty" role="status" hidden>
+            <h3 data-i18n="pd.reviewNoReviews">Chưa có đánh giá</h3>
+            <p id="pd-reviews-empty-description" data-i18n="pd.reviewEmptyDescription">Chưa có đánh giá nào cho sản phẩm này.</p>
+        </div>
+        <nav class="pd-reviews-pagination" id="pd-reviews-pagination" aria-label="Phân trang đánh giá" data-i18n-aria="pd.reviewPagination" hidden>
+            <button type="button" class="pd-reviews-page" id="pd-reviews-prev" data-i18n="pd.reviewPrevious">← Trước</button>
+            <span id="pd-reviews-page" aria-live="polite"></span>
+            <button type="button" class="pd-reviews-page" id="pd-reviews-next" data-i18n="pd.reviewNext">Sau →</button>
+        </nav>
+    </section>
 
     <!-- ===== CÓ THỂ BẠN THÍCH ===== -->
     <div class="pd-wrap pd-related">
@@ -141,6 +178,78 @@
                     <tr><td>XL</td><td>110</td><td>73</td><td>49</td></tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- ===== MODAL ĐÁNH GIÁ ===== -->
+    <div class="pd-review-overlay" id="pd-review-overlay" hidden>
+        <div class="pd-review-modal" id="pd-review-dialog" role="dialog" aria-modal="true" aria-labelledby="pd-review-title" aria-describedby="pd-review-subtitle">
+            <button type="button" class="pd-review-close" id="pd-review-close" aria-label="Đóng" data-i18n-aria="com.close"><span aria-hidden="true">&times;</span></button>
+            <div class="pd-review-header">
+                <h2 id="pd-review-title" data-i18n="pd.writeReview">Viết đánh giá</h2>
+                <p id="pd-review-subtitle" data-i18n="pd.reviewExperience">Chia sẻ trải nghiệm của bạn</p>
+            </div>
+            <div class="pd-review-product">
+                <div class="pd-review-image">
+                    <img id="pd-review-img" alt="" hidden>
+                    <span id="pd-review-image-empty" aria-hidden="true">BREEZE</span>
+                </div>
+                <p id="pd-review-name"></p>
+            </div>
+            <div class="pd-review-content" id="pd-review-content">
+                <form id="pd-review-form" novalidate>
+                    <fieldset class="pd-review-field">
+                        <legend id="pd-review-rating-label"><span data-i18n="pd.reviewRating">Đánh giá</span> <span aria-hidden="true">*</span></legend>
+                        <div class="pd-review-stars" id="pd-review-stars" role="radiogroup" aria-labelledby="pd-review-rating-label" aria-required="true" aria-describedby="pd-review-rating-error">
+                            <button type="button" class="pd-review-star" role="radio" data-review-rating="1" aria-checked="false" aria-label="1 sao" tabindex="0"><span aria-hidden="true">☆</span></button>
+                            <button type="button" class="pd-review-star" role="radio" data-review-rating="2" aria-checked="false" aria-label="2 sao" tabindex="-1"><span aria-hidden="true">☆</span></button>
+                            <button type="button" class="pd-review-star" role="radio" data-review-rating="3" aria-checked="false" aria-label="3 sao" tabindex="-1"><span aria-hidden="true">☆</span></button>
+                            <button type="button" class="pd-review-star" role="radio" data-review-rating="4" aria-checked="false" aria-label="4 sao" tabindex="-1"><span aria-hidden="true">☆</span></button>
+                            <button type="button" class="pd-review-star" role="radio" data-review-rating="5" aria-checked="false" aria-label="5 sao" tabindex="-1"><span aria-hidden="true">☆</span></button>
+                        </div>
+                        <p class="pd-review-error" id="pd-review-rating-error" role="alert" hidden></p>
+                    </fieldset>
+                    <div class="pd-review-field">
+                        <label for="pd-review-variant"><span data-i18n="pd.reviewPurchasedVariant">Phân loại đã mua</span> <span aria-hidden="true">*</span></label>
+                        <select id="pd-review-variant" required disabled aria-describedby="pd-review-variant-error">
+                            <option value="" selected disabled data-i18n="pd.reviewChooseVariant">Chọn phân loại đã mua</option>
+                        </select>
+                        <p class="pd-review-error" id="pd-review-variant-error" role="alert" hidden></p>
+                    </div>
+                    <div class="pd-review-field">
+                        <label for="pd-review-comment" data-i18n="pd.reviewComment">Bình luận</label>
+                        <textarea id="pd-review-comment" rows="4" maxlength="1000" aria-describedby="pd-review-comment-count" placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..." data-i18n-ph="pd.reviewCommentPlaceholder"></textarea>
+                        <p class="pd-review-counter" id="pd-review-comment-count">0 / 1000</p>
+                    </div>
+                    <div class="pd-review-field">
+                        <p class="pd-review-label" id="pd-review-images-label" data-i18n="pd.reviewImages">Hình ảnh</p>
+                        <div class="pd-review-images">
+                            <button type="button" class="pd-review-add-image" id="pd-review-add-image" aria-label="Thêm ảnh" data-i18n-aria="pd.reviewAddImage" aria-controls="pd-review-files" aria-describedby="pd-review-images-hint"><span aria-hidden="true">+</span></button>
+                            <input type="file" id="pd-review-files" accept="image/png,image/jpeg,image/webp" multiple aria-labelledby="pd-review-images-label" hidden>
+                            <div class="pd-review-previews" id="pd-review-previews"></div>
+                        </div>
+                        <p class="pd-review-hint" id="pd-review-images-hint" data-i18n="pd.reviewMaxImages">Tối đa 5 ảnh</p>
+                        <p class="pd-review-error" id="pd-review-images-error" role="status" aria-live="polite" hidden></p>
+                    </div>
+                    <div class="pd-review-footer">
+                        <button type="submit" class="pd-review-submit" id="pd-review-submit" data-i18n="pd.reviewSubmit" disabled>Gửi đánh giá</button>
+                    </div>
+                    <p class="pd-review-hint pd-review-feedback" id="pd-review-feedback" role="status" hidden></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== XÁC NHẬN XÓA ĐÁNH GIÁ ===== -->
+    <div class="pd-review-overlay" id="pd-review-delete-overlay" hidden>
+        <div class="pd-review-delete-modal" id="pd-review-delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="pd-review-delete-title" aria-describedby="pd-review-delete-description" tabindex="-1">
+            <h2 id="pd-review-delete-title" data-i18n="pd.reviewDeleteTitle">Xóa đánh giá?</h2>
+            <p id="pd-review-delete-description" data-i18n="pd.reviewDeleteDescription">Bạn có chắc muốn xóa đánh giá này?</p>
+            <div class="pd-review-delete-actions">
+                <button type="button" class="pd-review-owner-action" id="pd-review-delete-cancel" data-i18n="com.cancel">Hủy</button>
+                <button type="button" class="pd-review-owner-action pd-review-delete-confirm" id="pd-review-delete-confirm" data-i18n="com.delete">Xóa</button>
+            </div>
+            <p class="pd-review-hint pd-review-feedback" id="pd-review-delete-feedback" role="status" hidden></p>
         </div>
     </div>
 

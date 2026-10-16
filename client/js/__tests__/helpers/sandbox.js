@@ -13,7 +13,7 @@ const JS_DIR = path.join(__dirname, '..', '..');
 // Các global trình duyệt luôn có sẵn, test hiếm khi cần đổi.
 function baseGlobals(log) {
   return {
-    URLSearchParams, Number, String, Boolean, Promise, Date, Math, JSON, Object, Array,
+    URLSearchParams, AbortController, Number, String, Boolean, Promise, Date, Math, JSON, Object, Array,
     RegExp, isNaN, parseInt, parseFloat, encodeURIComponent, decodeURIComponent,
     setTimeout, clearTimeout, setInterval, clearInterval,
     requestAnimationFrame: function (fn) { return fn(); },

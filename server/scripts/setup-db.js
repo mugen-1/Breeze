@@ -48,6 +48,8 @@ if (!fs.existsSync(path.join(SERVER, '.env'))) {
    Nếu 4 bảng dưới đây đang tồn tại thì DROP TABLE users/products sẽ THẤT BẠI vì
    vướng FK -> phải gỡ chúng TRƯỚC. Chỉ chạy ở chế độ --fresh. */
 const DROP_DEPENDENTS_SQL = [
+  "IF OBJECT_ID('dbo.review_images','U') IS NOT NULL DROP TABLE dbo.review_images;",
+  "IF OBJECT_ID('dbo.reviews','U') IS NOT NULL DROP TABLE dbo.reviews;",
   "IF OBJECT_ID('dbo.payment_transactions','U') IS NOT NULL DROP TABLE dbo.payment_transactions;",
   "IF OBJECT_ID('dbo.order_code_counter','U') IS NOT NULL DROP TABLE dbo.order_code_counter;",
   "IF OBJECT_ID('dbo.cart_items','U')            IS NOT NULL DROP TABLE dbo.cart_items;",
@@ -134,6 +136,8 @@ const STEPS = [
     desc: 'Simulated shipping and business order codes; preserve internal IDs' },
   { type: 'sql', file: 'db/migrations/018_payment_transactions.sql',
     desc: 'Payment transactions (simulation only)' },
+  { type: 'sql', file: 'db/migrations/019_reviews.sql',
+    desc: 'Review schema and completed-purchase eligibility indexes; no review seeds' },
 ];
 
 if (FRESH) {
@@ -155,7 +159,7 @@ let done = 0, skipped = 0;
 
 for (let idx = 0; idx < STEPS.length; idx++) {
   const step = STEPS[idx];
-  if (BEFORE_VARIANTS && /db\/migrations\/01[2345678]_/.test(step.file)) {
+  if (BEFORE_VARIANTS && /db\/migrations\/01[23456789]_/.test(step.file)) {
     skipped++;
     continue;
   }

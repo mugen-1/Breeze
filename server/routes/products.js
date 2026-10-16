@@ -8,6 +8,9 @@
 const express = require('express');
 const router = express.Router();
 const { getPool, sql } = require('../db');
+const { verifyFirebaseToken } = require('../middleware/auth');
+const { getReviewEligibility } = require('../lib/review-eligibility');
+router.use('/:id/reviews', require('./product-reviews'));
 const { sizeProfile, sellableVariant, SIZE_CONFIGURED_SQL, COLOR_CONFIGURED_SQL } = require('../lib/size-variants');
 
 const EFFECTIVE_PRICE = '(CASE WHEN p.sale_price IS NOT NULL THEN p.sale_price ELSE p.price END)';
@@ -170,6 +173,28 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('[products] list error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không tải được danh sách sản phẩm' });
+  }
+});
+
+// ---- GET /api/products/:id/review-eligibility ----
+router.get('/:id/review-eligibility', verifyFirebaseToken, async (req, res) => {
+  const raw = req.params.id, id = Number(raw);
+  // Product 0 is valid in the current catalog. Bound IDs to SQL Server INT.
+  if (!/^\d+$/.test(raw) || !Number.isInteger(id) || id < 0 || id > 2147483647) {
+    return res.status(400).json({ status: 'error', message: 'id phải là số nguyên không âm trong giới hạn INT' });
+  }
+  res.set('Cache-Control', 'no-store');
+  try {
+    const pool = await getPool();
+    const product = await pool.request().input('id', sql.Int, id)
+      .query('SELECT id FROM dbo.products WHERE id = @id AND is_active = 1;');
+    if (!product.recordset.length) {
+      return res.status(404).json({ status: 'error', message: 'Không tìm thấy sản phẩm' });
+    }
+    res.json(await getReviewEligibility(pool, req.user.id, id));
+  } catch (err) {
+    console.error('[reviews] eligibility error:', err.code || 'database-error');
+    res.status(500).json({ status: 'error', message: 'Không kiểm tra được điều kiện đánh giá' });
   }
 });
 

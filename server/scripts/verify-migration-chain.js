@@ -294,6 +294,16 @@ async function main() {
     assert.equal((await testPool.request().query('SELECT COUNT(*) AS n FROM dbo.payment_transactions;')).recordset[0].n, 0);
     console.log('018 upgrade twice preserves legacy/v1 orders and inventory without fabricating payments: PASS');
 
+    const beforeReviews = await state();
+    run('db/run-sql.js', ['db/migrations/019_reviews.sql']);
+    run('db/run-sql.js', ['db/migrations/019_reviews.sql']);
+    assert.deepEqual(await state(), beforeReviews);
+    assert.deepEqual((await testPool.request().query('SELECT * FROM dbo.orders ORDER BY id;')).recordset, originalOrders);
+    assert.deepEqual((await testPool.request().query(`SELECT (SELECT COUNT(*) FROM dbo.reviews) AS reviews,
+      (SELECT COUNT(*) FROM dbo.review_images) AS review_images;`)).recordset[0], { reviews: 0, review_images: 0 });
+    run('scripts/audit-reviews.js');
+    console.log('019 upgrade twice: no seeded reviews, business data preserved, trusted schema. PASS');
+
     const fullSetup = run('scripts/setup-db.js', ['--fresh']);
     assert.match(fullSetup, /db\/migrations\/012_product_variants\.sql/);
     assert.match(fullSetup, /db\/migrations\/013_size_variants\.sql/);
@@ -301,6 +311,7 @@ async function main() {
     assert.match(fullSetup, /db\/migrations\/015_color_variants\.sql/);
     assert.match(fullSetup, /db\/migrations\/016_order_shipping\.sql/);
     assert.match(fullSetup, /db\/migrations\/018_payment_transactions\.sql/);
+    assert.match(fullSetup, /db\/migrations\/019_reviews\.sql/);
     variantState = (await testPool.request().query(`SELECT
       (SELECT COUNT(*) FROM dbo.products) AS products,
       (SELECT COUNT(*) FROM dbo.product_variants WHERE is_base = 1) AS bases,
@@ -310,7 +321,8 @@ async function main() {
     for (const type of movementTypes) assert.ok((await movementConstraint()).includes(type));
     run('scripts/audit-order-shipping.js');
     run('scripts/audit-order-payment.js');
-    console.log('Fresh full setup through 018 and read-only audits: PASS');
+    run('scripts/audit-reviews.js');
+    console.log('Fresh full setup through 019 and read-only audits: PASS');
   } finally {
     if (testPool) await testPool.close();
     if (created) {

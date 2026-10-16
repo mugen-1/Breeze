@@ -114,6 +114,9 @@ app.use('/avatars', express.static(path.join(__dirname, 'uploads', 'avatars'), {
   immutable: true,
   dotfiles: 'deny',
 }));
+app.use('/review-images', express.static(require('./lib/review-media').REVIEW_DIR, {
+  maxAge: '1y', immutable: true, dotfiles: 'deny',
+}));
 
 // --- Trang EJS ---------------------------------------------------------------
 // PHẢI đứng TRƯỚC express.static: file .html cũ vẫn nằm trong client/ tới phase dọn

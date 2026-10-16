@@ -23,6 +23,7 @@ const { readColors, changeColors, ColorError } = require('../lib/color-variants'
 
 // Bọc toàn bộ router: chưa đăng nhập -> 401; đăng nhập nhưng không phải admin -> 403.
 router.use(verifyFirebaseToken, requireAdmin);
+router.use('/reviews', require('./admin-reviews'));
 
 // Bộ lọc gồm cả trạng thái legacy; mục tiêu chuyển trạng thái do order-state.js quản lý.
 const ORDER_STATUSES = ALL_STATUSES;

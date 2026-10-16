@@ -63,6 +63,7 @@
             $('bar-right').style.visibility = 'hidden';
             document.body.classList.toggle('adm-authed', which === 'panel');
             if (which !== 'panel') { _exportEpoch++; closeDrawer(); closeCustomerDetail(); }
+            if (which !== 'panel' && window.BreezeAdminReviews) window.BreezeAdminReviews.reset();
             if (which === 'panel') {
                 $('panel').style.display = 'block';
                 $('bar-right').style.visibility = 'visible';
@@ -98,6 +99,7 @@
                 case 'statistics': loadStatistics(); break;
                 case 'users': loadUsers(_userPage); break;
                 case 'blacklist': loadBlacklist(_blacklistPage); break;
+                case 'reviews': break; // admin-reviews.js re-renders loaded data on language change.
                 default: loadDashboard();
             }
             if ($('inventory-modal').classList.contains('open') && _inventoryData) renderInventory(_inventoryData);
@@ -116,6 +118,7 @@
             orders: 'tab-orders',
             statistics: 'view-statistics',
             users: 'view-users',
+            reviews: 'view-reviews',
             blacklist: 'view-blacklist'
         };
         function bindNav() {
@@ -131,6 +134,7 @@
                         if (el) el.style.display = (k === t) ? 'block' : 'none';
                     });
                     closeDrawer();
+                    if (t === 'reviews' && window.BreezeAdminReviews) window.BreezeAdminReviews.load(1);
                 });
             });
         }

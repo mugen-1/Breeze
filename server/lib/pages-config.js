@@ -138,7 +138,7 @@ module.exports = {
     headExtra: 'product-style',
     title: 'Sản phẩm - BREEZE', i18nTitle: 'pd.docTitle',
     bodyClass: 'category-page sitehdr product-detail-page',
-    useUtilsI18n: true, pageJs: ['page-product.js'], closeHtml: true,
+    useUtilsI18n: true, pageJs: ['page-product.js', 'page-product-reviews.js'], closeHtml: true,
   },
   search: {
     view: 'search',

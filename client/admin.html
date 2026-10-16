@@ -76,6 +76,9 @@
             <button type="button" class="adm-nav-item" data-nav="users">
                 <i class="fa fa-users" aria-hidden="true"></i> <span data-i18n="adm.users">Người dùng</span>
             </button>
+            <button type="button" class="adm-nav-item" data-nav="reviews" aria-controls="view-reviews">
+                <i class="fa fa-star-o" aria-hidden="true"></i> <span data-i18n="adm.reviews">Đánh giá</span>
+            </button>
             <button type="button" class="adm-nav-item" data-nav="blacklist">
                 <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <circle cx="12" cy="12" r="2.2"/>
@@ -381,6 +384,44 @@
             <div class="adm-pager" id="user-pager"></div>
         </section>
 
+        <!-- Đánh giá: dữ liệu và quyền moderation từ Admin Review API. -->
+        <section id="view-reviews" style="display:none;" aria-labelledby="admin-reviews-title">
+            <nav class="adm-crumb" aria-label="Breadcrumb">
+                <ol>
+                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
+                    <li aria-current="page" data-i18n="adm.reviews">Đánh giá</li>
+                </ol>
+            </nav>
+            <h1 class="adm-page-title" id="admin-reviews-title" data-i18n="adm.reviewsTitle">Quản lý đánh giá</h1>
+            <p class="adm-review-description" data-i18n="adm.reviewsDescription">Theo dõi và kiểm soát đánh giá sản phẩm của khách hàng.</p>
+            <div class="adm-toolbar">
+                <label for="admin-review-status" data-i18n="adm.thStatus">Trạng thái</label>
+                <select id="admin-review-status" class="status-sel">
+                    <option value="all" data-i18n="adm.reviewAll">Tất cả</option>
+                    <option value="visible" data-i18n="adm.reviewVisible">Hiển thị</option>
+                    <option value="hidden" data-i18n="adm.reviewHidden">Đã ẩn</option>
+                </select>
+            </div>
+            <div class="adm-table-wrap" tabindex="0" role="region" aria-labelledby="admin-reviews-title">
+                <table class="adm-table">
+                    <thead><tr>
+                        <th scope="col" data-i18n="adm.users">Người dùng</th><th scope="col" data-i18n="adm.products">Sản phẩm</th>
+                        <th scope="col" data-i18n="adm.reviewRating">Đánh giá</th><th scope="col" data-i18n="adm.reviewComment">Bình luận</th>
+                        <th scope="col" data-i18n="adm.reviewPurchased">Đã mua?</th><th scope="col" data-i18n="adm.reviewDate">Ngày đánh giá</th>
+                        <th scope="col" data-i18n="adm.thStatus">Trạng thái</th><th scope="col" data-i18n="adm.thActions">Thao tác</th>
+                    </tr></thead>
+                    <tbody id="admin-reviews-body">
+                        <tr><td colspan="8" class="adm-empty" data-i18n="adm.reviewsEmpty">Chưa có đánh giá nào.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="admin-review-pager" class="adm-pager" hidden>
+                <button type="button" id="admin-review-prev" data-i18n="adm.pgPrev">Trước</button>
+                <span id="admin-review-page"></span>
+                <button type="button" id="admin-review-next" data-i18n="adm.pgNext">Sau</button>
+            </div>
+        </section>
+
         <!-- Danh sách Đen: đơn ĐÃ HUỶ của user đang bị blacklist (theo ĐƠN, không gộp) -->
         <section id="view-blacklist" style="display:none;">
             <nav class="adm-crumb" aria-label="Breadcrumb">
@@ -607,6 +648,33 @@
         </div>
     </div>
 
+    <!-- Review detail/confirmation reuse the Admin modal styles. No demo records. -->
+    <div class="modal-backdrop adm-review-modal" id="admin-review-detail-modal" role="dialog" aria-modal="true" aria-labelledby="admin-review-detail-title">
+        <div class="modal-card">
+            <div class="adm-review-heading">
+                <h3 id="admin-review-detail-title" data-i18n="adm.reviewDetail">Chi tiết đánh giá</h3>
+                <button type="button" class="adm-btn ghost small" id="admin-review-detail-close" data-i18n="com.close">Đóng</button>
+            </div>
+            <img id="admin-review-product-image" class="adm-review-product-image" alt="" hidden>
+            <dl id="admin-review-detail-fields" class="adm-review-detail-fields"></dl>
+            <div id="admin-review-detail-images" hidden>
+                <h4 data-i18n="adm.reviewImages">Hình ảnh đánh giá</h4>
+                <div id="admin-review-gallery" class="adm-review-gallery"></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop adm-review-modal" id="admin-review-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="admin-review-confirm-title" aria-describedby="admin-review-confirm-message" tabindex="-1">
+        <div class="modal-card">
+            <h3 id="admin-review-confirm-title" data-i18n="adm.reviewHideTitle">Ẩn đánh giá?</h3>
+            <p id="admin-review-confirm-message" data-i18n="adm.reviewHideDescription">Đánh giá này sẽ không còn hiển thị công khai cho khách hàng.</p>
+            <div class="modal-foot">
+                <button type="button" class="adm-btn ghost small" id="admin-review-confirm-cancel" data-i18n="com.cancel">Hủy</button>
+                <button type="button" class="adm-btn small" id="admin-review-confirm-ok" data-i18n="adm.reviewHide">Ẩn</button>
+            </div>
+            <p id="admin-review-confirm-feedback" class="adm-review-description" role="status" hidden></p>
+        </div>
+    </div>
+
     <div id="toast"></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" integrity="sha384-ajMUFBUFMCyjh8uxJg6bkGcKe9RTolyjwbxB3yES0QQMenP3Oztj/W9vA2SJPcIh" crossorigin="anonymous"></script>
@@ -623,6 +691,7 @@
     <script src="js/order-payment.js"></script>
     <script src="js/order-shipping.js"></script>
     <script src="js/business-report-csv.js"></script>
+    <script src="js/admin-reviews.js"></script>
     <script src="js/admin.js"></script>
     <!-- Chart.js: chỉ dùng cho biểu đồ doanh thu Dashboard (dependency mới duy nhất phase này) -->
 </body>
