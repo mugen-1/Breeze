@@ -64,6 +64,7 @@
             document.body.classList.toggle('adm-authed', which === 'panel');
             if (which !== 'panel') { _exportEpoch++; closeDrawer(); closeCustomerDetail(); }
             if (which !== 'panel' && window.BreezeAdminReviews) window.BreezeAdminReviews.reset();
+            if (which !== 'panel' && window.BreezeAdminSupport) window.BreezeAdminSupport.reset();
             if (which === 'panel') {
                 $('panel').style.display = 'block';
                 $('bar-right').style.visibility = 'visible';
@@ -100,6 +101,7 @@
                 case 'users': loadUsers(_userPage); break;
                 case 'blacklist': loadBlacklist(_blacklistPage); break;
                 case 'reviews': break; // admin-reviews.js re-renders loaded data on language change.
+                case 'feedback': break; // Nhãn và dữ liệu chat do admin-support.js quản lý.
                 default: loadDashboard();
             }
             if ($('inventory-modal').classList.contains('open') && _inventoryData) renderInventory(_inventoryData);
@@ -119,7 +121,8 @@
             statistics: 'view-statistics',
             users: 'view-users',
             reviews: 'view-reviews',
-            blacklist: 'view-blacklist'
+            blacklist: 'view-blacklist',
+            feedback: 'view-feedback'
         };
         function bindNav() {
             var items = document.querySelectorAll('.adm-nav-item');
@@ -135,6 +138,8 @@
                     });
                     closeDrawer();
                     if (t === 'reviews' && window.BreezeAdminReviews) window.BreezeAdminReviews.load(1);
+                    if (t === 'feedback' && window.BreezeAdminSupport) window.BreezeAdminSupport.load(1);
+                    else if (window.BreezeAdminSupport) window.BreezeAdminSupport.hide();
                 });
             });
         }

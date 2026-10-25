@@ -31,6 +31,7 @@ const paymentsRouter = require('./routes/payments');
 const privacyRouter = require('./routes/privacy');
 const accountRouter = require('./routes/account');
 const adminRouter = require('./routes/admin');
+const supportRouter = require('./routes/support');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -99,6 +100,7 @@ app.use('/api/account/privacy-settings', privacyRouter);
 // chưa ai nhận: POST /verify-password và DELETE / (xoá tài khoản).
 app.use('/api/account', accountRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/support', supportRouter);
 
 // --- Static: ảnh đại diện -----------------------------------------------------
 // Chỉ phục vụ ĐÚNG folder uploads/avatars (không phải cả uploads/), express.static
@@ -180,8 +182,11 @@ app.use((err, req, res, next) => {
   res.status(500).json({ status: 'error', message: 'Lỗi máy chủ' });
 });
 
-app.listen(PORT, () => {
+let supportCleanup;
+const httpServer = app.listen(PORT, () => {
+  supportCleanup = require('./lib/support-session').startCleanup(require('./db').getPool);
   console.log(`[server] Breeze Shop API listening on http://localhost:${PORT}`);
   console.log(`[server] Health check: http://localhost:${PORT}/api/health`);
   console.log(`[server] Frontend:     http://localhost:${PORT}/index.html`);
 });
+httpServer.on('close', () => { if (supportCleanup) supportCleanup.stop(); require('./middleware/support-stream').stream.closeAll(); });

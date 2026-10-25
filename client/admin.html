@@ -18,6 +18,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap&subset=vietnamese,latin" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="css/global.css">
     <link rel="stylesheet" type="text/css" href="css/admin.css">
+    <link rel="stylesheet" href="css/admin-support.css">
     <link rel="stylesheet" href="css/order-payment.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -87,6 +88,9 @@
                     <path d="M12 12 L5.2 16.4 A8.8 8.8 0 0 1 5.2 7.6 Z"/>
                 </svg>
                 <span data-i18n="adm.blacklist">Danh sách Đen</span>
+            </button>
+            <button type="button" class="adm-nav-item" data-nav="feedback" aria-controls="view-feedback">
+                <i class="fa fa-comments-o" aria-hidden="true"></i> <span data-i18n="admSupport.title">Phản hồi của khách hàng</span>
             </button>
         </nav>
     </aside>
@@ -455,6 +459,62 @@
             </div>
             <div class="adm-pager" id="blacklist-pager"></div>
         </section>
+        <!-- Hộp thư CSKH, dữ liệu tải qua API sau cổng quyền Admin. -->
+        <section id="view-feedback" style="display:none;" aria-labelledby="admin-support-title">
+            <h1 class="adm-page-title" id="admin-support-title" data-i18n="admSupport.title">Phản hồi của khách hàng</h1>
+            <div class="adm-support" id="admin-support" data-thread-open="false">
+                <div class="adm-support-inbox" role="region" aria-labelledby="admin-support-inbox-title">
+                    <div class="adm-support-inbox-head">
+                        <i class="fa fa-comments-o" aria-hidden="true"></i>
+                        <h2 id="admin-support-inbox-title" data-i18n="admSupport.inbox">Hội thoại</h2>
+                        <button type="button" class="adm-btn ghost small" id="admin-support-refresh" aria-label="Làm mới" data-i18n-aria="support.refresh"><i class="fa fa-refresh" aria-hidden="true"></i></button>
+                    </div>
+                    <div class="adm-support-list" id="admin-support-list" aria-busy="false"></div>
+                    <div class="adm-support-list-state" id="admin-support-list-state" role="status">
+                        <i class="fa fa-comment-o" aria-hidden="true"></i>
+                        <p id="admin-support-list-message" data-i18n="admSupport.unavailable">Hội thoại hiện chưa khả dụng.</p>
+                    </div>
+                    <div class="adm-pager" id="admin-support-pager" hidden>
+                        <button type="button" id="admin-support-prev" data-i18n="admSupport.previous">Trước</button>
+                        <span id="admin-support-page" aria-live="polite"></span>
+                        <button type="button" id="admin-support-next" data-i18n="admSupport.next">Sau</button>
+                    </div>
+                </div>
+                <div class="adm-support-thread" role="region" aria-labelledby="admin-support-contact">
+                    <div class="adm-support-thread-head">
+                        <button type="button" class="adm-support-back" id="admin-support-back" aria-label="Quay lại danh sách hội thoại" data-i18n-aria="admSupport.back">
+                            <i class="fa fa-arrow-left" aria-hidden="true"></i>
+                        </button>
+                        <div class="adm-support-contact-details">
+                            <h2 id="admin-support-contact" tabindex="-1" data-i18n="admSupport.thread">Nội dung trao đổi</h2>
+                            <p id="admin-support-email" hidden></p>
+                        </div>
+                        <span class="pill status" id="admin-support-kind" hidden></span>
+                        <button type="button" class="adm-btn ghost small" id="admin-support-thread-refresh" aria-label="Làm mới" data-i18n-aria="support.refresh" disabled><i class="fa fa-refresh" aria-hidden="true"></i></button>
+                    </div>
+                    <div class="adm-support-history">
+                        <button type="button" class="adm-btn ghost small adm-support-older" id="admin-support-older" data-i18n="support.older" hidden>Xem tin nhắn trước</button>
+                        <div class="adm-support-thread-state" id="admin-support-thread-state" role="status">
+                            <i class="fa fa-comments-o" aria-hidden="true"></i>
+                            <h3 id="admin-support-thread-message" data-i18n="admSupport.choose">Chọn một hội thoại</h3>
+                            <p data-i18n="admSupport.chooseDescription">Nội dung trao đổi với khách hàng sẽ hiển thị tại đây.</p>
+                        </div>
+                        <div class="adm-support-messages" id="admin-support-messages" role="log" aria-live="polite" aria-label="Tin nhắn" data-i18n-aria="admSupport.messages" hidden></div>
+                    </div>
+                    <form class="adm-support-compose" id="admin-support-form" aria-describedby="admin-support-unavailable">
+                        <label class="adm-support-sr-only" for="admin-support-reply" data-i18n="admSupport.reply">Nội dung phản hồi</label>
+                        <div class="adm-support-compose-row">
+                            <textarea id="admin-support-reply" rows="2" placeholder="Nhập phản hồi…" data-i18n-ph="admSupport.replyPlaceholder" aria-describedby="admin-support-unavailable" disabled></textarea>
+                            <button type="submit" class="adm-btn small" id="admin-support-send" aria-describedby="admin-support-unavailable" disabled>
+                                <i class="fa fa-paper-plane-o" aria-hidden="true"></i> <span data-i18n="admSupport.send">Gửi</span>
+                            </button>
+                        </div>
+                        <p id="admin-support-unavailable" role="status" aria-live="polite" hidden></p>
+                        <p id="admin-support-connection" role="status" aria-live="polite" hidden></p>
+                    </form>
+                </div>
+            </div>
+        </section>
     </div>
     </main>
 
@@ -692,6 +752,9 @@
     <script src="js/order-shipping.js"></script>
     <script src="js/business-report-csv.js"></script>
     <script src="js/admin-reviews.js"></script>
+    <script src="js/support-api.js"></script>
+    <script src="js/support-session.js"></script>
+    <script src="js/admin-support.js"></script>
     <script src="js/admin.js"></script>
     <!-- Chart.js: chỉ dùng cho biểu đồ doanh thu Dashboard (dependency mới duy nhất phase này) -->
 </body>

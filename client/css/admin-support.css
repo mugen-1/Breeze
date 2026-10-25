@@ -1,0 +1,84 @@
+/* Task 2: hộp thư CSKH, dùng lại token và component Admin BREEZE. */
+#view-feedback { max-width: 1440px; margin-inline: auto; }
+.adm-support {
+    display: grid;
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+    height: 630px;
+    height: clamp(430px, calc(100dvh - 220px), 720px);
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius);
+    background: var(--admin-surface);
+    color: var(--admin-ink);
+    overflow: hidden;
+}
+.adm-support [hidden] { display: none !important; }
+.adm-support-inbox, .adm-support-thread { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.adm-support-inbox { border-right: 1px solid var(--admin-border); }
+.adm-support-inbox-head, .adm-support-thread-head {
+    display: flex; align-items: center; gap: 12px;
+    min-height: 76px; padding: 16px 20px;
+    border-bottom: 1px solid var(--admin-border); flex-shrink: 0;
+}
+.adm-support-inbox-head .fa { color: var(--admin-ink-3); font-size: 18px; }
+.adm-support-inbox-head h2 { flex: 1; }
+.adm-support .adm-pager { margin: 0; padding: 12px 6px; gap: 8px; border-top: 1px solid var(--admin-border); flex-shrink: 0; }
+.adm-support-older { align-self: center; margin: 12px; }
+.adm-support-row:disabled { cursor: wait; }
+.adm-support h2 { margin: 0; padding: 0; font-family: var(--font-ui); font-size: 15px; font-weight: 500; letter-spacing: 0; }
+.adm-support-list { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.adm-support-row {
+    display: block; width: 100%; padding: 18px 20px;
+    border: none; border-bottom: 1px solid var(--admin-border);
+    background: transparent; color: inherit; text-align: left;
+    font: inherit; font-size: 13px; cursor: pointer;
+}
+.adm-support-row:hover { background: var(--c-surface); }
+.adm-support-row[aria-current="true"] { background: var(--c-surface); box-shadow: inset 2px 0 var(--c-ink); }
+.adm-support-row-top { display: flex; align-items: center; gap: 8px; }
+.adm-support-row-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 400; }
+.adm-support-row-preview { display: block; margin-top: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--admin-ink-2); }
+.adm-support-row-date { display: block; margin-top: 8px; font-size: 11px; color: var(--admin-ink-3); font-variant-numeric: tabular-nums; }
+.adm-support-row.is-unread .adm-support-row-name { font-weight: 700; }
+.adm-support-row.is-unread .adm-support-row-preview { font-weight: 600; color: var(--admin-ink); }
+.adm-support-unread-dot { flex-shrink: 0; width: 6px; height: 6px; border-radius: 50%; background: var(--c-ink); }
+.adm-support-list-state, .adm-support-thread-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; gap: 14px; padding: 32px 24px; text-align: center; color: var(--admin-ink-3);
+}
+.adm-support-list-state .fa, .adm-support-thread-state .fa { font-size: 30px; color: var(--admin-border-hv); }
+.adm-support-list-state p, .adm-support-thread-state p { margin: 0; font-size: 13px; line-height: 1.7; }
+.adm-support-thread-state h3 { margin: 0; font-family: var(--font-display); font-size: 27px; font-weight: 500; color: var(--admin-ink); }
+.adm-support-contact-details { flex: 1; min-width: 0; }
+.adm-support-contact-details h2, #admin-support-email { overflow-wrap: anywhere; }
+#admin-support-email { margin: 5px 0 0; font-size: 12px; color: var(--admin-ink-3); }
+.adm-support-history { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.adm-support-messages { display: flex; flex-direction: column; padding: 24px; }
+.adm-support-message + .adm-support-message { margin-top: 22px; }
+.adm-support-message + .adm-support-message.is-continuation { margin-top: 4px; }
+.adm-support-message { display: flex; flex-direction: column; align-items: flex-start; max-width: 80%; align-self: flex-start; min-width: 0; }
+.adm-support-message p { margin: 0; padding: 12px 16px; border-radius: 10px 10px 10px 2px; background: var(--c-surface); color: var(--c-ink); font-size: 14px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.adm-support-message-caption { margin-top: 6px; font-size: 11px; color: var(--admin-ink-3); overflow-wrap: anywhere; }
+.adm-support-message--admin { align-items: flex-end; align-self: flex-end; }
+.adm-support-message--admin p { border-radius: 10px 10px 2px 10px; background: var(--c-accent); color: var(--c-on-accent); }
+.adm-support-compose { flex-shrink: 0; margin: 0; padding: 16px 20px 12px; border-top: 1px solid var(--admin-border); }
+.adm-support-compose-row { display: flex; align-items: center; gap: 12px; }
+.adm-support-compose textarea { flex: 1; width: 100%; min-width: 0; resize: none; margin: 0; padding: 10px 12px; border: 1px solid var(--admin-border); border-radius: 6px; background: var(--admin-surface); color: var(--admin-ink); font: inherit; font-size: 14px; }
+.adm-support-compose textarea:disabled { color: var(--admin-ink-3); cursor: not-allowed; }
+.adm-support-compose .adm-btn { min-height: 44px; flex-shrink: 0; }
+#admin-support-unavailable, #admin-support-connection { margin: 9px 0 0; color: var(--admin-ink-3); font-size: 12px; }
+.adm-support-back { display: none; align-items: center; justify-content: center; flex-shrink: 0; width: 44px; height: 44px; padding: 0; border: none; background: transparent; color: var(--admin-ink); cursor: pointer; }
+.adm-support button:focus-visible, .adm-support textarea:focus-visible, #admin-support-contact:focus-visible { outline: 2px solid var(--c-ink); outline-offset: -2px; }
+.adm-support-sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+@media (max-width: 760px) {
+    .adm-support { grid-template-columns: minmax(0, 1fr); height: 580px; height: clamp(390px, calc(100dvh - 210px), 650px); }
+    .adm-support-inbox { border-right: none; }
+    .adm-support-thread { display: none; }
+    .adm-support[data-thread-open="true"] .adm-support-inbox { display: none; }
+    .adm-support[data-thread-open="true"] .adm-support-thread { display: flex; }
+    .adm-support-back { display: inline-flex; }
+    .adm-support-thread-head { padding: 12px; gap: 8px; }
+    .adm-support-messages { padding: 20px 16px; }
+    .adm-support-message { max-width: 90%; }
+    .adm-support-compose { padding: 12px; }
+    .adm-support-compose textarea { font-size: 16px; }
+}

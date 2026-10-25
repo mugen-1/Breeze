@@ -1,5 +1,6 @@
 // Thông báo lỗi Firebase -> khoá i18n (js/i18n.js). Nhãn tĩnh trên form do data-i18n lo.
 const ERROR_KEYS = {
+    'SUPPORT_SESSION_UNAVAILABLE': 'au.errSupportSession',
     'auth/email-already-in-use': 'au.eInUse',
     'auth/invalid-email': 'au.eBadEmail',
     'auth/weak-password': 'au.eWeakPw',
@@ -22,6 +23,7 @@ function showMessage(elementId, message, isError) {
 }
 
 function dangKy() {
+    let createdUid;
     const ten = document.getElementById('reg-name').value.trim();
     const email = document.getElementById('reg-email').value.trim();
     const matKhau = document.getElementById('reg-password').value;
@@ -47,12 +49,16 @@ function dangKy() {
     auth.createUserWithEmailAndPassword(email, matKhau)
         .then((userCredential) => {
             const user = userCredential.user;
+            createdUid = user.uid;
             return user.sendEmailVerification()
                 .then(() => true, (err) => {
                     console.error('[auth] không gửi được email xác minh:', err && err.code);
                     return false;
                 })
                 .then((sent) => user.updateProfile({ displayName: ten }).then(() => sent));
+        })
+        .then((sent) => {
+            return Promise.resolve(window.BreezeSupportSession ? window.BreezeSupportSession.prepare(createdUid, true) : null).then(() => sent);
         })
         .then((sent) => {
             // Câu nhắc kiểm tra email dài hơn -> chờ lâu hơn trước khi chuyển trang.
@@ -65,6 +71,7 @@ function dangKy() {
 }
 
 function dangNhap() {
+    let signedInUid;
     const email = document.getElementById('login-email').value.trim();
     const matKhau = document.getElementById('login-password').value;
 
@@ -76,6 +83,7 @@ function dangNhap() {
     auth.signInWithEmailAndPassword(email, matKhau)
         .then((userCredential) => {
             const user = userCredential.user;
+            signedInUid = user.uid;
             localStorage.setItem('userName', user.displayName || user.email);
             // Gọi /api/me để (a) đồng bộ user vào DB lần đầu / cập nhật last_login,
             // (b) biết role hiện tại (auto-admin theo ADMIN_EMAILS áp dụng ngay ở đây)
@@ -86,6 +94,9 @@ function dangNhap() {
                     .then((r) => (r.ok ? r.json() : null))
                     .catch(() => null);
             });
+        })
+        .then((me) => {
+            return Promise.resolve(window.BreezeSupportSession ? window.BreezeSupportSession.prepare(signedInUid) : null).then(() => me);
         })
         .then((me) => {
             const isAdmin = !!(me && me.role === 'admin');

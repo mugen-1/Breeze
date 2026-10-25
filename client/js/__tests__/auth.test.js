@@ -15,6 +15,10 @@ function setup(opts) {
   const timers = [];
   let authCb = null;
   const user = {
+    uid: 'user-a',
+    email: 'a@b.vn',
+    displayName: 'Truc',
+    getIdToken: function () { steps.push('getIdToken'); return Promise.resolve('id-token'); },
     sendEmailVerification: function () {
       steps.push('sendEmailVerification');
       return opts.verify === 'fail'
@@ -24,12 +28,22 @@ function setup(opts) {
   };
   const r = load('auth.js', {
     deps: ['routes.js', 'utils-i18n.js'],
-    window: { location: { href: '', search: '' } },
+    window: { location: { href: '', search: '' },
+      BreezeSupportSession: opts.prepare ? { prepare(uid) { steps.push('prepare:' + uid); return opts.prepare(); } } : undefined },
     globals: {
+      fetch: function (url, init) {
+        steps.push('fetch:' + url);
+        eq('login: gui token Firebase toi API', init.headers.Authorization, 'Bearer id-token');
+        return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ role: 'customer' }); } });
+      },
       setTimeout: function (fn, ms) { timers.push(ms); },
       localStorage: { getItem: function () { return null; }, setItem: function () {},
                       removeItem: function () { steps.push('removeItem'); } },
       auth: {
+        signInWithEmailAndPassword: function (email, pw) {
+          steps.push('signIn:' + email);
+          return Promise.resolve({ user: user });
+        },
         onAuthStateChanged: function (fn) { authCb = fn; },
         createUserWithEmailAndPassword: function (email, pw) {
           steps.push('create:' + email);
@@ -47,6 +61,11 @@ function setup(opts) {
   byId('reg-confirm').value = '123456';
   r.steps = steps; r.timers = timers; r.byId = byId;
   r.fireAuth = function (u) { authCb(u); };
+  r.login = function () {
+    byId('login-email').value = 'a@b.vn';
+    byId('login-password').value = '123456';
+    r.sandbox.dangNhap();
+  };
   return r;
 }
 
@@ -120,4 +139,15 @@ console.log('auth.js');
   eq('reset-password -> khong goi Firebase', r.steps, []);
   check('form khong co data-action -> de nguyen (khong chan)', !submit(r, null));
   check('data-action la khoa ke thua (constructor) -> khong chan', !submit(r, 'constructor'));
+  let finish;
+  r = setup({ prepare: () => new Promise(resolve => { finish = resolve; }) }); r.login(); await wait();
+  eq('login waits for guest session transfer before navigating', r.win.location.href, '');
+  check('login transfer uses the UID of the authenticated credential', r.steps.includes('prepare:user-a'));
+  finish(); await wait(); eq('login redirects after session transfer succeeds', r.win.location.href, 'index.html');
+  r = setup({ prepare: () => Promise.reject({ code: 'SUPPORT_SESSION_UNAVAILABLE' }) }); r.login(); await wait();
+  eq('session synchronization error keeps login available for retry', r.win.location.href, '');
+  eq('session synchronization error has a safe translated message', r.byId('login-msg').textContent, 'au.errSupportSession');
+  r = setup({ prepare: () => new Promise(resolve => { finish = resolve; }) }); r.sandbox.dangKy(); await wait();
+  eq('signup does not schedule redirect before transfer completes', r.timers.length, 0);
+  finish(); await wait(); eq('signup keeps existing verification redirect delay after transfer', r.timers, [3500]);
 })();

@@ -67,6 +67,7 @@ if (i18nTitle) bodyAttrs += ' data-i18n-doctitle="' + i18nTitle + '"';
 <% pageCss.forEach(function (f) { -%>
     <link rel="stylesheet" type="text/css" href="css/<%= f %>">
 <% }); -%>
+    <link rel="stylesheet" href="css/customer-support.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <% if (headExtra) { -%>
@@ -83,6 +84,7 @@ if (i18nTitle) bodyAttrs += ' data-i18n-doctitle="' + i18nTitle + '"';
 <% pageCss.forEach(function (f) { -%>
     <link rel="stylesheet" type="text/css" href="css/<%= f %>">
 <% }); -%>
+    <link rel="stylesheet" href="css/customer-support.css">
 <script nonce="<%= cspNonce %>">(function(){try{var t=localStorage.getItem('breeze-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -48,6 +48,11 @@ if (!fs.existsSync(path.join(SERVER, '.env'))) {
    Nếu 4 bảng dưới đây đang tồn tại thì DROP TABLE users/products sẽ THẤT BẠI vì
    vướng FK -> phải gỡ chúng TRƯỚC. Chỉ chạy ở chế độ --fresh. */
 const DROP_DEPENDENTS_SQL = [
+  "IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name='FK_support_conversations_read_message' AND parent_object_id=OBJECT_ID('dbo.support_conversations')) ALTER TABLE dbo.support_conversations DROP CONSTRAINT FK_support_conversations_read_message;",
+  "IF OBJECT_ID('dbo.support_guest_sessions','U') IS NOT NULL DROP TABLE dbo.support_guest_sessions;",
+  "IF OBJECT_ID('dbo.support_messages','U') IS NOT NULL DROP TABLE dbo.support_messages;",
+  "IF OBJECT_ID('dbo.support_conversations','U') IS NOT NULL DROP TABLE dbo.support_conversations;",
+  "IF OBJECT_ID('dbo.support_admin_actors','U') IS NOT NULL DROP TABLE dbo.support_admin_actors;",
   "IF OBJECT_ID('dbo.review_images','U') IS NOT NULL DROP TABLE dbo.review_images;",
   "IF OBJECT_ID('dbo.reviews','U') IS NOT NULL DROP TABLE dbo.reviews;",
   "IF OBJECT_ID('dbo.payment_transactions','U') IS NOT NULL DROP TABLE dbo.payment_transactions;",
@@ -138,6 +143,10 @@ const STEPS = [
     desc: 'Payment transactions (simulation only)' },
   { type: 'sql', file: 'db/migrations/019_reviews.sql',
     desc: 'Review schema and completed-purchase eligibility indexes; no review seeds' },
+  { type: 'sql', file: 'db/migrations/020_customer_support.sql',
+    desc: 'Customer support storage, sender identity and shared read cursor; no chat seeds' },
+  { type: 'sql', file: 'db/migrations/021_support_history_revision.sql',
+    desc: 'Persistent revision for merged support history snapshots; no chat seeds' },
 ];
 
 if (FRESH) {
@@ -159,7 +168,7 @@ let done = 0, skipped = 0;
 
 for (let idx = 0; idx < STEPS.length; idx++) {
   const step = STEPS[idx];
-  if (BEFORE_VARIANTS && /db\/migrations\/01[23456789]_/.test(step.file)) {
+  if (BEFORE_VARIANTS && /db\/migrations\/(01[23456789]|02[01])_/.test(step.file)) {
     skipped++;
     continue;
   }
