@@ -95,6 +95,8 @@
     var nextBtn = document.getElementById('pd-next');
     var thumbsWrap = document.getElementById('pd-thumbs');
     var addBtn = document.querySelector('.pd-add');
+    var buyNowBtn = document.getElementById('pd-buy-now');
+    var buyNowBusy = false, buyNowController = null, buyNowUid = null;
     var statusEl = document.getElementById('pd-selection-status');
     var reviewBtn = document.getElementById('pd-review-open');
     var reviewOverlay = document.getElementById('pd-review-overlay');
@@ -189,16 +191,126 @@
         var soldOut = !sellable || !!(chosen && !chosen.available);
         var needsColor = p.color_configured && !selectedColor;
         var needsSize = p.size_configured && !chosen;
-        var ready = !soldOut && !needsColor && !needsSize && !!chosen;
+        var ready = !soldOut && !needsColor && !needsSize && !!chosen && chosen.is_active !== false &&
+            (!p.color_configured || chosen.color === selectedColor.key) &&
+            (!p.size_configured || chosen.size != null);
         // cart.js chỉ dùng data-stock="0" để chặn thêm giỏ; nguồn quyết định là sellable variant.
         root.setAttribute('data-stock', soldOut ? 0 : 1);
         statusEl.textContent = soldOut ? t('sr.soldOut') :
             needsColor ? t('pd.selectColor') : needsSize ? t('pd.selectSize') : t('pd.inStock');
         statusEl.classList.toggle('is-soldout', soldOut);
         addBtn.disabled = !ready;
+        if (buyNowBtn) {
+            buyNowBtn.disabled = buyNowBusy || !ready;
+            buyNowBtn.setAttribute('aria-busy', String(buyNowBusy));
+            var buyLabel = buyNowBusy ? 'com.loading' : 'pd.buyNow';
+            buyNowBtn.setAttribute('data-i18n', buyLabel);
+            buyNowBtn.textContent = t(buyLabel);
+        }
         addBtn.textContent = soldOut ? t('sr.soldOut') : t('pd.addToCart');
         addBtn.classList.toggle('sold-out', soldOut);
+        return ready ? chosen : null;
     }
+
+    function buyNowUserId() {
+        var helper = window.AuthHelper;
+        if (!helper || helper.ready !== true || !helper.isLoggedIn()) return null;
+        var user = helper.getUser();
+        return user && user.uid || null;
+    }
+    function buyNowNotice(key, params) {
+        if (typeof _cartToast === 'function') _cartToast(t(key, params));
+        else statusEl.textContent = t(key, params);
+    }
+    function buyNowErrorKey(response, data) {
+        if (response.status === 401) return 'au.notLoggedIn';
+        if (data && data.error === 'BLACKLISTED') return 'acc.blocked';
+        if (response.status === 409 || data && data.error === 'INSUFFICIENT_STOCK') return 'co.msgStock';
+        if (response.status === 404) return 'sr.soldOut';
+        return 'acc.errAddCart';
+    }
+    // AuthHelper may still be acquiring a token when the account changes. Abort the
+    // fetch as well as ignoring its result; never fall back to a guest cart.
+    document.addEventListener('authchange', function () {
+        if (buyNowController && buyNowUserId() !== buyNowUid) buyNowController.abort();
+    });
+    if (buyNowBtn) buyNowBtn.addEventListener('click', async function () {
+        if (buyNowBusy || !current) return;
+        var purchase = window.BreezePurchase;
+        if (purchase && window.AuthHelper && window.AuthHelper.ready !== true) {
+            buyNowBusy = true; renderAvailability(current);
+            try { await purchase.whenAuthReady(); }
+            catch (_) { buyNowNotice('pd.purchaseAuth'); return; }
+            finally { buyNowBusy = false; renderAvailability(current); }
+        }
+        var uid = buyNowUserId();
+        if (!uid && (!purchase || !window.AuthHelper || window.AuthHelper.ready !== true)) {
+            buyNowNotice('au.notLoggedIn'); return;
+        }
+        var variant = renderAvailability(current);
+        if (!variant || !Number.isInteger(current.id) || current.id < 0 ||
+            !Number.isInteger(variant.id) || variant.id <= 0) return;
+        if (!uid) {
+            buyNowBusy = true; renderAvailability(current);
+            try {
+                var intentId = purchase.create(current.id, variant.id);
+                window.location.href = window.BreezeRoutes.to('login', { redirect: 'cart', purchase: intentId });
+            } catch (error) {
+                buyNowBusy = false; renderAvailability(current);
+                buyNowNotice(error.purchaseKey || 'pd.purchaseStorage');
+            }
+            return;
+        }
+        var productId = current.id, variantId = variant.id;
+        var controller = new AbortController(), navigating = false;
+        buyNowBusy = true; buyNowController = controller; buyNowUid = uid;
+        renderAvailability(current);
+        function sameUser() {
+            return !controller.signal.aborted && buyNowUserId() === uid;
+        }
+        try {
+            // Read the authoritative quantity: mode:add clamps at CART_MAX_QTY on
+            // the server, so a 200 alone does not prove that one item was added.
+            var beforeResponse = await window.AuthHelper.apiFetch('/api/cart', { signal: controller.signal });
+            if (!sameUser()) { buyNowNotice('au.notLoggedIn'); return; }
+            var before = await beforeResponse.json();
+            if (!sameUser()) { buyNowNotice('au.notLoggedIn'); return; }
+            if (!beforeResponse.ok) { buyNowNotice(buyNowErrorKey(beforeResponse, before)); return; }
+            if (!before || !Array.isArray(before.items)) throw new Error('Invalid cart response');
+            var existing = before.items.find(function (item) { return item.variant_id === variantId; });
+            var oldQuantity = existing ? existing.quantity : 0;
+            if (!Number.isInteger(oldQuantity) || oldQuantity < 0) throw new Error('Invalid cart quantity');
+            if (oldQuantity >= CART_MAX_QTY) { buyNowNotice('acc.maxQty', { max: CART_MAX_QTY }); return; }
+            var response = await window.AuthHelper.apiFetch('/api/cart', {
+                method: 'POST', signal: controller.signal,
+                body: JSON.stringify({ product_id: productId, variant_id: variantId, quantity: 1, mode: 'add' })
+            });
+            if (!sameUser()) { buyNowNotice('au.notLoggedIn'); return; }
+            var data = await response.json();
+            if (!sameUser()) { buyNowNotice('au.notLoggedIn'); return; }
+            if (!response.ok) { buyNowNotice(buyNowErrorKey(response, data)); return; }
+            var added = data && Array.isArray(data.items) && data.items.find(function (item) {
+                return item.product_id === productId && item.variant_id === variantId;
+            });
+            if (!added || !Number.isInteger(added.quantity) || added.quantity <= oldQuantity) {
+                buyNowNotice('acc.errAddCart'); return;
+            }
+            window.location.href = window.BreezeRoutes.to('cart');
+            navigating = true;
+        } catch (_) {
+            buyNowNotice(sameUser() ? 'acc.errAddCart' : 'au.notLoggedIn');
+        } finally {
+            buyNowController = null; buyNowUid = null;
+            // Keep the button locked after success until navigation completes.
+            if (!navigating) {
+                buyNowBusy = false;
+                if (current) renderAvailability(current);
+            }
+        }
+    });
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted && !buyNowController && current) { buyNowBusy = false; renderAvailability(current); }
+    });
 
     function renderPrice(p) {
         if (p.sale_price != null) {
@@ -238,6 +350,7 @@
         detailEl.hidden = true;
         statusEl.textContent = '';
         if (addBtn) addBtn.disabled = true;
+        if (buyNowBtn) buyNowBtn.disabled = true;
         reviewBtn.disabled = true;
     }
 
@@ -317,6 +430,7 @@
         showError((window.__i18n ? window.__i18n.t('pd.notFound') : 'Không tìm thấy sản phẩm'));
     } else {
         if (addBtn) addBtn.disabled = true;
+        if (buyNowBtn) buyNowBtn.disabled = true;
         fetch(API_BASE + '/api/products/' + id)
             .then(function (r) {
                 if (r.status === 404) throw new Error('NOTFOUND');

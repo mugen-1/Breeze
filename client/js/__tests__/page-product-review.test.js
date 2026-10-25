@@ -34,7 +34,20 @@ function setup(product=P,search='?id=17'){
   return {...r,get,add,calls,reviewCalls,created,review,root,i18n};
 }
 (async()=>{
-  check('Review CTA is directly below Add to Cart in product info',/<button[^>]*class="pd-add"[^>]*>[\s\S]*?<\/button>\s*<button[^>]*id="pd-review-open"/.test(view));
+  // Task 1 groups the two purchase buttons; Review remains the next sibling.
+  const actionGroup=view.match(/<div class="pd-actions">([\s\S]*?)<\/div>/);
+  const actionButtons=actionGroup ? actionGroup[1].match(/<button\b[^>]*>[\s\S]*?<\/button>/g)||[] : [];
+  check('purchase actions wrapper exists inside product info',
+    !!actionGroup && /<div class="pd-info">(?:(?!<section\b)[\s\S])*<div class="pd-actions">/.test(view));
+  eq('purchase actions has exactly two direct button children',actionButtons.length,2);
+  check('purchase actions contains only its two buttons',
+    !!actionGroup && actionGroup[1].replace(/<button\b[^>]*>[\s\S]*?<\/button>/g,'').trim()==='');
+  check('first action retains Add to Cart selector and delegated event',
+    /<button\b(?=[^>]*\btype="button")(?=[^>]*\bclass="pd-add")(?=[^>]*\bdata-action="add-to-cart")[^>]*>/.test(actionButtons[0]||''));
+  check('second action retains Buy now selector, identity and translation',
+    /<button\b(?=[^>]*\btype="button")(?=[^>]*\bclass="pd-buy-now")(?=[^>]*\bid="pd-buy-now")(?=[^>]*\bdata-i18n="pd.buyNow")[^>]*>/.test(actionButtons[1]||''));
+  check('Review is directly below the purchase group and retains its dialog target',
+    !!actionGroup && /^\s*<button\b(?=[^>]*\bclass="pd-review")(?=[^>]*\bid="pd-review-open")(?=[^>]*\baria-controls="pd-review-dialog")[^>]*>/.test(view.slice(actionGroup.index+actionGroup[0].length)));
   eq('one static review modal instance', (view.match(/id="pd-review-overlay"/g)||[]).length,1);
   check('accessible dialog links title and subtitle',/id="pd-review-dialog"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="pd-review-title"[^>]*aria-describedby="pd-review-subtitle"/.test(view));
   check('content now contains UI-2 form without public review records',/id="pd-review-content"[\s\S]*id="pd-review-form"/.test(view)&&!/\breview-(?:card|average|count)\b/.test(view.slice(view.indexOf('id="pd-review-overlay"'))));

@@ -88,7 +88,7 @@ module.exports = {
   login: {
     view: 'login', title: 'Đăng Nhập - BREEZE', i18nTitle: 'au.loginDocTitle',
     bodyClass: 'sitehdr', pageCss: ['auth.css'],
-    useUtilsI18n: true, pageJs: ['auth.js', 'page-login.js'],
+    useUtilsI18n: true, pageJs: ['buy-now-intent.js', 'auth.js', 'page-login.js'],
   },
   signup: {
     view: 'signup', title: 'Tạo Tài Khoản - BREEZE', i18nTitle: 'au.signupDocTitle',
@@ -138,7 +138,7 @@ module.exports = {
     headExtra: 'product-style',
     title: 'Sản phẩm - BREEZE', i18nTitle: 'pd.docTitle',
     bodyClass: 'category-page sitehdr product-detail-page',
-    useUtilsI18n: true, pageJs: ['page-product.js', 'page-product-reviews.js'], closeHtml: true,
+    useUtilsI18n: true, pageJs: ['buy-now-intent.js', 'page-product.js', 'page-product-reviews.js'], closeHtml: true,
   },
   search: {
     view: 'search',

@@ -11,6 +11,7 @@ const ERROR_KEYS = {
 };
 
 function authError(error) {
+    if (error.purchaseKey) return t(error.purchaseKey);
     return ERROR_KEYS[error.code] ? t(ERROR_KEYS[error.code]) : error.message;
 }
 
@@ -70,7 +71,9 @@ function dangKy() {
         });
 }
 
+let loginPending = null;
 function dangNhap() {
+    if (loginPending) return loginPending;
     let signedInUid;
     const email = document.getElementById('login-email').value.trim();
     const matKhau = document.getElementById('login-password').value;
@@ -80,7 +83,7 @@ function dangNhap() {
         return;
     }
 
-    auth.signInWithEmailAndPassword(email, matKhau)
+    loginPending = auth.signInWithEmailAndPassword(email, matKhau)
         .then((userCredential) => {
             const user = userCredential.user;
             signedInUid = user.uid;
@@ -98,8 +101,13 @@ function dangNhap() {
         .then((me) => {
             return Promise.resolve(window.BreezeSupportSession ? window.BreezeSupportSession.prepare(signedInUid) : null).then(() => me);
         })
-        .then((me) => {
+        .then(async (me) => {
             const isAdmin = !!(me && me.role === 'admin');
+            if (window.BreezePurchase && window.BreezePurchase.requested()) {
+                await window.BreezePurchase.resume(signedInUid, me && me.role);
+                window.location.href = window.BreezeRoutes.to('cart');
+                return;
+            }
             // Luồng thanh toán: login.html?redirect=checkout.html
             const redirect = new URLSearchParams(window.location.search).get('redirect');
             if (window.BreezeRoutes.keyOf(redirect) === 'checkout') {
@@ -115,7 +123,9 @@ function dangNhap() {
         })
         .catch((error) => {
             showMessage('login-msg', authError(error), true);
-        });
+            if (window.BreezePurchase) window.BreezePurchase.recovery();
+        }).finally(() => { loginPending = null; });
+    return loginPending;
 }
 
 function dangXuat() {

@@ -16,6 +16,8 @@ var CART_MAX_QTY = 99;
 var _cart = [];            // nguồn sự thật in-memory (cả guest lẫn server mode)
 var _serverMode = false;   // true khi đã đăng nhập & đồng bộ server
 var _entering = false;     // chống chạy chồng khi vào server mode
+var _cartSync = null, _cartSyncError = null;
+var _cartSyncController = null;
 // Giỏ gắn với DANH TÍNH: mỗi tài khoản một giỏ (server), khách một giỏ riêng (localStorage).
 var _uid = null;           // uid Firebase của chủ giỏ đang hiển thị; null = khách
 var _authResolved = false; // đã biết chắc đang là khách hay tài khoản nào chưa
@@ -59,8 +61,8 @@ function _updateAllBadges() {
 }
 
 // ---- server sync ----
-function _serverGet() {
-    return window.AuthHelper.apiFetch('/api/cart').then(function (r) {
+function _serverGet(signal) {
+    return window.AuthHelper.apiFetch('/api/cart', { signal: signal }).then(function (r) {
         if (!r.ok) throw new Error('GET /api/cart ' + r.status);
         return r.json();
     });
@@ -101,9 +103,13 @@ window.refreshCart = refreshCart;
 
 // Chuyển sang server mode khi user đăng nhập: merge giỏ guest (nếu có) rồi lấy giỏ server.
 function _enterServerMode() {
-    if (_entering) return;
+    if (_entering) return _cartSync;
     _entering = true;
     _serverMode = true;
+    _cartSyncError = null;
+    var mergeFailed = false;
+    var controller = new AbortController();
+    _cartSyncController = controller;
 
     var forUid = _uid;   // giỏ đang tải là của tài khoản này; đổi người giữa chừng -> bỏ kết quả
 
@@ -113,35 +119,59 @@ function _enterServerMode() {
     // rơi lại cho khách hay tài khoản khác dùng chung máy (kể cả khi merge dưới đây lỗi).
     _writeLocal([]);
 
-    var chain = _serverGet();
+    var chain = _serverGet(controller.signal);
     if (guest.length) {
         // merge tuần tự (cộng dồn) rồi lấy lại giỏ server làm chuẩn
         chain = chain.then(function () {
             return guest.reduce(function (p, g) {
                 return p.then(function () {
+                    if (_uid !== forUid || controller.signal.aborted) throw new Error('CART_IDENTITY_CHANGED');
                     // Kẹp ở trần: giỏ khách cũ (trước khi có trần) có thể lớn hơn 99 —
                     // gửi nguyên thì server trả 400 và món đó mất hẳn, vì giỏ khách đã xoá.
                     return window.AuthHelper.apiFetch('/api/cart', {
                         method: 'POST',
+                        signal: controller.signal,
                         body: JSON.stringify({ product_id: g.id, variant_id: g.variant_id, quantity: Math.min(g.qty, CART_MAX_QTY), mode: 'add' }),
-                    }).then(function (r) { if (!r.ok) _cartToast(_t('pd.cartReview')); });
+                    }).then(function (r) {
+                        if (!r.ok) { mergeFailed = true; _cartToast(_t('pd.cartReview')); }
+                    });
                 });
             }, Promise.resolve());
-        }).then(_serverGet);
+        }).then(function () { return _serverGet(controller.signal); });
     }
 
-    chain.then(function (data) {
+    _cartSync = chain.then(function (data) {
         if (_uid !== forUid) return;   // đã đăng xuất / đổi tài khoản -> KHÔNG hiện giỏ vừa tải
         _applyServerCart(data);
+        if (mergeFailed) throw new Error('CART_MERGE_FAILED');
     }).catch(function (e) {
+        if (_uid === forUid) _cartSyncError = e;
         console.error('[cart] không đồng bộ được giỏ server:', e);
         // giữ nguyên giỏ hiện có, vẫn cho phép thử lại lần sau
     }).finally(function () {
         _entering = false;
+        if (_cartSyncController === controller) _cartSyncController = null;
         // Đổi tài khoản trong lúc đang tải -> tải lại giỏ của tài khoản hiện tại.
         if (_uid && _uid !== forUid) _enterServerMode();
     });
+    return _cartSync;
 }
+
+// Continuations must wait for the existing guest merge, never run a second merge.
+// Account switches may start a new sync in the preceding sync's finally block.
+window.whenCartReady = async function (uid) {
+    var helper = window.AuthHelper;
+    function sameUser() { var u = helper && helper.getUser(); return u && u.uid === uid; }
+    if (!sameUser()) throw new Error('CART_IDENTITY_CHANGED');
+    _onAuth(helper.getUser());
+    var waiting;
+    do {
+        waiting = _cartSync;
+        await waiting;
+        if (!sameUser() || _uid !== uid) throw new Error('CART_IDENTITY_CHANGED');
+    } while (waiting !== _cartSync);
+    if (!_serverMode || _cartSyncError) throw new Error('CART_SYNC_FAILED');
+};
 
 function _exitServerMode() {
     _serverMode = false;
@@ -154,6 +184,7 @@ function _exitServerMode() {
 function _onAuth(user) {
     var uid = user ? user.uid : null;
     if (_authResolved && uid === _uid) return;   // cùng một người -> khỏi nạp lại
+    if (_cartSyncController) _cartSyncController.abort();
     _authResolved = true;
     _uid = uid;
 

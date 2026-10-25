@@ -81,7 +81,7 @@
         box-shadow: inset 0 0 0 1px var(--c-ink);
     }
     .pd-thumb:focus-visible, .pd-color:focus-visible, .pd-size:focus-visible,
-    .pd-add:focus-visible, .pd-gallery-nav button:focus-visible {
+    .pd-add:focus-visible, .pd-buy-now:focus-visible, .pd-gallery-nav button:focus-visible {
         outline: 2px solid var(--c-ink); outline-offset: 3px;
     }
 
@@ -187,27 +187,37 @@
     }
     .pd-selection-status.is-soldout { color: var(--c-danger); }
 
-    /* Nút thêm giỏ full-width */
-    .pd-add {
+    /* Hai nút mua hàng dùng chung kích thước và trạng thái tương tác. */
+    .pd-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+    .pd-add, .pd-buy-now {
         display: block;
         width: 100%;
-        padding: 17px;
-        background: var(--c-accent);
-        color: var(--c-on-accent);
-        border: none;
+        min-width: 0;
+        min-height: 52px;
+        padding: 16px 12px;
+        border: 1px solid var(--c-accent);
         font-family: var(--font-ui);
         font-size: 13px;
-        letter-spacing: 2px;
+        line-height: 1.4;
+        letter-spacing: 1px;
         text-transform: uppercase;
         cursor: pointer;
-        transition: opacity 0.25s var(--ease);
+        transition: opacity 0.25s var(--ease), background .2s var(--ease);
     }
-    .pd-add:hover { opacity: .85; }
-    .pd-add.added { background: #2e7d32; }
-    .pd-add:disabled, .pd-add.sold-out {
-        background: var(--c-line); color: var(--c-muted); cursor: not-allowed; opacity: 1;
+    .pd-add { background: var(--c-bg); color: var(--c-ink); }
+    .pd-buy-now { background: var(--c-accent); color: var(--c-on-accent); }
+    .pd-add:hover:not(:disabled):not(.sold-out) { background: var(--c-surface); }
+    .pd-buy-now:hover:not(:disabled) { opacity: .85; }
+    .pd-add.added { background: var(--c-success); color: var(--c-bg); border-color: var(--c-success); }
+    .pd-add:disabled, .pd-add.sold-out, .pd-buy-now:disabled {
+        background: var(--c-line); color: var(--c-muted); border-color: var(--c-line);
+        cursor: not-allowed; opacity: 1;
     }
-    .pd-add:disabled:hover { opacity: 1; }
+    .pd-add.added:hover:not(:disabled):not(.sold-out) { background: var(--c-success); opacity: .85; }
     .pd-review {
         display: block; width: 100%; margin-top: 12px; padding: 17px;
         border: 1px solid var(--c-ink); background: transparent; color: var(--c-ink);
@@ -476,6 +486,8 @@
         .pd-info { max-width: 640px; margin: 0 auto; width: 100%; }
     }
     @media (max-width: 600px) {
+        .pd-actions { gap: 10px; }
+        .pd-add, .pd-buy-now { padding-inline: 8px; font-size: 11px; letter-spacing: .6px; }
         .pd-review-overlay { padding: 12px; }
         .pd-review-modal {
             padding: 62px 22px 24px;

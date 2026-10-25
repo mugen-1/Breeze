@@ -50,7 +50,10 @@
                     </div>
 
                     <p class="pd-selection-status" id="pd-selection-status" role="status" aria-live="polite"></p>
-                    <button type="button" class="pd-add" data-action="add-to-cart" disabled>Thêm vào giỏ</button>
+                    <div class="pd-actions">
+                        <button type="button" class="pd-add" data-action="add-to-cart" disabled>Thêm vào giỏ</button>
+                        <button type="button" class="pd-buy-now" id="pd-buy-now" data-i18n="pd.buyNow" disabled>Mua ngay</button>
+                    </div>
                     <button type="button" class="pd-review" id="pd-review-open" aria-haspopup="dialog" aria-controls="pd-review-dialog" data-i18n="pd.reviewProduct" disabled>Đánh giá sản phẩm</button>
                     <p class="pd-review-hint" id="pd-review-access" role="status" hidden></p>
                     <a id="pd-review-login" data-i18n="com.signin" hidden>Đăng nhập</a>
