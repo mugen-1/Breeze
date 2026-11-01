@@ -78,6 +78,17 @@ function vExp(monthRaw, yearRaw) {
   return { ok: true, month: m, year: y };
 }
 
+// expected_brand (tuỳ chọn, chỉ POST): checkout gửi kèm khi user đang chọn Visa/Mastercard,
+// để không lưu nhầm thẻ khác loại. Không gửi (undefined/null/'') => hành vi cũ, trang Cài đặt
+// không bị ảnh hưởng. Giá trị khác visa/mastercard => 400 (lỗi phía client, không lờ đi).
+const EXPECTED_BRANDS = { visa: 'Visa', mastercard: 'Mastercard' };
+function vExpectedBrand(raw, actualBrand) {
+  if (raw == null || raw === '') return { ok: true };
+  if (!Object.hasOwn(EXPECTED_BRANDS, raw)) return { ok: false, message: 'Loại thẻ không hợp lệ' };
+  if (raw !== actualBrand) return { ok: false, message: 'Số thẻ không phải thẻ ' + EXPECTED_BRANDS[raw] };
+  return { ok: true };
+}
+
 // ---- DB helpers --------------------------------------------------------------
 function toDto(r) {
   return {
@@ -125,6 +136,8 @@ router.post('/', async (req, res) => {
   const b = req.body || {};
   const card = parseCard(b.card_number);
   if (!card.ok) return res.status(400).json({ status: 'error', message: card.message });
+  const expected = vExpectedBrand(b.expected_brand, card.brand);
+  if (!expected.ok) return res.status(400).json({ status: 'error', message: expected.message });
   const holder = vHolder(b.holder_name);
   if (!holder.ok) return res.status(400).json({ status: 'error', message: holder.message });
   const exp = vExp(b.exp_month, b.exp_year);

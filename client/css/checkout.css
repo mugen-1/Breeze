@@ -539,7 +539,97 @@ html[data-theme="dark"] .co-select:not(:disabled) {
     box-shadow: 0 0 0 3px rgba(26, 85, 200, .28);
 }
 
+/* ---- 5b. Panel nhập thông tin thanh toán (js/checkout-payment.js) ----
+   Mở ngay dưới các radio khi phương thức đã chọn còn thiếu thông tin. Chỉ dùng token
+   --co-* / --c-*, nên tự đúng ở cả sáng lẫn tối. Đóng: .is-open tắt (mờ 180ms), JS gắn
+   inert ngay rồi hidden sau 200ms -> panel đang đóng không nhận focus. */
+.co-pay-panel {
+    margin-top: 12px;
+    padding: 18px 18px 4px;
+    background: var(--co-paper);
+    border: 1px solid var(--co-line-strong);
+    border-radius: 10px;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity .18s ease, transform .18s ease;
+}
+.co-pay-panel.is-open { opacity: 1; transform: none; }
+.co-pay-panel[hidden] { display: none; }
+
+.co-pay-panel-title {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .2px;
+    color: var(--co-ink);
+    margin: 0 0 14px;
+}
+.co-pay-panel-status {
+    font-family: var(--font-ui);
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--co-muted);
+    margin: -6px 0 14px;
+}
+.co-pay-panel-status:empty { margin: 0; }
+.co-pay-block[hidden] { display: none; }
+.co-pay-panel > .co-err { margin: -4px 0 14px; }
+
+/* Hạn thẻ: 2 ô MM + YYYY trên cùng một hàng (cả ở 375px) */
+.co-pay-exp { display: flex; gap: 8px; }
+.co-pay-exp .co-input { flex: 1 1 0; min-width: 0; }
+
+.co-pay-actions { display: flex; align-items: center; gap: 12px; margin: 2px 0 16px; }
+
+.co-pay-btn {
+    min-height: 44px;
+    padding: 11px 20px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    color: var(--c-on-accent);
+    background: var(--c-accent);
+    border: 1px solid var(--c-accent);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity .15s ease;
+}
+.co-pay-btn:hover:not(:disabled) { opacity: .88; }
+.co-pay-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(26, 85, 200, .45); }
+.co-pay-btn:disabled { opacity: .55; cursor: progress; }
+.co-pay-btn[hidden] { display: none; }
+.co-pay-btn--ghost {
+    color: var(--co-ink);
+    background: transparent;
+    border-color: var(--co-line-strong);
+    margin-bottom: 16px;
+}
+
+/* Xác nhận "Đã lưu …" — luôn có trong DOM để vùng aria-live đọc được; rỗng thì không chiếm chỗ */
+.co-pay-saved {
+    font-family: var(--font-ui);
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--co-ok);
+    margin: 12px 0 0;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+.co-pay-saved:empty { margin: 0; }
+.co-pay-saved:not(:empty)::before { content: "✓"; font-weight: 700; }
+
+@media (max-width: 560px) {
+    .co-pay-panel { padding: 16px 14px 2px; }
+    .co-pay-btn:not(.co-pay-btn--ghost) { width: 100%; }
+}
+
 /* ---- Submit ---- */
+.co-submit-hint { margin: 18px 0 -14px; }
+.co-submit-hint[hidden] { display: none; }
 .co-submit {
     width: 100%;
     margin-top: 28px;
@@ -636,9 +726,11 @@ html[data-theme="dark"] .co-select:not(:disabled) {
 
 /* ---- prefers-reduced-motion ---- */
 @media (prefers-reduced-motion: reduce) {
-    .co-input, .co-pay-card, .co-pay-check, .co-submit, .co-pay-check .fa {
+    .co-input, .co-pay-card, .co-pay-check, .co-submit, .co-pay-check .fa,
+    .co-pay-panel, .co-pay-btn {
         transition: none;
     }
+    .co-pay-panel { transform: none; }
 }
 
 /* ============================================================

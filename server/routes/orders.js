@@ -18,6 +18,7 @@ const { canCustomerCancel } = require('../lib/order-state');
 const { cancelOrder, CancelError } = require('../lib/cancel-order');
 const { createPayment, fetchPayments, COLUMNS } = require('../lib/order-payment');
 const { recordInventoryMovement } = require('../lib/inventory-movement');
+const { checkPaymentInfo } = require('../lib/payment-readiness');
 const { METHODS, validateShipping, grandTotal } = require('../config/shipping');
 const { sellableVariant, SIZE_CONFIGURED_SQL, COLOR_CONFIGURED_SQL } = require('../lib/size-variants');
 const {
@@ -31,6 +32,11 @@ const EFFECTIVE_PRICE =
 // khách để tham khảo/thống kê. Whitelist bắt buộc: input người dùng, sai phải báo
 // rõ (400), không được âm thầm suy đoán/gán mặc định thay khách.
 const PAYMENT_METHODS = ['visa', 'mastercard', 'cod', 'momo'];
+const PAYMENT_INFO_MESSAGES = Object.freeze({
+  visa: 'Vui lòng lưu thẻ Visa còn hạn trước khi đặt hàng',
+  mastercard: 'Vui lòng lưu thẻ Mastercard còn hạn trước khi đặt hàng',
+  momo: 'Vui lòng cập nhật số điện thoại di động cho MoMo trước khi đặt hàng',
+});
 const CANCEL_REASONS = Object.freeze({
   wrong_item: 'Đặt nhầm sản phẩm',
   change_item: 'Muốn thay đổi size/sản phẩm',
@@ -77,6 +83,23 @@ router.post('/', async (req, res) => {
   } catch (err) {
     console.error('[orders] pool error:', err.message);
     return res.status(500).json({ status: 'error', message: 'Lỗi kết nối cơ sở dữ liệu' });
+  }
+
+  // Guard thông tin thanh toán (lib/payment-readiness.js): visa/mastercard cần thẻ đã lưu
+  // đúng brand còn hạn (1 SELECT), momo cần users.phone di động (0 query), cod luôn qua.
+  // Chạy TRƯỚC transaction: thiếu thì không chạm giỏ/kho/voucher. Lỗi DB -> 500, không cho qua.
+  let payInfo;
+  try {
+    payInfo = await checkPaymentInfo(pool, req.user, paymentMethod);
+  } catch (err) {
+    console.error('[orders] payment info check error:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Không kiểm tra được thông tin thanh toán' });
+  }
+  if (!payInfo.ok) {
+    return res.status(400).json({
+      status: 'error', error: 'PAYMENT_INFO_REQUIRED', payment_method: paymentMethod,
+      message: PAYMENT_INFO_MESSAGES[paymentMethod] || 'Thiếu thông tin thanh toán',
+    });
   }
 
   const tx = new sql.Transaction(pool);

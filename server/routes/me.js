@@ -1,6 +1,7 @@
 // /api/me — thông tin user hiện tại + cập nhật hồ sơ cá nhân.
 //   GET  /api/me           — trả hồ sơ (yêu cầu Firebase ID token hợp lệ).
 //   PUT  /api/me           — cập nhật { phone, dob, gender, country } cho user hiện tại.
+//   PATCH /api/me/phone    — CHỈ đổi phone (MoMo ở checkout); không đụng dob/gender/country.
 //   POST /api/me/avatar    — upload ảnh đại diện (multipart/form-data, field "avatar").
 // Vì sao avatar nằm ở /api/me chứ không phải /api/account/*: avatar_url là CỘT trong
 // dbo.users — cùng bảng mà /api/me sở hữu. /api/account/* dành cho sub-resource có bảng
@@ -15,6 +16,7 @@ const router = express.Router();
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { buildUserActionLimiter } = require('../middleware/security');
 const { getPool, sql } = require('../db');
+const { isMomoPhone, normalizeVnPhone } = require('../lib/payment-readiness');
 const { MAX_IMAGE_BYTES: AVATAR_MAX_BYTES, ALLOWED_MIME, detectImage, writeFileAtomic } = require('../lib/image-upload');
 
 // Cột trả về cho client — dùng chung mọi nơi SELECT lại user sau khi ghi.
@@ -113,6 +115,42 @@ router.put('/', verifyFirebaseToken, async (req, res) => {
   } catch (err) {
     console.error('[me] cập nhật hồ sơ lỗi:', err.message);
     res.status(500).json({ status: 'error', message: 'Không cập nhật được hồ sơ' });
+  }
+});
+
+/* ---- PATCH /api/me/phone ---- body: { phone }
+   CHỈ đổi cột phone (dùng cho MoMo ở checkout). Cố ý KHÔNG đi qua PUT /api/me: route đó
+   ghi đè cả phone/dob/gender/country — gửi riêng { phone } sẽ xoá 3 cột kia về NULL.
+   Lưu bản đã chuẩn hoá (0xxxxxxxxx) để checkPaymentInfo/MoMo đọc lại thống nhất. */
+const phoneLimiter = buildUserActionLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  message: 'Bạn đã đổi số điện thoại quá nhiều lần, vui lòng thử lại sau ít phút',
+});
+
+router.patch('/phone', verifyFirebaseToken, phoneLimiter, async (req, res) => {
+  const raw = (req.body || {}).phone;
+  if (typeof raw !== 'string' || !isMomoPhone(raw)) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Số điện thoại di động không hợp lệ (10 số, đầu 03/05/07/08/09)',
+    });
+  }
+  try {
+    const pool = await getPool();
+    const result = await pool
+      .request()
+      .input('uid', sql.VarChar(128), req.user.firebase_uid)
+      .input('phone', sql.VarChar(30), normalizeVnPhone(raw))
+      .query(`
+        UPDATE dbo.users SET phone = @phone WHERE firebase_uid = @uid;
+
+        SELECT ${USER_COLS}
+        FROM dbo.users WHERE firebase_uid = @uid;`);
+    res.json(toDto(result.recordset[0]));
+  } catch (err) {
+    console.error('[me] cập nhật số điện thoại lỗi:', err.message);
+    res.status(500).json({ status: 'error', message: 'Không cập nhật được số điện thoại' });
   }
 });
 

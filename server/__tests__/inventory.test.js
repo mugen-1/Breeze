@@ -16,8 +16,8 @@ function seed(products = [{ id: 1, name_vi: 'Áo', stock: 5, is_active: true, pr
     variants: products.map(x => ({ id: x.id * 10, product_id: x.id, stock: x.stock, is_active: x.is_active,
       is_base: true, size: null, color: null })),
     cart: cart.map(x => ({ ...x, variant_id: x.variant_id ?? x.product_id * 10 })),
-    orders: [], items: [], movements: [], payments: [], lastCode: 1000 };
-  failAt = null; events = []; queries = []; user = { id: 1, role: 'customer', is_blacklisted: false };
+    orders: [], items: [], movements: [], payments: [], lastCode: 1000, cards: [] };
+  failAt = null; events = []; queries = []; user = { id: 1, role: 'customer', is_blacklisted: false, phone: null };
 }
 class Transaction {
   async begin() { this.data = clone(db); events.push('begin'); }
@@ -31,6 +31,16 @@ class Request {
     const q = query.replace(/\s+/g, ' ').trim();
     const p = this.params;
     queries.push({ q, p, tx: this.tx });
+    // Guard thông tin thanh toán (lib/payment-readiness.js): chạy TRƯỚC transaction, chỉ đọc.
+    if (q.includes('FROM dbo.payment_methods')) {
+      if (failAt === 'readiness') throw new Error('injected SQL failure');
+      assert.equal(this.tx, undefined, 'payment info check must run before the transaction');
+      assert.match(q, /WHERE user_id = @uid AND brand = @brand AND \(exp_year > @y OR \(exp_year = @y AND exp_month >= @m\)\)/);
+      assert.deepEqual(Object.keys(p).sort(), ['brand', 'm', 'uid', 'y']);
+      const ok = db.cards.some(c => c.user_id === p.uid && c.brand === p.brand &&
+        (c.exp_year > p.y || (c.exp_year === p.y && c.exp_month >= p.m)));
+      return result(ok ? [{ ok: 1 }] : []);
+    }
     const stage = q.startsWith('UPDATE dbo.order_code_counter') ? 'code'
       : q.startsWith('DELETE FROM dbo.cart_items') ? 'clear'
       : q.includes('FROM dbo.cart_items') ? 'cart'
@@ -127,7 +137,7 @@ class Request {
   }
 }
 require.cache[require.resolve('../db')] = { exports: {
-  getPool: async () => ({}), sql: { ...realSql, Transaction, Request },
+  getPool: async () => ({ request: () => new Request() }), sql: { ...realSql, Transaction, Request },
 } };
 require.cache[require.resolve('../middleware/auth')] = { exports: {
   verifyFirebaseToken: (req, res, next) => { req.user = user; next(); },
@@ -356,6 +366,10 @@ for (const method of require('../config/shipping').METHODS) test('server owns pr
 
 for (const method of ['cod', 'visa', 'mastercard', 'momo']) {
   test('checkout persists server-owned pending payment: ' + method, async () => {
+    // Tài khoản đã đủ thông tin cho phương thức này (guard PAYMENT_INFO_REQUIRED cho qua).
+    db.cards.push({ user_id: 1, brand: 'visa', exp_month: 12, exp_year: 2099 },
+      { user_id: 1, brand: 'mastercard', exp_month: 12, exp_year: 2099 });
+    user.phone = '0901234567';
     const r = await checkout({ paymentMethod: method, amount: 1, payment_status: 'paid', transaction_code: 'FORGED' });
     assert.equal(r.status, 201);
     const payment = r.body.order.payment_transaction;
@@ -385,4 +399,71 @@ test('two orders have stable distinct payment codes with internal IDs', async ()
   assert.equal(a.body.order.payment_transaction.transaction_code, 'PAY-1001-001');
   assert.equal(b.body.order.payment_transaction.transaction_code, 'PAY-1002-001');
   assert.deepEqual(db.payments.map(p => p.order_id), [1, 2]);
+});
+
+// ---- Guard PAYMENT_INFO_REQUIRED (POST /api/orders) ----
+// Thiếu thông tin -> 400 trước transaction: không begin, không INSERT, giỏ/kho/voucher/mã đơn y nguyên.
+const readinessQueries = () => queries.filter(x => x.q.includes('FROM dbo.payment_methods'));
+async function assertPaymentInfoRequired(method, label) {
+  const before = clone(db);
+  const r = await checkout({ paymentMethod: method, voucherCode: 'GIAMGIALANDAU' });
+  assert.equal(r.status, 400, label);
+  assert.equal(r.body.error, 'PAYMENT_INFO_REQUIRED', label);
+  assert.equal(r.body.payment_method, method, label);
+  assert.equal(r.body.status, 'error');
+  assert.match(r.body.message, /trước khi đặt hàng/);
+  assert.deepEqual(events, [], label + ': no transaction begin');
+  assert.ok(!queries.some(x => /^(INSERT|UPDATE|DELETE)\b/.test(x.q)), label + ': no write');
+  assert.ok(!queries.some(x => x.q.includes('dbo.cart_items')), label + ': cart untouched');
+  assert.deepEqual(db, before, label);
+}
+for (const method of ['visa', 'mastercard', 'momo']) {
+  test('missing payment info rejects ' + method + ' with PAYMENT_INFO_REQUIRED before any write', async () => {
+    await assertPaymentInfoRequired(method, method);
+  });
+}
+test('cod always passes the guard with zero payment-info queries', async () => {
+  const r = await checkout({ paymentMethod: 'cod' });
+  assert.equal(r.status, 201);
+  assert.equal(readinessQueries().length, 0);
+});
+test('card guard runs exactly one SELECT with server UTC month; momo runs none', async () => {
+  db.cards.push({ user_id: 1, brand: 'visa', exp_month: 12, exp_year: 2099 });
+  const r = await checkout({ paymentMethod: 'visa' });
+  assert.equal(r.status, 201);
+  assert.equal(readinessQueries().length, 1);
+  const now = new Date();
+  assert.deepEqual(readinessQueries()[0].p, { uid: 1, brand: 'visa', y: now.getUTCFullYear(), m: now.getUTCMonth() + 1 });
+  seed(); user.phone = '+84 912 345 678';
+  assert.equal((await checkout({ paymentMethod: 'momo' })).status, 201);
+  assert.equal(readinessQueries().length, 0);
+});
+test('expired card, other brand or another user card still rejects', async () => {
+  db.cards.push({ user_id: 1, brand: 'visa', exp_month: 1, exp_year: 2020 });
+  await assertPaymentInfoRequired('visa', 'expired visa');
+  seed(); db.cards.push({ user_id: 1, brand: 'mastercard', exp_month: 12, exp_year: 2099 },
+    { user_id: 1, brand: 'amex', exp_month: 12, exp_year: 2099 });
+  await assertPaymentInfoRequired('visa', 'only mastercard/amex for visa');
+  seed(); db.cards.push({ user_id: 2, brand: 'mastercard', exp_month: 12, exp_year: 2099 });
+  await assertPaymentInfoRequired('mastercard', 'card of another user');
+});
+test('momo rejects landline / foreign / short profile phone', async () => {
+  for (const phone of ['0281234567', '+14155552671', '090123456', '']) {
+    seed(); user.phone = phone;
+    await assertPaymentInfoRequired('momo', 'phone ' + JSON.stringify(phone));
+  }
+});
+test('payment info DB error -> 500, never silently allowed', async () => {
+  const before = clone(db); failAt = 'readiness';
+  const r = await checkout({ paymentMethod: 'visa' });
+  assert.equal(r.status, 500);
+  assert.notEqual(r.body.error, 'PAYMENT_INFO_REQUIRED');
+  assert.deepEqual(events, []);
+  assert.deepEqual(db, before);
+});
+test('guard does not bypass earlier checks: invalid paymentMethod stays 400 without SQL', async () => {
+  const r = await checkout({ paymentMethod: 'paypal' });
+  assert.equal(r.status, 400);
+  assert.equal(r.body.error, undefined);
+  assert.equal(queries.length, 0);
 });

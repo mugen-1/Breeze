@@ -163,7 +163,7 @@
                         <legend class="co-visually-hidden" data-i18n="co.payMethod">Phương thức thanh toán</legend>
 
                         <label class="co-pay-card">
-                            <input type="radio" name="payment" value="visa" class="co-pay-radio" required aria-required="true">
+                            <input type="radio" name="payment" value="visa" class="co-pay-radio" aria-controls="co-pay-panel" required aria-required="true">
                             <span class="co-pay-icon" aria-hidden="true">
                                 <svg viewBox="0 0 48 32" width="44" height="30" role="img" aria-label="Visa">
                                     <rect width="48" height="32" rx="4" fill="#1a1f71"></rect>
@@ -175,7 +175,7 @@
                         </label>
 
                         <label class="co-pay-card">
-                            <input type="radio" name="payment" value="mastercard" class="co-pay-radio">
+                            <input type="radio" name="payment" value="mastercard" class="co-pay-radio" aria-controls="co-pay-panel">
                             <span class="co-pay-icon" aria-hidden="true">
                                 <svg viewBox="0 0 48 32" width="44" height="30" role="img" aria-label="Mastercard">
                                     <rect width="48" height="32" rx="4" fill="#f4f2ed"></rect>
@@ -203,7 +203,7 @@
                         </label>
 
                         <label class="co-pay-card">
-                            <input type="radio" name="payment" value="momo" class="co-pay-radio">
+                            <input type="radio" name="payment" value="momo" class="co-pay-radio" aria-controls="co-pay-panel">
                             <span class="co-pay-icon" aria-hidden="true">
                                 <svg viewBox="0 0 48 32" width="44" height="30" role="img" aria-label="Ví MoMo">
                                     <rect width="48" height="32" rx="4" fill="#a50064"></rect>
@@ -215,12 +215,75 @@
                             <span class="co-pay-check" aria-hidden="true"><i class="fa fa-check"></i></span>
                         </label>
                     </fieldset>
+
+                    <!-- Panel nhập thông tin thanh toán (js/checkout-payment.js). Nằm TRONG #co-form:
+                         không <form> lồng, nút type="button" + data-action; ô nhập không có name. -->
+                    <div class="co-pay-panel" id="co-pay-panel" role="group" aria-labelledby="co-pay-panel-title" hidden>
+                        <h3 class="co-pay-panel-title" id="co-pay-panel-title" data-i18n="co.payTitle">Thông tin thanh toán</h3>
+                        <p class="co-pay-panel-status" id="co-pay-status" role="status" aria-live="polite"></p>
+                        <button type="button" class="co-pay-btn co-pay-btn--ghost" id="co-pay-retry" data-action="pay-panel-retry" data-i18n="pf.retry" hidden>Thử lại</button>
+
+                        <div class="co-pay-block" id="co-pay-card" hidden>
+                            <div class="co-field">
+                                <label class="co-label" for="co-pay-number"><span data-i18n="pf.cardNumber">Số thẻ</span> <span class="co-req" aria-hidden="true">*</span></label>
+                                <input class="co-input" id="co-pay-number" type="text" inputmode="numeric" autocomplete="cc-number"
+                                       maxlength="23" spellcheck="false" aria-required="true" placeholder="1234 5678 9012 3456"
+                                       aria-describedby="co-pay-number-help co-pay-number-err">
+                                <p class="co-help" id="co-pay-number-help" data-i18n="co.payCardHint">Thẻ được lưu vào tài khoản của bạn; chỉ 4 số cuối được giữ lại.</p>
+                                <p class="co-err" id="co-pay-number-err" role="alert" hidden></p>
+                            </div>
+                            <div class="co-row co-row-2">
+                                <div class="co-field">
+                                    <label class="co-label" for="co-pay-holder"><span data-i18n="pf.cardHolder">Tên chủ thẻ</span> <span class="co-req" aria-hidden="true">*</span></label>
+                                    <input class="co-input" id="co-pay-holder" type="text" autocomplete="cc-name" maxlength="150"
+                                           spellcheck="false" aria-required="true" aria-describedby="co-pay-holder-err">
+                                    <p class="co-err" id="co-pay-holder-err" role="alert" hidden></p>
+                                </div>
+                                <div class="co-field" role="group" aria-labelledby="co-pay-exp-label">
+                                    <span class="co-label" id="co-pay-exp-label"><span data-i18n="pf.cardExpiry">Hết hạn</span> <span class="co-req" aria-hidden="true">*</span></span>
+                                    <div class="co-pay-exp">
+                                        <input class="co-input" id="co-pay-month" type="text" inputmode="numeric" autocomplete="cc-exp-month"
+                                               maxlength="2" placeholder="MM" aria-required="true" aria-label="Tháng hết hạn (01–12)"
+                                               data-i18n-aria="pf.expMonthAria" aria-describedby="co-pay-exp-err">
+                                        <input class="co-input" id="co-pay-year" type="text" inputmode="numeric" autocomplete="cc-exp-year"
+                                               maxlength="4" placeholder="YYYY" aria-required="true" aria-label="Năm hết hạn"
+                                               data-i18n-aria="pf.expYearAria" aria-describedby="co-pay-exp-err">
+                                    </div>
+                                    <p class="co-err" id="co-pay-exp-err" role="alert" hidden></p>
+                                </div>
+                            </div>
+                            <div class="co-pay-actions">
+                                <button type="button" class="co-pay-btn" id="co-pay-save-card" data-action="pay-panel-save-card" data-i18n="co.paySaveCard">Lưu thẻ</button>
+                            </div>
+                        </div>
+
+                        <div class="co-pay-block" id="co-pay-momo" hidden>
+                            <div class="co-field">
+                                <label class="co-label" for="co-pay-phone"><span data-i18n="co.payPhone">Số điện thoại MoMo</span> <span class="co-req" aria-hidden="true">*</span></label>
+                                <input class="co-input" id="co-pay-phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20"
+                                       aria-required="true" placeholder="VD: 0901234567" data-i18n-ph="co.payPhonePh"
+                                       aria-describedby="co-pay-phone-help co-pay-phone-err">
+                                <p class="co-help" id="co-pay-phone-help" data-i18n="co.payPhoneHint">Số này cũng là số điện thoại trong hồ sơ của bạn.</p>
+                                <p class="co-err" id="co-pay-phone-err" role="alert" hidden></p>
+                            </div>
+                            <div class="co-pay-actions">
+                                <button type="button" class="co-pay-btn" id="co-pay-save-phone" data-action="pay-panel-save-momo" data-i18n="co.paySavePhone">Lưu số</button>
+                            </div>
+                        </div>
+
+                        <p class="co-err" id="co-pay-err" role="alert" hidden></p>
+                    </div>
+                    <p class="co-pay-saved" id="co-pay-saved" role="status" aria-live="polite"></p>
                     <p class="co-err" id="f-pay-err" role="alert" hidden></p>
                 </section>
 
                 <p class="co-form-msg" id="co-form-msg" role="status" hidden></p>
 
-                <button type="submit" class="co-submit" disabled aria-disabled="true">
+                <!-- Lý do nút "Đặt hàng" bị khoá vì thiếu thông tin thanh toán (checkout.js điền) -->
+                <p class="co-help co-submit-hint" id="co-pay-gate-msg" hidden></p>
+
+                <button type="submit" class="co-submit" disabled aria-disabled="true"
+                        aria-describedby="co-pay-gate-msg co-pay-status">
                     <span data-i18n="co.submit">Đặt hàng</span> &nbsp;·&nbsp; <span id="co-total-btn">0</span>₫
                 </button>
             </form>
@@ -304,12 +367,14 @@
     <script src="js/i18n.js"></script>
     <script src="js/utils-format.js"></script>
     <script src="js/utils-i18n.js"></script>
+    <script src="js/card-utils.js"></script>
     <script src="js/account-menu.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/support-api.js"></script>
     <script src="js/support-session.js"></script>
     <script src="js/customer-support.js"></script>
     <script src="js/order-payment.js"></script>
+    <script src="js/checkout-payment.js"></script>
     <script src="js/checkout.js"></script>
     <script src="js/voucher.js"></script>
 </body>

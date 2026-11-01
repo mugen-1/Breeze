@@ -253,6 +253,15 @@
         return /^(?:0\d{9,10}|\+[1-9]\d{7,14})$/.test(normalizePhone(v));
     }
 
+    // Panel thanh toán (js/checkout-payment.js): phương thức đang chọn đã đủ thông tin chưa.
+    // Module chưa nạp (hoặc trang không có panel) -> coi như sẵn sàng, giữ hành vi cũ.
+    function payReady() {
+        return !window.BreezeCheckoutPayment || window.BreezeCheckoutPayment.isReady();
+    }
+    function firstPanelInput() {
+        return document.querySelector('#co-pay-panel .co-pay-block:not([hidden]) input');
+    }
+
     function setError(inputEl, errEl, msg) {
         if (msg) {
             if (inputEl) inputEl.setAttribute('aria-invalid', 'true');
@@ -299,6 +308,9 @@
         if (!payChecked) {
             if (payErr) { payErr.textContent = t('co.errPay'); payErr.hidden = false; }
             if (!firstInvalid) firstInvalid = document.querySelector('input[name="payment"]');
+        } else if (!payReady()) {
+            if (payErr) { payErr.textContent = t('co.payInfoNeeded'); payErr.hidden = false; }
+            if (!firstInvalid) firstInvalid = firstPanelInput() || payChecked;
         } else if (payErr) {
             payErr.textContent = ''; payErr.hidden = true;
         }
@@ -332,12 +344,22 @@
         var submitBtn = form.querySelector('.co-submit');
         function updatePayGate() {
             var checked = document.querySelector('input[name="payment"]:checked');
+            var payBlocked = !!checked && !payReady();
             if (submitBtn) {
-                submitBtn.disabled = submitting || !!createdOrder || !checked || !selectedShipping;
+                submitBtn.disabled = submitting || !!createdOrder || !checked || !selectedShipping || payBlocked;
                 submitBtn.setAttribute('aria-disabled', submitBtn.disabled ? 'true' : 'false');
+            }
+            // Lý do nút bị khoá (nút trỏ aria-describedby tới đây). Xoá chữ khi không áp dụng:
+            // phần tử được trỏ trực tiếp vẫn bị đọc dù đang hidden.
+            var gateMsg = $('co-pay-gate-msg');
+            if (gateMsg) {
+                gateMsg.textContent = payBlocked && !createdOrder ? t('co.payInfoNeeded') : '';
+                gateMsg.hidden = !gateMsg.textContent;
             }
         }
         document.addEventListener('checkout:shipping', updatePayGate);
+        document.addEventListener('checkout:payready', updatePayGate);
+        document.addEventListener('langchange', updatePayGate);
         $('co-shipping-methods').addEventListener('change', function (e) {
             selectedShipping = shippingMethods.find(function (m) { return m.key === e.target.value; }) || null;
             renderSummary(); updatePayGate();
@@ -435,6 +457,17 @@
                         setTimeout(function () { window.location.href = window.BreezeRoutes.to('orders'); }, data.voucherDropped ? 2200 : 1200);
                     }
                     return; // giữ nút disabled vì đang rời trang
+                }
+
+                if (r.status === 400 && data.error === 'PAYMENT_INFO_REQUIRED') {
+                    // Server thấy thiếu thông tin (vd thẻ vừa bị xoá ở tab khác): nạp lại để
+                    // panel mở ra; nút tự khoá lại qua checkout:payready.
+                    showFormMsg(t('co.payInfoRequired'), 'err');
+                    if (window.BreezeCheckoutPayment && typeof window.BreezeCheckoutPayment.refresh === 'function') {
+                        window.BreezeCheckoutPayment.refresh();
+                    }
+                    enableBtn();
+                    return;
                 }
 
                 if (r.status === 400) {
