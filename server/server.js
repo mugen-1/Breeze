@@ -49,6 +49,7 @@ app.set('views', path.join(__dirname, 'views'));
 // khổng lồ). Rate limit đặt riêng cho /api ở dưới (không bóp file tĩnh).
 // cspNonce PHẢI đứng trước helmet: header CSP đọc res.locals.cspNonce do nó sinh ra.
 app.use(cspNonce);
+app.use(require('./middleware/securityLogger').securityLogger);
 app.use(buildHelmet());
 app.use(buildCors());
 // Báo cáo vi phạm CSP: PHẢI đứng TRƯỚC express.json + limiter chung — nó tự giới hạn
