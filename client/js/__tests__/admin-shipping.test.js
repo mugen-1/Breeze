@@ -1,6 +1,7 @@
 const { check, eq } = require('./helpers/assert');
 const { load, wait } = require('./helpers/sandbox');
 const { El, makeDoc } = require('./helpers/dom');
+const { adminMe } = require('./helpers/me');
 const doc = makeDoc(), calls = [];
 let login, select, fail = false, csvBlob, download;
 const createElement = doc.createElement;
@@ -22,7 +23,7 @@ load('admin.js', { doc, deps: ['routes.js','utils-format.js','order-shipping.js'
     apiFetch: async (url, opts = {}) => {
       calls.push({ url, method: opts.method || 'GET', body: opts.body && JSON.parse(opts.body) });
       let data = {};
-      if (url === '/api/me') data = { role: 'admin' };
+      if (url === '/api/me') data = adminMe();
       else if (url === '/api/categories' || url.startsWith('/api/admin/stats/order-status')) data = [];
       else if (url.startsWith('/api/admin/stats/business-report?')) {
         const query = new URL(url, 'http://example.test').searchParams;

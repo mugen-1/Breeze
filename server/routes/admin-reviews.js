@@ -1,11 +1,13 @@
 'use strict';
-// Mounted after the Admin router's Firebase and role middleware.
+// Mounted after the Admin router's Firebase and back-office middleware.
 const router = require('express').Router();
+const { requirePermission } = require('../middleware/requirePermission');
 const { getPool } = require('../db');
 const { parseId } = require('../lib/review-create');
 const { ReviewError } = require('../lib/review-media');
 const { parseAdminQuery, visibilityInput, listAdminReviews, adminReviewDetail, setReviewVisibility } = require('../lib/review-admin');
 router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+router.use(requirePermission('review:moderate')); // Mọi route dưới /api/admin/reviews.
 function handle(action) {
   return async (req, res) => {
     try { res.json(await action(req)); }

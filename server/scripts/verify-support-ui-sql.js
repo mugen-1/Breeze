@@ -78,7 +78,7 @@ async function main() {
         const app = express(); app.use(express.json({ limit: '100kb' }));
         app.use('/api/me', require('../routes/me')); app.use('/api/support', require('../routes/support')); app.use('/api/admin', require('../routes/admin'));
         server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve)); base = 'http://127.0.0.1:' + server.address().port;
-        const customer = await user('customer', 'Account Customer'), staff = await user('staff', 'Actual Admin One', 'admin'), staffTwo = await user('staff-two', 'Actual Admin Two', 'admin');
+        const customer = await user('customer', 'Account Customer'), adminUser = await user('admin', 'Actual Admin One', 'admin'), adminTwoUser = await user('admin-two', 'Actual Admin Two', 'admin');
 
         const guestBrowser = browser(), guest = setup('widget', { fetch: guestBrowser.fetch }); guest.login(null); await open(guest);
         same('opening guest widget creates no SQL conversation', (await pool.request().query('SELECT COUNT(*) AS n FROM dbo.support_conversations;')).recordset[0].n, 0);
@@ -96,7 +96,7 @@ async function main() {
         same('account widget creates the SQL-owned conversation', (await pool.request().input('uid', sql.Int, customer.id)
             .query('SELECT COUNT(*) AS n FROM dbo.support_conversations WHERE user_id=@uid;')).recordset[0].n, 1);
 
-        const adminBrowser = browser(), admin = setup('admin', { fetch: adminBrowser.fetch }); admin.state.token = 'staff'; admin.login({ uid: staff.uid }, 'admin');
+        const adminBrowser = browser(), admin = setup('admin', { fetch: adminBrowser.fetch }); admin.state.token = 'admin'; admin.login({ uid: adminUser.uid }, 'admin');
         await admin.win.BreezeAdminSupport.load(1);
         same('Admin UI lists actual guest and account conversations', admin.get('admin-support-list').children.length, 2);
         await select(admin, 'Guest UI');
@@ -110,13 +110,13 @@ async function main() {
         const reopened = setup('widget', { fetch: guestBrowser.fetch }); reopened.login(null); await open(reopened);
         same('new page sharing browser cookie restores whole guest history', reopened.byClass('breeze-support-transcript').children.length, 3);
         check('restored session does not ask guest profile again', reopened.byClass('breeze-support-guest').hidden);
-        const secondBrowser = browser(), adminTwo = setup('admin', { fetch: secondBrowser.fetch }); adminTwo.state.token = 'staff-two'; adminTwo.login({ uid: staffTwo.uid }, 'admin');
+        const secondBrowser = browser(), adminTwo = setup('admin', { fetch: secondBrowser.fetch }); adminTwo.state.token = 'admin-two'; adminTwo.login({ uid: adminTwoUser.uid }, 'admin');
         await adminTwo.win.BreezeAdminSupport.load(1); await select(adminTwo, 'Account Customer'); await reply(adminTwo, 'Account response from Admin Two');
         await refreshWidget(account);
         check('account manual refresh receives its own Admin reply', text(account.byClass('breeze-support-transcript')).includes('Account response from Admin Two'));
         check('account transcript cannot include another guest history', !text(account.byClass('breeze-support-transcript')).includes('Xin chào 🌿'));
         same('real replying Admin IDs are stored', (await pool.request().query(`SELECT DISTINCT a.original_user_id FROM dbo.support_messages m
-            JOIN dbo.support_admin_actors a ON a.id=m.admin_actor_id ORDER BY a.original_user_id;`)).recordset.map(r => r.original_user_id), [staff.id, staffTwo.id]);
+            JOIN dbo.support_admin_actors a ON a.id=m.admin_actor_id ORDER BY a.original_user_id;`)).recordset.map(r => r.original_user_id), [adminUser.id, adminTwoUser.id]);
 
         const beforeLoss = (await pool.request().input('cid', sql.BigInt, gCid).query('SELECT COUNT(*) AS n FROM dbo.support_messages WHERE conversation_id=@cid;')).recordset[0].n;
         guestBrowser.loseNextSend = true; compose(guest, 'Retry after server commit'); guest.byClass('breeze-support-form').fire('submit');

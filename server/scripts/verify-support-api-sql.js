@@ -70,15 +70,15 @@ async function main() {
     app.use((err, req, res, next) => res.status(400).json({ status: 'error', message: 'Body request không hợp lệ hoặc quá lớn' }));
     app.use((req, res) => res.status(404).json({ status: 'error' }));
     server = app.listen(0, '127.0.0.1'); await new Promise(r => server.once('listening', r)); base = 'http://127.0.0.1:' + server.address().port;
-    const owner = await user('owner'), other = await user('other'), staff = await user('staff', 'admin'), staffTwo = await user('staff-two', 'admin');
+    const owner = await user('owner'), other = await user('other'), admin = await user('admin', 'admin'), adminTwo = await user('admin-two', 'admin');
     const initialBusiness = await businessState();
-    same('Admin inbox is genuinely empty', (await call('GET', 'admin/support/conversations', { token: 'staff' })).body,
+    same('Admin inbox is genuinely empty', (await call('GET', 'admin/support/conversations', { token: 'admin' })).body,
       { page: 1, limit: 30, total: 0, totalPages: 0, conversations: [] });
     same('guest opening widget does not create data', (await call('GET', 'support/conversation')).body, { conversation: null });
     same('account opening widget does not create a conversation', (await call('GET', 'support/conversation', { token: 'owner' })).body, { conversation: null });
     same('anonymous send requires a guest session', (await call('POST', 'support/messages', { body: msg('No identity') })).status, 401);
     same('guest history requires session proof', (await call('GET', 'support/conversation/messages')).status, 401);
-    same('Admin cannot use the customer widget API', (await call('GET', 'support/conversation', { token: 'staff' })).status, 403);
+    same('Admin cannot use the customer widget API', (await call('GET', 'support/conversation', { token: 'admin' })).status, 403);
     same('signed-in customer cannot create a guest identity', (await call('POST', 'support/guest-session', { token: 'owner', body: {} })).status, 403);
     for (const token of [undefined, 'invalid', 'owner']) {
       const expected = token === 'owner' ? 403 : 401;
@@ -124,24 +124,56 @@ async function main() {
     same('another conversation message cannot be a history cursor', (await call('GET', 'support/conversation/messages?before=' + ids[0], { token: 'other' })).status, 400);
     same('arbitrary customer conversation URL does not exist', (await call('GET', 'support/conversations/' + cid + '/messages', { token: 'other' })).status, 404);
     same('another device with same account shares conversation', (await call('GET', 'support/conversation', { token: 'owner' })).body.conversation.id, cid);
-    const replies = await Promise.all([call('POST', 'admin/support/conversations/' + cid + '/messages', { token: 'staff', body: msg('Reply one') }),
-      call('POST', 'admin/support/conversations/' + cid + '/messages', { token: 'staff-two', body: msg('Reply two') })]);
+    const replies = await Promise.all([call('POST', 'admin/support/conversations/' + cid + '/messages', { token: 'admin', body: msg('Reply one') }),
+      call('POST', 'admin/support/conversations/' + cid + '/messages', { token: 'admin-two', body: msg('Reply two') })]);
     same('two Admins can reply to the same inbox thread', replies.map(r => r.status), [201, 201]);
-    same('actual replying account is retained for Admin', replies.map(r => r.body.message.senderUserId), [staff, staffTwo]);
+    same('actual replying account is retained for Admin', replies.map(r => r.body.message.senderUserId), [admin, adminTwo]);
     const userHistory = await call('GET', 'support/conversation/messages', { token: 'owner' });
     same('customer sees Admin replies under BREEZE identity', userHistory.body.messages.filter(m => m.kind === 'admin').map(m => m.senderName), ['BREEZE', 'BREEZE']);
     check('customer DTO excludes internal Admin IDs and credentials', !/senderUserId|firebase|token_hash|original_user_id|@example/.test(JSON.stringify(userHistory.body)));
     const inboxBeforeRead = (await chatState())[0].find(c => String(c.id) === cid).admin_read_message_id;
-    await call('GET', 'admin/support/conversations/' + cid + '/messages', { token: 'staff' });
+    await call('GET', 'admin/support/conversations/' + cid + '/messages', { token: 'admin' });
     same('opening history does not mark read ahead of Task 7', (await chatState())[0].find(c => String(c.id) === cid).admin_read_message_id, inboxBeforeRead);
-    const list = await call('GET', 'admin/support/conversations?limit=1&page=2147483647', { token: 'staff' });
+    const list = await call('GET', 'admin/support/conversations?limit=1&page=2147483647', { token: 'admin' });
     same('Admin inbox pagination is bounded and clamps final page', [list.body.page, list.body.limit, list.body.total, list.body.conversations.length], [2, 1, 2, 1]);
     check('unread derives from stored customer messages', list.body.conversations.every(c => c.unread));
     same('malformed history limit is rejected', (await call('GET', 'support/conversation/messages?limit=101', { token: 'owner' })).status, 400);
-    same('repeated query field is rejected', (await call('GET', 'admin/support/conversations?page=1&page=2', { token: 'staff' })).status, 400);
-    same('BIGINT injection is rejected', (await call('GET', 'admin/support/conversations/1%20OR%201=1/messages', { token: 'staff' })).status, 400);
+    same('repeated query field is rejected', (await call('GET', 'admin/support/conversations?page=1&page=2', { token: 'admin' })).status, 400);
+    same('BIGINT injection is rejected', (await call('GET', 'admin/support/conversations/1%20OR%201=1/messages', { token: 'admin' })).status, 400);
     same('unknown conversation is not created by Admin reply', (await call('POST', 'admin/support/conversations/9223372036854775807/messages', {
-      token: 'staff', body: msg('missing') })).status, 404);
+      token: 'admin', body: msg('missing') })).status, 404);
+
+    // Phase A: role 'staff' thật trong SQL (fixture 'admin' / 'admin-two' ở trên là role admin)
+    // dùng hộp thư quản trị như admin, và bị chặn ở API chat phía khách như admin.
+    const realStaff = await user('real-staff', 'staff');
+    const staffInbox = await call('GET', 'admin/support/conversations', { token: 'real-staff' });
+    same('staff role reads the Admin inbox', [staffInbox.status, (staffInbox.body.conversations || []).some(c => c.id === cid)], [200, true]);
+    const staffHistory = await call('GET', 'admin/support/conversations/' + cid + '/messages', { token: 'real-staff' });
+    same('staff role reads conversation history with Admin-only fields', [staffHistory.status,
+      (staffHistory.body.messages || []).some(m => m.id === third.body.message.id), typeof staffHistory.body.messageCount], [200, true, 'string']);
+    const staffReply = await call('POST', 'admin/support/conversations/' + cid + '/messages', { token: 'real-staff', body: msg('Staff reply') });
+    const staffMessage = staffReply.body.message || {};
+    same('staff role replies; Admin view keeps the real staff account', [staffReply.status, staffMessage.kind,
+      staffMessage.senderUserId, staffMessage.senderName], [201, 'admin', realStaff, 'support-api-real-staff']);
+    same('customer sees staff reply under BREEZE identity', (await call('GET', 'support/conversation/messages', { token: 'owner' }))
+      .body.messages.filter(m => m.id === staffMessage.id).map(m => m.senderName), ['BREEZE']);
+    const staffRead = await call('POST', 'admin/support/conversations/' + cid + '/read', { token: 'real-staff', body: { messageId: third.body.message.id } });
+    same('staff role marks the shared inbox read', [staffRead.status, staffRead.body.readMessageId, staffRead.body.unread],
+      [200, third.body.message.id, false]);
+    same('staff read cursor is stored in SQL', String((await chatState())[0].find(c => String(c.id) === cid).admin_read_message_id), third.body.message.id);
+    for (const [method, route, body] of [['GET', 'support/conversation'], ['GET', 'support/conversation/messages'],
+      ['POST', 'support/messages', msg('staff as customer')], ['POST', 'support/heartbeat', {}], ['POST', 'support/guest-session', {}]]) {
+      const r = await call(method, route, { token: 'real-staff', body });
+      same('staff role cannot use customer chat API ' + method + ' ' + route, [r.status, r.body.code], [403, 'SUPPORT_CUSTOMER_ONLY']);
+    }
+    same('staff role session sync takes the Admin branch', (await call('POST', 'support/session', { token: 'real-staff', body: {} })).body,
+      { role: 'admin', active: false, merged: false, discarded: false });
+    let staffAsCustomer;
+    try { await require('../lib/customer-support').send(pool, { kind: 'customer', userId: realStaff }, null, { text: 'x', key: randomUUID() }); }
+    catch (e) { staffAsCustomer = e.status; }
+    same('storage rejects staff role acting as a customer', staffAsCustomer, 403);
+    same('staff chat activity creates no customer conversation for staff', (await pool.request().input('uid', sql.Int, realStaff)
+      .query('SELECT COUNT(*) AS n FROM dbo.support_conversations WHERE user_id=@uid;')).recordset[0].n, 0);
 
     const gBody = { name: 'Guest A', email: 'support-api-owner@example.test', ...msg('First guest message') };
     const guestFirst = await call('POST', 'support/guest-session', { body: gBody });
@@ -171,10 +203,10 @@ async function main() {
     same('old guest proof cannot access a conversation transferred to an account', (await call('GET', 'support/conversation/messages', { cookie: secondCookie })).status, 401);
     same('old guest proof cannot write into account-owned history', (await call('POST', 'support/messages', { cookie: secondCookie, body: msg('No access') })).status, 401);
     await pool.request().input('cid', sql.BigInt, gTwo).query('UPDATE dbo.support_conversations SET user_id=NULL WHERE id=@cid;');
-    const guestReply = await call('POST', 'admin/support/conversations/' + gCid + '/messages', { token: 'staff', body: msg('Guest response') });
+    const guestReply = await call('POST', 'admin/support/conversations/' + gCid + '/messages', { token: 'admin', body: msg('Guest response') });
     same('Admin can reply while guest session is active', guestReply.status, 201);
     const expiryBefore = (await pool.request().input('cid', sql.BigInt, gCid).query('SELECT expires_at FROM dbo.support_guest_sessions WHERE conversation_id=@cid;')).recordset[0].expires_at;
-    await call('GET', 'admin/support/conversations/' + gCid + '/messages', { token: 'staff' });
+    await call('GET', 'admin/support/conversations/' + gCid + '/messages', { token: 'admin' });
     same('Admin activity does not prolong guest session', (await pool.request().input('cid', sql.BigInt, gCid)
       .query('SELECT expires_at FROM dbo.support_guest_sessions WHERE conversation_id=@cid;')).recordset[0].expires_at, expiryBefore);
     await pool.request().input('cid', sql.BigInt, gCid).query('UPDATE dbo.support_guest_sessions SET expires_at=DATEADD(second,60,SYSUTCDATETIME()) WHERE conversation_id=@cid;');
@@ -194,12 +226,12 @@ async function main() {
     same('expired guest cannot read', (await call('GET', 'support/conversation/messages', { cookie: gCookie })).status, 401);
     same('expired cookie is cleared on denial', (await call('GET', 'support/conversation', { cookie: gCookie })).cookie.includes('Expires='), true);
     same('expired guest cannot send or extend expiry', (await call('POST', 'support/messages', { cookie: gCookie, body: msg('Too late') })).status, 401);
-    same('Admin cannot reopen expired guest history', (await call('GET', 'admin/support/conversations/' + gCid + '/messages', { token: 'staff' })).status, 404);
-    same('Admin cannot reply into expired guest session', (await call('POST', 'admin/support/conversations/' + gCid + '/messages', { token: 'staff', body: msg('Too late') })).status, 404);
-    check('expired guest disappears from Admin inbox', !(await call('GET', 'admin/support/conversations', { token: 'staff' })).body.conversations.some(c => c.id === gCid));
+    same('Admin cannot reopen expired guest history', (await call('GET', 'admin/support/conversations/' + gCid + '/messages', { token: 'admin' })).status, 404);
+    same('Admin cannot reply into expired guest session', (await call('POST', 'admin/support/conversations/' + gCid + '/messages', { token: 'admin', body: msg('Too late') })).status, 404);
+    check('expired guest disappears from Admin inbox', !(await call('GET', 'admin/support/conversations', { token: 'admin' })).body.conversations.some(c => c.id === gCid));
     await expire(gTwo, true);
     same('revoked guest credential is rejected', (await call('GET', 'support/conversation', { cookie: secondCookie })).status, 401);
-    check('revoked guest disappears from Admin inbox', !(await call('GET', 'admin/support/conversations', { token: 'staff' })).body.conversations.some(c => c.id === gTwo));
+    check('revoked guest disappears from Admin inbox', !(await call('GET', 'admin/support/conversations', { token: 'admin' })).body.conversations.some(c => c.id === gTwo));
 
     // Inject a real SQL failure AFTER conversation/session creation, BEFORE commit.
     await user('racing');
@@ -221,7 +253,7 @@ async function main() {
     await pool.request().query('DROP TRIGGER dbo.support_fixture_fail;');
     const support = require('../lib/customer-support');
     let rejected;
-    try { await support.send(pool, { kind: 'customer', userId: staff }, null, { text: 'role changed', key: randomUUID() }); }
+    try { await support.send(pool, { kind: 'customer', userId: admin }, null, { text: 'role changed', key: randomUUID() }); }
     catch (e) { rejected = e.status; }
     same('storage rechecks SQL role inside write transaction', rejected, 403);
     revoked.add('owner');

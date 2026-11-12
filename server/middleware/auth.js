@@ -137,4 +137,5 @@ async function verifyFirebaseToken(req, res, next) {
   next();
 }
 
-module.exports = { verifyFirebaseToken };
+// adminEmailSet: db/create-staff.js dùng chung để từ chối tạo staff bằng email admin.
+module.exports = { verifyFirebaseToken, adminEmailSet };

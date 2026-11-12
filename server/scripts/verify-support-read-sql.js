@@ -24,8 +24,8 @@ async function user(token, role = 'customer') {
             VALUES(@uid,@uid+'@example.test',@uid,@role);`)).recordset[0].id;
 }
 const route = cid => 'admin/support/conversations/' + cid;
-const read = (cid, mid, token = 'staff') => call('POST', route(cid) + '/read', token, { messageId: mid });
-const unread = async cid => (await call('GET', 'admin/support/conversations', 'staff-two')).body.conversations.find(c => c.id === cid).unread;
+const read = (cid, mid, token = 'admin') => call('POST', route(cid) + '/read', token, { messageId: mid });
+const unread = async cid => (await call('GET', 'admin/support/conversations', 'admin-two')).body.conversations.find(c => c.id === cid).unread;
 const cursor = async cid => (await pool.request().input('cid', sql.BigInt, cid).query('SELECT admin_read_message_id AS id FROM dbo.support_conversations WHERE id=@cid;')).recordset[0].id;
 async function state() {
     return (await pool.request().query(`SELECT * FROM dbo.support_conversations ORDER BY id; SELECT * FROM dbo.support_messages ORDER BY id;
@@ -46,29 +46,29 @@ async function main() {
         const app = express(); app.use(express.json({ limit: '100kb' }));
         app.use('/api/support', require('../routes/support')); app.use('/api/admin', require('../routes/admin'));
         server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve)); base = 'http://127.0.0.1:' + server.address().port;
-        await user('owner'); await user('other'); await user('staff', 'admin'); const staffTwo = await user('staff-two', 'admin');
+        await user('owner'); await user('other'); await user('admin', 'admin'); const adminTwo = await user('admin-two', 'admin');
         const first = (await call('POST', 'support/messages', 'owner', message('First unread'))).body;
         const cid = first.conversationId, m1 = first.message.id;
         const foreign = (await call('POST', 'support/messages', 'other', message('Another conversation'))).body;
         const initial = await state();
         same('new customer message is unread in shared inbox', await unread(cid), true);
-        const history = await call('GET', route(cid) + '/messages', 'staff');
+        const history = await call('GET', route(cid) + '/messages', 'admin');
         same('reading GET reports SQL cursor without mutating it', history.body.readMessageId, null);
         same('list/history GET leave all chat state unchanged', await state(), initial);
         same('anonymous read acknowledgement is denied', (await read(cid, m1, null)).status, 401);
         same('invalid Firebase token is denied', (await read(cid, m1, 'invalid')).status, 401);
         same('customer cannot mark shared Admin inbox', (await read(cid, m1, 'owner')).status, 403);
-        for (const body of [{}, { messageId: 1 }, { messageId: '0' }, { messageId: ['1'] }, { messageId: m1, userId: staffTwo }, { messageId: m1, unread: false }]) {
-            same('invalid/forged read input ' + JSON.stringify(body), (await call('POST', route(cid) + '/read', 'staff', body)).status, 400);
+        for (const body of [{}, { messageId: 1 }, { messageId: '0' }, { messageId: ['1'] }, { messageId: m1, userId: adminTwo }, { messageId: m1, unread: false }]) {
+            same('invalid/forged read input ' + JSON.stringify(body), (await call('POST', route(cid) + '/read', 'admin', body)).status, 400);
         }
         same('foreign conversation message cannot be used as cursor', (await read(cid, foreign.message.id)).status, 400);
         same('missing message cannot be used as cursor', (await read(cid, '9223372036854775807')).status, 400);
         same('missing conversation cannot be marked read', (await read('9223372036854775807', m1)).status, 404);
-        same('read endpoint rejects query identity fields', (await call('POST', route(cid) + '/read?messageId=' + m1, 'staff', { messageId: m1 })).status, 400);
-        same('read endpoint rejects untrusted Origin', (await call('POST', route(cid) + '/read', 'staff', { messageId: m1 }, { Origin: 'https://untrusted.example' })).status, 403);
-        same('read endpoint requires JSON', (await call('POST', route(cid) + '/read', 'staff', { messageId: m1 }, { 'Content-Type': 'text/plain' })).status, 415);
+        same('read endpoint rejects query identity fields', (await call('POST', route(cid) + '/read?messageId=' + m1, 'admin', { messageId: m1 })).status, 400);
+        same('read endpoint rejects untrusted Origin', (await call('POST', route(cid) + '/read', 'admin', { messageId: m1 }, { Origin: 'https://untrusted.example' })).status, 403);
+        same('read endpoint requires JSON', (await call('POST', route(cid) + '/read', 'admin', { messageId: m1 }, { 'Content-Type': 'text/plain' })).status, 415);
         same('all denied requests leave chat state unchanged', await state(), initial);
-        const adminReply = (await call('POST', route(cid) + '/messages', 'staff', message('Reply does not imply read'))).body;
+        const adminReply = (await call('POST', route(cid) + '/messages', 'admin', message('Reply does not imply read'))).body;
         same('Admin reply alone cannot clear unread', await unread(cid), true);
         same('Admin reply is not a customer read boundary', (await read(cid, adminReply.message.id)).status, 400);
         unsubscribe = require('../lib/support-events').hub.subscribe(n => notices.push(n));
@@ -80,12 +80,12 @@ async function main() {
         same('read acknowledgement preserves inbox order timestamps', afterRead[0].map(r => r.updated_at), beforeRead[0].map(r => r.updated_at));
         same('read acknowledgement never inserts/changes messages, sessions or actors', afterRead.slice(1), beforeRead.slice(1));
         same('read post-commit event is scoped to Admin', notices, [{ audience: 'admin', conversationId: cid }]);
-        await read(cid, m1, 'staff-two'); same('repeated acknowledgement emits no extra event', notices.length, 1);
+        await read(cid, m1, 'admin-two'); same('repeated acknowledgement emits no extra event', notices.length, 1);
         const second = (await call('POST', 'support/messages', 'owner', message('Unread again'))).body.message.id;
         same('customer new message restores unread after earlier read', await unread(cid), true);
         same('stale acknowledgement does not swallow newer message', (await read(cid, m1)).body.unread, true);
         same('new customer marker is not advanced by old acknowledgement', String(await cursor(cid)), m1);
-        const parallel = await Promise.all([read(cid, second, 'staff-two'), read(cid, m1)]);
+        const parallel = await Promise.all([read(cid, second, 'admin-two'), read(cid, m1)]);
         same('concurrent Admin acknowledgements both succeed', parallel.map(r => r.status), [200, 200]);
         same('shared cursor never moves backwards under concurrent Admins', String(await cursor(cid)), second);
         same('shared unread clears once newest boundary acknowledged', await unread(cid), false);
@@ -109,8 +109,8 @@ async function main() {
         same('reading guest conversation never extends activity lease', (await state())[2], guestBefore);
         await pool.request().input('cid', sql.BigInt, gcid).query(`UPDATE dbo.support_guest_sessions SET created_at=DATEADD(minute,-10,SYSUTCDATETIME()),expires_at=DATEADD(second,-1,SYSUTCDATETIME()) WHERE conversation_id=@cid;`);
         same('expired guest cannot be marked read by Admin', (await read(gcid, gmid)).status, 404);
-        await pool.request().input('uid', sql.Int, staffTwo).query("UPDATE dbo.users SET role='customer' WHERE id=@uid;");
-        same('current SQL role loss denies read acknowledgement', (await read(cid, third, 'staff-two')).status, 403);
+        await pool.request().input('uid', sql.Int, adminTwo).query("UPDATE dbo.users SET role='customer' WHERE id=@uid;");
+        same('current SQL role loss denies read acknowledgement', (await read(cid, third, 'admin-two')).status, 403);
         same('read history marker is not exposed on customer API', Object.hasOwn((await call('GET', 'support/conversation/messages', 'owner')).body, 'readMessageId'), false);
         console.log('Support read + SQL verification:', checks, 'checks passed. Configured store unchanged.');
     } finally {

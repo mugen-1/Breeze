@@ -1,4 +1,6 @@
-// Admin API (Phase 5) — MỌI route bọc verifyFirebaseToken + requireAdmin.
+// Admin API (Phase 5) — MỌI route bọc verifyFirebaseToken + requireBackOffice (admin|staff),
+// và TỪNG route gắn requirePermission('<quyền>') theo ma trận ở lib/permissions.js.
+// Route mới thiếu requirePermission -> __tests__/admin-permissions.test.js báo đỏ.
 //   POST   /api/admin/products            — tạo sản phẩm.
 //   PUT    /api/admin/products/:id         — sửa sản phẩm (cập nhật từng phần).
 //   DELETE /api/admin/products/:id         — ẩn sản phẩm (soft delete), giữ FK/lịch sử.
@@ -12,7 +14,9 @@ const { nextShippingStatuses, shippingForOrderStatus } = require('../lib/shippin
 const router = express.Router();
 const { getPool, sql } = require('../db');
 const { verifyFirebaseToken } = require('../middleware/auth');
-const { requireAdmin } = require('../middleware/requireAdmin');
+const { requireBackOffice, requirePermission } = require('../middleware/requirePermission');
+const { isBackOffice } = require('../lib/roles');
+const { can } = require('../lib/permissions');
 const { ALL_STATUSES, nextStatuses, canTransition, isTargetStatus } = require('../lib/order-state');
 const { cancelOrder, CancelError } = require('../lib/cancel-order');
 const businessReport = require('../lib/business-report');
@@ -21,8 +25,9 @@ const { recordInventoryMovement } = require('../lib/inventory-movement');
 const { readSizes, changeSizes, SizeError, SIZE_CONFIGURED_SQL, COLOR_CONFIGURED_SQL, sizeProfile } = require('../lib/size-variants');
 const { readColors, changeColors, ColorError } = require('../lib/color-variants');
 
-// Bọc toàn bộ router: chưa đăng nhập -> 401; đăng nhập nhưng không phải admin -> 403.
-router.use(verifyFirebaseToken, requireAdmin);
+// Bọc toàn bộ router: chưa đăng nhập -> 401; không phải admin/staff -> 403.
+// Quyền từng thao tác: requirePermission trên từng route (và đầu admin-reviews/admin-support).
+router.use(verifyFirebaseToken, requireBackOffice);
 router.use('/reviews', require('./admin-reviews'));
 router.use('/support', require('./admin-support'));
 
@@ -165,7 +170,7 @@ function isUniqueViolation(err) {
 // Danh sách ĐẦY ĐỦ cho bảng quản trị: gồm cả sản phẩm is_active=0 (đã ẩn) và mọi
 // cột cần để sửa (slug, category_id, stock...). Khác GET /api/products công khai
 // (chỉ trả is_active=1, thiếu slug/category_id). Trả hết — data nhỏ (~vài chục SP).
-router.get('/products', async (req, res) => {
+router.get('/products', requirePermission('product:read'), async (req, res) => {
   try {
     const pool = await getPool();
     const r = await pool.request().query(`${PRODUCT_SELECT} ORDER BY p.created_at DESC, p.id DESC;`);
@@ -177,7 +182,7 @@ router.get('/products', async (req, res) => {
 });
 
 // ---- GET /api/admin/products/:id/inventory-movements -----------------------
-router.get('/products/:id/inventory-movements', async (req, res) => {
+router.get('/products/:id/inventory-movements', requirePermission('product:read'), async (req, res) => {
   const idc = reqInt(req.params.id, 1, 'id');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
   const page = Number(req.query.page || 1);
@@ -216,7 +221,7 @@ router.get('/products/:id/inventory-movements', async (req, res) => {
 });
 
 // Size management reuses the product-level admin authorization above.
-router.get('/products/:id/sizes', async (req, res) => {
+router.get('/products/:id/sizes', requirePermission('product:read'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id < 0) return res.status(400).json({ message: 'id không hợp lệ' });
   try { res.json(await readSizes(await getPool(), id)); }
@@ -225,7 +230,7 @@ router.get('/products/:id/sizes', async (req, res) => {
 for (const [method, suffix, action] of [
   ['post', 'sizes', 'configure'], ['post', 'size-allocation', 'allocate'], ['put', 'sizes/:variantId', 'adjust'],
 ]) {
-  router[method]('/products/:id/' + suffix, async (req, res) => {
+  router[method]('/products/:id/' + suffix, requirePermission('product:write'), async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id < 0) return res.status(400).json({ message: 'id không hợp lệ' });
     try {
@@ -243,7 +248,7 @@ function sizeResponseError(res, err) {
 }
 
 // Color, Size × Color stock and gallery share the product authorization above.
-router.get('/products/:id/colors', async (req, res) => {
+router.get('/products/:id/colors', requirePermission('product:read'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id < 0) return res.status(400).json({ message: 'id không hợp lệ' });
   try { res.json(await readColors(await getPool(), id)); }
@@ -257,7 +262,8 @@ for (const [method, route, action] of [
   ['put', 'colors/:colorId/images/:imageId', 'update-image'],
   ['delete', 'colors/:colorId/images/:imageId', 'delete-image'],
 ]) {
-  router[method]('/products/:id/' + route, async (req, res) => {
+  // Cả xoá ảnh gallery cũng là SỬA sản phẩm -> product:write (product:delete = ẩn cả sản phẩm).
+  router[method]('/products/:id/' + route, requirePermission('product:write'), async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id < 0) return res.status(400).json({ message: 'id không hợp lệ' });
     const payload = { ...(req.body || {}) };
@@ -276,7 +282,7 @@ function colorResponseError(res, err) {
 }
 
 // ---- POST /api/admin/products ------------------------------------------------
-router.post('/products', async (req, res) => {
+router.post('/products', requirePermission('product:write'), async (req, res) => {
   const b = req.body || {};
 
   // Bắt buộc: slug, name_vi, price, category_id. Còn lại tuỳ chọn (có default).
@@ -382,7 +388,7 @@ const UPDATE_VALIDATORS = {
   is_active: (v) => vBool(v),
 };
 
-router.put('/products/:id', async (req, res) => {
+router.put('/products/:id', requirePermission('product:write'), async (req, res) => {
   const idc = reqInt(req.params.id, 0, 'id');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
   const b = req.body || {};
@@ -505,7 +511,7 @@ router.put('/products/:id', async (req, res) => {
 
 // ---- DELETE /api/admin/products/:id ------------------------------------------
 // Luôn soft-delete. Tránh race giữa kiểm tra tham chiếu và checkout tạo order_item.
-router.delete('/products/:id', async (req, res) => {
+router.delete('/products/:id', requirePermission('product:delete'), async (req, res) => {
   const idc = reqInt(req.params.id, 0, 'id');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
   const id = idc.value;
@@ -564,7 +570,7 @@ async function fetchItemsByOrderIds(pool, orderIds) {
 // Lọc server-side (áp TRƯỚC phân trang nên đúng trên TOÀN BỘ đơn, không chỉ 1 trang):
 //   ?status=<1 trong ORDER_STATUSES>   — lọc theo trạng thái (whitelist).
 //   ?q=<chuỗi>                         — tìm theo mã đơn / email / tên khách (LIKE, có ESCAPE).
-router.get('/orders', async (req, res) => {
+router.get('/orders', requirePermission('order:read'), async (req, res) => {
   let page = Number(req.query.page);
   let limit = Number(req.query.limit);
   page = Number.isInteger(page) && page > 0 ? page : 1;
@@ -664,7 +670,7 @@ router.get('/orders', async (req, res) => {
 });
 
 // ---- PUT /api/admin/orders/:id/status ----------------------------------------
-router.put('/orders/:id/status', async (req, res) => {
+router.put('/orders/:id/status', requirePermission('order:update_status'), async (req, res) => {
   const idc = reqInt(req.params.id, 1, 'id');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
 
@@ -744,7 +750,7 @@ router.put('/orders/:id/status', async (req, res) => {
 });
 
 // Sequential shipping updates share the order lock with cancellation/status changes.
-router.patch('/orders/:id/shipping-status', async (req, res) => {
+router.patch('/orders/:id/shipping-status', requirePermission('order:update_status'), async (req, res) => {
   const id = Number(req.params.id);
   const target = req.body && req.body.shipping_status;
   if (!Number.isInteger(id) || id < 1 || id > 2147483647 || typeof target !== 'string' ||
@@ -786,7 +792,7 @@ router.patch('/orders/:id/shipping-status', async (req, res) => {
 
 // ---- DELETE /api/admin/orders/:id --- xoá hẳn 1 đơn (hard delete) ------------
 // order_items có FK ON DELETE CASCADE -> tự xoá theo, không cần xoá tay.
-router.delete('/orders/:id', async (req, res) => {
+router.delete('/orders/:id', requirePermission('order:delete'), async (req, res) => {
   const idc = reqInt(req.params.id, 1, 'id');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
 
@@ -814,7 +820,7 @@ router.delete('/orders/:id', async (req, res) => {
 // IsBlacklisted là trạng thái ĐƯỢC LƯU (dbo.users), KHÔNG tính động ở đây.
 // ?q= tìm theo mã đơn / khách hàng — cùng logic với GET /api/admin/orders:
 //   toàn chữ số -> khớp CHÍNH XÁC o.id; còn lại -> LIKE email/tên khách (escape).
-router.get('/blacklist', async (req, res) => {
+router.get('/blacklist', requirePermission('user:read'), async (req, res) => {
   let page = Number(req.query.page);
   let limit = Number(req.query.limit);
   page = Number.isInteger(page) && page > 0 ? page : 1;
@@ -884,7 +890,7 @@ router.get('/blacklist', async (req, res) => {
 });
 
 // ---- POST /api/admin/blacklist/:userId/release --- gỡ 1 user khỏi danh sách đen --
-router.post('/blacklist/:userId/release', async (req, res) => {
+router.post('/blacklist/:userId/release', requirePermission('user:blacklist_release'), async (req, res) => {
   const idc = reqInt(req.params.userId, 1, 'userId');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
 
@@ -992,7 +998,7 @@ async function rangeStats(pool, start, end) {
 // Mốc "hôm nay" (YYYY-MM-DD, giờ VN) để client tính các preset của Dashboard.
 // Dashboard tự tính from/to ở client rồi mới gửi lên, nên client phải biết mốc này —
 // nếu vẫn dùng new Date() của máy thì preset ngắn sẽ rơi vào vùng chưa có đơn.
-router.get('/stats/anchor', async (req, res) => {
+router.get('/stats/anchor', requirePermission('dashboard:read'), async (req, res) => {
   try {
     const pool = await getPool();
     res.json({ anchor: ymdVN(await getAnchorInstant(pool)) });
@@ -1004,7 +1010,7 @@ router.get('/stats/anchor', async (req, res) => {
 
 // ---- GET /api/admin/stats?from=&to= --- KPI kỳ hiện tại + kỳ trước + doanh thu/ngày --
 // 'previous' = kỳ liền trước cùng độ dài N ngày. Frontend tự tính % delta.
-router.get('/stats', async (req, res) => {
+router.get('/stats', requirePermission('dashboard:read'), async (req, res) => {
   try {
     const pool = await getPool();
     const rg = resolveDateRange(req.query, await getAnchorInstant(pool));
@@ -1028,7 +1034,7 @@ router.get('/stats', async (req, res) => {
 });
 
 // Read-only export data. Uses the exact Dashboard range, KPI and daily grouping.
-router.get('/stats/business-report', async (req, res) => {
+router.get('/stats/business-report', requirePermission('dashboard:read'), async (req, res) => {
   try {
     const pool = await getPool();
     const rg = resolveDateRange(req.query, await getAnchorInstant(pool));
@@ -1046,7 +1052,7 @@ router.get('/stats/business-report', async (req, res) => {
 // ---- GET /api/admin/stats/top-products?from=&to=&limit= --------------------------
 // Top sản phẩm bán chạy (đơn hợp lệ) trong khoảng, giảm dần theo số lượng bán.
 // imageUrl = phần tử đầu của cột images (JSON array), fallback placeholder nếu rỗng/lỗi.
-router.get('/stats/top-products', async (req, res) => {
+router.get('/stats/top-products', requirePermission('dashboard:read'), async (req, res) => {
   let limit = Number(req.query.limit);
   limit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 50) : 5;
 
@@ -1065,7 +1071,7 @@ router.get('/stats/top-products', async (req, res) => {
 
 // ---- GET /api/admin/stats/order-status?from=&to= ---------------------------------
 // Phân bố trạng thái đơn trong khoảng (GỒM mọi status để vẽ donut — không lọc theo doanh thu).
-router.get('/stats/order-status', async (req, res) => {
+router.get('/stats/order-status', requirePermission('dashboard:read'), async (req, res) => {
   try {
     const pool = await getPool();
     const rg = resolveDateRange(req.query, await getAnchorInstant(pool));
@@ -1124,7 +1130,7 @@ function resolveStatisticsRange(rangeKey, anchorInstant) {
   return { start, end, from: ymdVN(start), to: ymdVN(new Date(end.getTime() - 1)) };
 }
 
-router.get('/statistics', async (req, res) => {
+router.get('/statistics', requirePermission('dashboard:read'), async (req, res) => {
   if (!STATISTICS_RANGE_KEYS.includes(req.query.range)) {
     return res.status(400).json({
       status: 'error',
@@ -1148,7 +1154,7 @@ router.get('/statistics', async (req, res) => {
 
 // ---- GET /api/admin/users --- danh sách người dùng, phân trang (chỉ xem) ------
 // Giống /api/admin/orders: ?page=&limit= (mặc định 20, tối đa 100). Chỉ đọc.
-router.get('/users', async (req, res) => {
+router.get('/users', requirePermission('user:read'), async (req, res) => {
   let page = Number(req.query.page);
   let limit = Number(req.query.limit);
   page = Number.isInteger(page) && page > 0 ? page : 1;
@@ -1182,7 +1188,7 @@ router.get('/users', async (req, res) => {
 });
 
 // ---- GET /api/admin/users/:userId/detail --- hồ sơ và lịch sử mua hàng --------
-router.get('/users/:userId/detail', async (req, res) => {
+router.get('/users/:userId/detail', requirePermission('user:read'), async (req, res) => {
   const userId = Number(req.params.userId);
   if (!Number.isInteger(userId) || userId < 1 || userId > 2147483647) {
     return res.status(400).json({ status: 'error', message: 'userId phải là số nguyên dương hợp lệ' });
@@ -1198,7 +1204,14 @@ router.get('/users/:userId/detail', async (req, res) => {
       SELECT id, email, display_name, phone, dob, gender, country, role,
              created_at, last_login, IsBlacklisted AS is_blacklisted
       FROM dbo.users WHERE id = @uid;`);
-    if (!userRes.recordset.length) {
+    // Chi tiết tài khoản admin cần user:view_admin_detail. Thiếu quyền -> 404 GIỐNG HỆT "không
+    // tồn tại" (quy ước truy cập chéo của BREEZE: không xác nhận id đó là admin), dừng trước
+    // khi đọc thống kê/lịch sử đơn.
+    const hiddenAdmin = userRes.recordset.length > 0 &&
+      userRes.recordset[0].role === 'admin' && !can(req.user.role, 'user:view_admin_detail');
+    if (!userRes.recordset.length || hiddenAdmin) {
+      // Chỉ log khác: securityLogger ghi PERMISSION_DENIED/medium thay vì NOT_FOUND/low.
+      if (hiddenAdmin) res.locals.securityEventType = 'PERMISSION_DENIED';
       return res.status(404).json({ status: 'error', message: 'Không tìm thấy người dùng' });
     }
 
@@ -1233,8 +1246,8 @@ router.get('/users/:userId/detail', async (req, res) => {
 // ---- POST /api/admin/users/:userId/blacklist --- thêm THỦ CÔNG vào danh sách đen ---
 // Blacklist là hành động quản trị riêng, KHÔNG tự phát sinh khi hủy đơn.
 // Endpoint vẫn yêu cầu user có đơn cancelled, theo policy cũ. Idempotent;
-// không cho đưa tài khoản admin vào blacklist.
-router.post('/users/:userId/blacklist', async (req, res) => {
+// không cho đưa tài khoản quản trị (admin/staff) vào blacklist.
+router.post('/users/:userId/blacklist', requirePermission('user:blacklist'), async (req, res) => {
   const idc = reqInt(req.params.userId, 1, 'userId');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
 
@@ -1245,8 +1258,8 @@ router.post('/users/:userId/blacklist', async (req, res) => {
     if (target.recordset.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Không tìm thấy người dùng' });
     }
-    if (target.recordset[0].role === 'admin') {
-      return res.status(400).json({ status: 'error', message: 'Không thể đưa tài khoản admin vào danh sách đen' });
+    if (isBackOffice(target.recordset[0].role)) {
+      return res.status(400).json({ status: 'error', message: 'Không thể đưa tài khoản quản trị vào danh sách đen' });
     }
 
     const cancelled = await pool.request().input('uid', sql.Int, idc.value)

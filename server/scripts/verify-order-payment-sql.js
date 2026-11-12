@@ -75,8 +75,7 @@ async function main() {
         const id = Number(req.headers['x-test-user']); if (!id) return res.status(401).json({ status: 'error' });
         req.user = { id, role: req.headers['x-test-admin'] ? 'admin' : 'customer' }; next();
       },
-      requireAdmin(req, res, next) { if (req.user.role !== 'admin') return res.status(403).json({ status: 'error' }); next(); }
-    } };
+    } };   // Phân quyền /api/admin dùng requireBackOffice + requirePermission thật, đọc req.user.role ở trên.
     const app = express(); app.use(express.json()); app.use('/api/orders', require('../routes/orders')); app.use('/api/admin', require('../routes/admin'));
     server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve)); base = `http://127.0.0.1:${server.address().port}`;
     assert.equal((await request(null, '/api/orders/1/payment-simulation', 'POST', { outcome: 'success' })).status, 401);

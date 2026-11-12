@@ -111,6 +111,13 @@ function setup(options = {}) {
     check('Admin never sees customer widget', r.get('breeze-support').hidden && panel.hidden);
     const count = r.calls.length; r.fireWindow('focus'); await wait();
     eq('known Admin does not repeatedly check role on focus', r.calls.length, count);
+    // Staff = phía quản trị: widget ẩn như Admin VÀ không gọi lại /api/me mỗi lần focus/online
+    // (trước đây staff rơi vào nhánh "role chưa rõ" -> retry mãi, tốn quota session).
+    r.state.result = reply('staff-a', 'staff');
+    r.login({ uid: 'staff-a' }); await wait();
+    check('staff never sees customer widget', r.get('breeze-support').hidden && panel.hidden);
+    const staffCount = r.calls.length; r.fireWindow('focus'); r.fireWindow('online'); await wait();
+    eq('known staff does not repeatedly check role on focus/online', r.calls.length, staffCount);
     r.login(null);
     check('signout restores guest layout with no previous account label', !r.get('breeze-support').hidden && !guest.hidden &&
         !byClass(r, 'breeze-support-account'));

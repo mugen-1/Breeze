@@ -130,7 +130,8 @@ test('uid lấy từ token, bỏ qua firebase_uid/role/id giả trong body', asy
 test('response cùng dạng toDto với các route khác của /api/me', async () => {
   const r = await patch({ phone: '0901234567' });
   assert.deepEqual(Object.keys(r.body).sort(), ['avatar_url', 'country', 'created_at', 'display_name', 'dob',
-    'email', 'firebase_uid', 'gender', 'id', 'last_login', 'phone', 'role']);
+    'email', 'firebase_uid', 'gender', 'id', 'last_login', 'permissions', 'phone', 'role']);
+  assert.deepEqual(r.body.permissions, [], 'customer: không quyền quản trị nào');
   assert.ok(!('is_blacklisted' in r.body));
 });
 

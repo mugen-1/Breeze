@@ -17,7 +17,7 @@ const orders = [];
 let pool, server, base, setupTx;
 
 // Only this disposable test process replaces auth. Production routes still use
-// verifyFirebaseToken and requireAdmin normally.
+// verifyFirebaseToken, requireBackOffice and requirePermission normally.
 const authPath = require.resolve('../middleware/auth');
 require.cache[authPath] = { id: authPath, filename: authPath, loaded: true, exports: {
   verifyFirebaseToken(req, res, next) {

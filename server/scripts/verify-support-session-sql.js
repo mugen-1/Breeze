@@ -61,7 +61,7 @@ async function main() {
         const app = express(); app.use(express.json({ limit: '100kb' }));
         app.use('/api/me', require('../routes/me')); app.use('/api/support', require('../routes/support')); app.use('/api/admin', require('../routes/admin'));
         server = app.listen(0, '127.0.0.1'); await new Promise(r => server.once('listening', r)); base = 'http://127.0.0.1:' + server.address().port;
-        const owner = await user('owner'), empty = await user('empty'), staff = await user('staff', 'admin');
+        const owner = await user('owner'), empty = await user('empty'), admin = await user('admin', 'admin');
         await user('race-a'); await user('race-b'); await user('ui');
         same('anonymous bootstrap without cookie creates no chat', (await sync()).body, { role: 'guest', active: false });
         same('heartbeat without cookie creates no session', (await call('POST', 'support/heartbeat', { body: {} })).body, { active: false });
@@ -96,12 +96,12 @@ async function main() {
         same('matching email without cookie proves no guest ownership', (await sync('owner')).body.merged, false);
         same('guest remains unattached without cookie proof', (await state())[0].find(c => String(c.id) === g.conversationId).user_id, null);
 
-        const reply = (await call('POST', 'admin/support/conversations/' + g.conversationId + '/messages', { token: 'staff', body: message('Staff before account transfer') })).body;
-        await call('POST', 'admin/support/conversations/' + g.conversationId + '/read', { token: 'staff', body: { messageId: g.message.id } });
+        const reply = (await call('POST', 'admin/support/conversations/' + g.conversationId + '/messages', { token: 'admin', body: message('Admin before account transfer') })).body;
+        await call('POST', 'admin/support/conversations/' + g.conversationId + '/read', { token: 'admin', body: { messageId: g.message.id } });
         const original = await rows(g.conversationId);
         const adopted = await sync('empty', g.cookie);
         same('new account adopts existing guest conversation', [adopted.body.merged, adopted.body.conversationId], [true, g.conversationId]);
-        same('transfer preserves all message IDs, text, chronology and staff actor', await rows(g.conversationId), original);
+        same('transfer preserves all message IDs, text, chronology and admin actor', await rows(g.conversationId), original);
         check('successful transfer expires shared browser guest cookie', /Expires=Thu, 01 Jan 1970/i.test(adopted.cookie));
         same('transfer physically revokes guest credential row', (await state())[2].some(s => String(s.conversation_id) === g.conversationId), false);
         same('old cookie from another tab cannot read transferred account history', (await call('GET', 'support/conversation/messages', { cookie: g.cookie })).status, 401);
@@ -112,22 +112,22 @@ async function main() {
         const collision = randomUUID();
         const account = (await call('POST', 'support/messages', { token: 'owner', body: message('Account original', collision) })).body;
         const other = await guest('Merge guest', collision);
-        await call('POST', 'admin/support/conversations/' + other.conversationId + '/messages', { token: 'staff', body: message('Guest Admin response') });
+        await call('POST', 'admin/support/conversations/' + other.conversationId + '/messages', { token: 'admin', body: message('Guest Admin response') });
         // Make guest wait earlier without relying on JavaScript timestamp rounding.
         await pool.request().input('cid', sql.BigInt, other.conversationId).query("UPDATE dbo.support_messages SET created_at=DATEADD(minute,-1,created_at) WHERE conversation_id=@cid AND system_code='first_wait';");
-        await call('POST', 'admin/support/conversations/' + account.conversationId + '/read', { token: 'staff', body: { messageId: account.message.id } });
+        await call('POST', 'admin/support/conversations/' + account.conversationId + '/read', { token: 'admin', body: { messageId: account.message.id } });
         const humans = (await rows(account.conversationId)).concat(await rows(other.conversationId)).filter(r => r.sender_kind !== 'system')
             .map(({ client_message_id, ...r }) => r).sort((a, b) => String(a.id).length - String(b.id).length || String(a.id).localeCompare(String(b.id)));
         const merged = await sync('owner', other.cookie);
         same('existing account keeps its one conversation', [merged.body.merged, merged.body.conversationId], [true, account.conversationId]);
         const mergedRows = await rows(account.conversationId);
-        same('merge keeps every human message with original ID, staff, text and time', mergedRows.filter(r => r.sender_kind !== 'system').map(({ client_message_id, ...r }) => r)
+        same('merge keeps every human message with original ID, admin, text and time', mergedRows.filter(r => r.sender_kind !== 'system').map(({ client_message_id, ...r }) => r)
             .sort((a, b) => String(a.id).length - String(b.id).length || String(a.id).localeCompare(String(b.id))), humans);
         same('merge keeps only earliest wait across both histories', mergedRows.filter(r => r.system_code).map(r => String(r.id)), [other.systemMessage.id]);
         same('colliding retry UUID preserves source human by clearing only its retry key', mergedRows.find(r => String(r.id) === other.message.id).client_message_id, null);
         same('target retry key remains usable', (await call('POST', 'support/messages', { token: 'owner', body: message('Account original', collision) })).body.message.id, account.message.id);
         same('old guest conversation and credential are physically removed after merge', [await exists(other.conversationId), (await state())[2].some(s => String(s.conversation_id) === other.conversationId)], [0, false]);
-        check('unread from source is preserved after merge', (await call('GET', 'admin/support/conversations', { token: 'staff' })).body.conversations.find(c => c.id === account.conversationId).unread);
+        check('unread from source is preserved after merge', (await call('GET', 'admin/support/conversations', { token: 'admin' })).body.conversations.find(c => c.id === account.conversationId).unread);
         const repeated = await sync('owner', other.cookie); same('repeat merge cannot duplicate messages', repeated.body.merged, false);
         const expiring = await guest('Expiring unread'); await expire(expiring.conversationId);
         same('expired heartbeat cannot revive a session', (await call('POST', 'support/heartbeat', { cookie: expiring.cookie, body: {} })).status, 401);
@@ -135,7 +135,7 @@ async function main() {
         check('cleanup physically deletes unread expired conversation', (await sessions.cleanupExpired(pool)).removed >= 1);
         same('cleanup removes all messages and guest session rows', [await exists(expiring.conversationId), (await rows(expiring.conversationId)).length, (await state())[2].some(s => String(s.conversation_id) === expiring.conversationId)], [0, 0, false]);
         same('cleanup never deletes a transferred account conversation', await exists(g.conversationId), 1);
-        const readExpired = await guest('Read expired'); await support.markRead(pool, { kind: 'admin', userId: staff }, readExpired.conversationId, readExpired.message.id); await expire(readExpired.conversationId);
+        const readExpired = await guest('Read expired'); await support.markRead(pool, { kind: 'admin', userId: admin }, readExpired.conversationId, readExpired.message.id); await expire(readExpired.conversationId);
         const worker = sessions.startCleanup(async () => pool, { intervalMs: 20 });
         try { for (let i = 0; i < 100 && await exists(readExpired.conversationId); i++) await new Promise(r => setTimeout(r, 20)); }
         finally { worker.stop(); }
@@ -163,12 +163,12 @@ async function main() {
         await sessions.cleanupExpired(pool);
         same('cleanup physically removes revoked sessions too', await exists(rollback.conversationId), 0);
         const adminGuest = await guest('Admin discard');
-        await call('POST', 'admin/support/conversations/' + adminGuest.conversationId + '/messages', { token: 'staff', body: message('Guest reply to remove') });
-        const discarded = await sync('staff', adminGuest.cookie);
+        await call('POST', 'admin/support/conversations/' + adminGuest.conversationId + '/messages', { token: 'admin', body: message('Guest reply to remove') });
+        const discarded = await sync('admin', adminGuest.cookie);
         same('Admin login discards guest instead of receiving it', [discarded.body.role, discarded.body.discarded, discarded.body.merged], ['admin', true, false]);
         same('Admin discard physically deletes guest messages and credentials', [await exists(adminGuest.conversationId), (await rows(adminGuest.conversationId)).length], [0, 0]);
         same('Admin cookie is expired after discard', /Expires=Thu, 01 Jan 1970/i.test(discarded.cookie), true);
-        same('Admin still has no customer conversation', (await state())[0].some(c => c.user_id === staff), false);
+        same('Admin still has no customer conversation', (await state())[0].some(c => c.user_id === admin), false);
         check('discard does not remove actual Admin reply in other account history', (await rows(g.conversationId)).some(m => String(m.id) === reply.message.id));
 
         // Real frontend: two pages share the HTTP cookie jar. One signs in;
@@ -198,9 +198,9 @@ async function main() {
         check('other tab cannot retain private guest history after transfer', !pageTwo.byClass('breeze-support-guest').hidden);
         same('frontend transfer clears shared guest cookie', jar.cookie, '');
         const uiCid = (await call('GET', 'support/conversation', { token: 'ui' })).body.conversation.id;
-        const snapshot = (await call('GET', 'admin/support/conversations/' + uiCid + '/messages', { token: 'staff' })).body;
+        const snapshot = (await call('GET', 'admin/support/conversations/' + uiCid + '/messages', { token: 'admin' })).body;
         await sync('ui', cachedSource.cookie);
-        const staleRead = await call('POST', 'admin/support/conversations/' + uiCid + '/read', { token: 'staff',
+        const staleRead = await call('POST', 'admin/support/conversations/' + uiCid + '/read', { token: 'admin',
             body: { messageId: snapshot.messages.find(m => m.kind === 'customer').id, messageCount: snapshot.messageCount } });
         same('pre-merge read snapshot cannot acknowledge newly merged history', [staleRead.status, staleRead.body.code], [409, 'SUPPORT_HISTORY_CHANGED']);
         await until(() => text(ui.byClass('breeze-support-transcript')).includes('Merge into open account question'), 'open account reset after merge');

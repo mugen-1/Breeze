@@ -109,7 +109,7 @@ function dangNhap() {
                         }
                         if (!r.ok) throw new Error();
                         const me = await r.json();
-                        if (!me || (me.role !== 'admin' && me.role !== 'customer')) throw new Error();
+                        if (!me || (me.role !== 'admin' && me.role !== 'staff' && me.role !== 'customer')) throw new Error();
                         return me;
                     })
                     .catch((error) => {
@@ -124,7 +124,8 @@ function dangNhap() {
             return Promise.resolve(window.BreezeSupportSession ? window.BreezeSupportSession.prepare(signedInUid) : null).then(() => me);
         })
         .then(async (me) => {
-            const isAdmin = me.role === 'admin';
+            // admin + staff = phía quản trị: vào admin.html, không được đặt đơn.
+            const isAdmin = me.role === 'admin' || me.role === 'staff';
             if (window.BreezePurchase && window.BreezePurchase.requested()) {
                 await window.BreezePurchase.resume(signedInUid, me && me.role);
                 window.location.href = window.BreezeRoutes.to('cart');

@@ -58,7 +58,7 @@ const { El } = require('./helpers/dom');
 const { wait } = require('./helpers/sandbox');
 
 function gateSetup(opts = {}) {
-  const gdoc = makeDoc(), calls = [];
+  const gdoc = makeDoc(), calls = [], alerts = [], replaced = [];
   const submit = El('button'), radio = El('input'); radio.value = opts.method || 'visa';
   gdoc.getElementById('co-form').querySelector = () => submit;
   gdoc._qs['input[name="payment"]:checked'] = radio;
@@ -68,10 +68,10 @@ function gateSetup(opts = {}) {
   const pay = { ready: opts.ready !== false, refreshes: 0 };
   let login;
   const win = {
-    __i18n: { t: key => key }, location: { replace() {}, href: '' },
+    __i18n: { t: key => key }, location: { replace(u) { replaced.push(u); }, href: '' }, alert: m => alerts.push(m),
     AuthHelper: { onChange: cb => { login = cb; }, apiFetch: async (url, o) => {
       calls.push({ url, body: o && o.body ? JSON.parse(o.body) : undefined });
-      if (url === '/api/me') return { ok: true, json: async () => ({}) };
+      if (url === '/api/me') return { ok: true, json: async () => (opts.me || {}) };
       if (url === '/api/orders/shipping-methods') return { ok: true, json: async () => [{ key: 'GHN_STANDARD', label_key: 'a', eta_key: 'b', fee: 20000 }] };
       return opts.order ? opts.order() : { status: 201, json: async () => ({ order: { id: 5, order_code: 1001 } }) };
     } },
@@ -81,11 +81,19 @@ function gateSetup(opts = {}) {
     globals: { getCart: () => [{ id: 1, variant_id: 10, qty: 1, price: 100000 }], setTimeout: () => 1, clearTimeout() {} }, window: win });
   gdoc.fire('DOMContentLoaded');
   const fill = () => { for (const [f, v] of Object.entries({ firstname: 'A', lastname: 'B', phone: '0901234567', street: '1 Road', ward: 'W', district: 'D', city: 'C' })) gdoc.getElementById('f-' + f).value = v; };
-  return { ...g, doc: gdoc, submit, radio, panelInput, pay, calls, fill, login: async () => { login({ uid: 'u' }); await wait(); },
+  return { ...g, doc: gdoc, submit, radio, panelInput, pay, calls, fill, alerts, replaced, login: async () => { login({ uid: 'u' }); await wait(); },
     orders: () => calls.filter(c => c.url === '/api/orders') };
 }
 
 (async () => {
+  // Phía quản trị (admin + staff) mở thẳng checkout.html -> báo lỗi rồi rời trang; khách thì không.
+  for (const role of ['admin', 'staff', 'customer']) {
+    const rg = gateSetup({ me: { role } }); await rg.login(); await wait();
+    const blocked = role !== 'customer';
+    eq(role + ': thong bao chan dat hang', rg.alerts, blocked ? ['co.adminBlocked'] : []);
+    eq(role + ': roi trang checkout', rg.replaced, blocked ? ['index.html'] : []);
+  }
+
   let g = gateSetup({ noModule: true }); await g.login();
   eq('khong co BreezeCheckoutPayment: Visa + ship -> nut mo nhu cu', g.submit.disabled, false);
   eq('khong co module: khong hien ly do khoa', [g.doc.getElementById('co-pay-gate-msg').hidden, g.doc.getElementById('co-pay-gate-msg').textContent], [true, '']);

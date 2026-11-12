@@ -15,6 +15,7 @@ HTML/CSS/JS thuần, không build step.
 Tài liệu đợt dọn dẹp trước khi migrate EJS: xem [CLEANUP.md](CLEANUP.md).
 Checklist test tay sau migrate: [CHECKLIST-EJS.md](CHECKLIST-EJS.md).
 Checklist test tay cho modal đổi mật khẩu: [CHECKLIST-CHANGE-PASSWORD.md](CHECKLIST-CHANGE-PASSWORD.md).
+Checklist test tay cho role staff (phân quyền): [CHECKLIST-STAFF.md](CHECKLIST-STAFF.md).
 
 ---
 
@@ -262,6 +263,23 @@ một chỗ. Sửa `routes.js` thì phải khởi động lại server.
 
 Không phải copy `<head>`, không phải nhớ thứ tự CSS/script, không phải dán lại drawer và
 footer — layout lo hết. Snippet chống FOUC nằm trong `partials/head.ejs`.
+
+---
+
+## Phân quyền (RBAC)
+
+Role hợp lệ: `customer | staff | admin` (`server/lib/roles.js`, CHECK `CK_users_role`). "Phía quản trị"
+(admin + staff) xét bằng `isBackOffice(role)` — **không** so `=== 'admin'` trực tiếp.
+
+- **Nguồn sự thật của quyền:** `server/lib/permissions.js`. Đổi quyền staff chỉ sửa bảng ở đây + test.
+- **Route mới** trong `routes/admin.js`, `admin-reviews.js`, `admin-support.js` PHẢI có
+  `requirePermission('<perm>')` — `__tests__/admin-permissions.test.js` fail nếu thiếu. GET dùng
+  quyền `:read`; route ghi dùng `:write` / `:delete` / `:update_status`… tương ứng.
+- **Frontend** chỉ ẩn/khoá UI theo `me.permissions` (`data-perm`, `can()` trong `admin.js`); kiểm tra
+  thật luôn ở backend. Thiếu `permissions` = không có quyền nào.
+- **Module support:** staff dùng `principal.kind = 'admin'` (nghĩa "phía quản trị", không phải tên role).
+- **Tạo staff:** `node db/create-staff.js <email> "<tên>" [--password]` (trong `server/`, chỉ PowerShell /
+  terminal tương tác; Git Bash: `winpty`). Đổi role tài khoản có sẵn: `db/set-role.js`.
 
 ---
 

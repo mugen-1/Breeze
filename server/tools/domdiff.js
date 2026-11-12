@@ -160,6 +160,17 @@ const KNOWN = {
        DOMContentLoaded trở đi, mà script defer chạy TRƯỚC DOMContentLoaded. Nên bỏ
        defer không đổi hành vi, chỉ làm global có sớm hơn và khớp 20 trang còn lại. */
     ['<script defer src="js/theme.js">', '<script src="js/theme.js">'],
+    /* Khối "Chi tiết tài khoản" tách sang js/account-details.js để section Hồ sơ của
+       admin dùng chung (pages-config.js: pageJs thêm 'account-details.js' NGAY TRƯỚC
+       page-profile.js). Logic chuyển nguyên văn, page-profile.js gọi lại qua
+       window.BreezeAccountDetails — hành vi trang không đổi (page-profile.test.js giữ
+       nguyên mọi kiểm tra). 1 thẻ script chèn vào -> 2 token mới, 6 token sau dời xuống. */
+    ['<script src="js/page-profile.js">', '<script src="js/account-details.js">'],
+    ['<script src="js/change-password.js">', '<script src="js/page-profile.js">'],
+    ['</body>', '<script src="js/change-password.js">'],
+    ['</html>', '</script>'],
+    [undefined, '</body>'],
+    [undefined, '</html>'],
   ],
   'index.html': [
     /* index.html là trang DUY NHẤT trong 14 trang có doctype để <html> trần;

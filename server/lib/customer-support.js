@@ -2,6 +2,7 @@
 const { randomBytes, createHash } = require('node:crypto');
 const { sql } = require('../db');
 const { hub } = require('./support-events');
+const { isBackOffice } = require('./roles');
 const GUEST_IDLE_SECONDS = 5 * 60;
 const FIRST_WAIT_TEXT = 'quý khách vui lòng đợi ít phút';
 class SupportError extends Error {
@@ -60,9 +61,14 @@ async function lockUser(tx, principal) {
   const row = (await request(tx).input('uid', sql.Int, principal.userId)
     .query('SELECT role FROM dbo.users WITH (UPDLOCK,HOLDLOCK) WHERE id=@uid;')).recordset[0];
   if (!row) throw unauthorized();
-  if (row.role !== (principal.kind === 'admin' ? 'admin' : 'customer')) {
+  if (!roleMatches(principal.kind, row.role)) {
     throw new SupportError(403, 'SUPPORT_FORBIDDEN', 'Tài khoản không có quyền thực hiện thao tác này');
   }
+}
+// principal.kind 'admin' = phía quản trị (role admin HOẶC staff); 'customer' = đúng role customer.
+// Đọc role SQL hiện tại trong transaction: mất quyền giữa chừng thì bị chặn ngay.
+function roleMatches(kind, role) {
+  return kind === 'admin' ? isBackOffice(role) : kind === 'customer' && role === 'customer';
 }
 function conversationDTO(row) {
   return { id: String(row.id), kind: row.user_id == null ? 'guest' : 'customer', createdAt: row.created_at, updatedAt: row.updated_at };
@@ -257,7 +263,7 @@ async function streamAccess(pool, principal) {
     .query(`SELECT u.id,u.role,c.id AS conversation_id FROM dbo.users u
       LEFT JOIN dbo.support_conversations c ON c.user_id=u.id WHERE u.id=@uid AND u.firebase_uid=@firebaseUid;`)).recordset[0];
   if (!row) throw unauthorized();
-  if (row.role !== principal.kind) throw new SupportError(403, 'SUPPORT_FORBIDDEN', 'Tài khoản không có quyền truy cập luồng chat');
+  if (!roleMatches(principal.kind, row.role)) throw new SupportError(403, 'SUPPORT_FORBIDDEN', 'Tài khoản không có quyền truy cập luồng chat');
   return { kind: principal.kind, userId: row.id, conversationId: row.conversation_id == null ? null : String(row.conversation_id) };
 }
 async function inbox(pool, principal, options) {

@@ -88,17 +88,17 @@ async function main() {
         const app = express(); app.use(express.json({ limit: '100kb' }));
         app.use('/api/me', require('../routes/me')); app.use('/api/support', require('../routes/support')); app.use('/api/admin', require('../routes/admin'));
         server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve)); base = 'http://127.0.0.1:' + server.address().port;
-        const customer = await user('customer', 'Account Customer'), staff = await user('staff', 'Admin One', 'admin'), staffTwo = await user('staff-two', 'Admin Two', 'admin');
+        const customer = await user('customer', 'Account Customer'), adminUser = await user('admin', 'Admin One', 'admin'), adminTwoUser = await user('admin-two', 'Admin Two', 'admin');
         async function status(url, token) {
             const r = await fetch(base + url, { headers: { Accept: 'text/event-stream', ...(token ? { Authorization: 'Bearer ' + token } : {}) } });
             await r.text(); return r.status;
         }
         same('guest cannot connect without session proof', await status('/api/support/events'), 401);
         same('customer cannot connect to Admin stream', await status('/api/admin/support/events', 'customer'), 403);
-        same('Admin cannot use customer stream', await status('/api/support/events', 'staff'), 403);
-        same('stream rejects URL parameters including tokens', await status('/api/admin/support/events?token=must-not-be-used', 'staff'), 400);
+        same('Admin cannot use customer stream', await status('/api/support/events', 'admin'), 403);
+        same('stream rejects URL parameters including tokens', await status('/api/admin/support/events?token=must-not-be-used', 'admin'), 400);
 
-        const ab = browser(), admin = ui('admin', ab, 'staff', staff.uid, 'admin'); await admin.win.BreezeAdminSupport.load(1);
+        const ab = browser(), admin = ui('admin', ab, 'admin', adminUser.uid, 'admin'); await admin.win.BreezeAdminSupport.load(1);
         await until(() => stream.size === 1, 'Admin stream');
         const gb = browser(), guest = ui('widget', gb, null); await open(guest);
         same('opening anonymous widget does not create a conversation or stream', [stream.size, (await pool.request().query('SELECT COUNT(*) AS n FROM dbo.support_conversations;')).recordset[0].n], [1, 0]);
@@ -130,7 +130,7 @@ async function main() {
         await until(() => transcript(account).includes('Trả lời tài khoản') && transcript(device).includes('Trả lời tài khoản'), 'two device reply');
         check('both authenticated devices receive the Admin reply', transcript(account).includes('Trả lời tài khoản') && transcript(device).includes('Trả lời tài khoản'));
 
-        const a2b = browser(), adminTwo = ui('admin', a2b, 'staff-two', staffTwo.uid, 'admin'); await adminTwo.win.BreezeAdminSupport.load(1);
+        const a2b = browser(), adminTwo = ui('admin', a2b, 'admin-two', adminTwoUser.uid, 'admin'); await adminTwo.win.BreezeAdminSupport.load(1);
         const unreadRow = r => r.get('admin-support-list').children.find(el => text(el).includes('Guest SSE'));
         await send(guest, 'Tin chưa đọc dùng chung');
         await until(() => unreadRow(admin) && unreadRow(adminTwo) && unreadRow(admin).className.includes('is-unread') && unreadRow(adminTwo).className.includes('is-unread'), 'unselected shared unread rows');
@@ -143,7 +143,7 @@ async function main() {
         await reply(adminTwo, 'Từ Admin thứ hai');
         await until(() => text(admin.get('admin-support-messages')).includes('Từ Admin thứ hai'), 'shared Admin thread push');
         same('realtime refresh preserves Admin draft and selected conversation', [admin.get('admin-support-reply').value, text(admin.get('admin-support-contact'))], ['Draft survives incoming messages', 'Guest SSE']);
-        check('Admin thread retains actual replying staff name', text(admin.get('admin-support-messages')).includes('Admin Two'));
+        check('Admin thread retains actual replying admin name', text(admin.get('admin-support-messages')).includes('Admin Two'));
 
         // Commit a customer send while holding its HTTP acknowledgement; an Admin
         // reply arrives during the busy UI and must be drained afterwards.
@@ -171,10 +171,10 @@ async function main() {
         same('leaving Admin inbox stops background stream and refreshes', a2b.calls.length, hiddenCalls);
         await adminTwo.win.BreezeAdminSupport.load(1);
 
-        revoked.add('staff');
+        revoked.add('admin');
         await until(() => admin.get('admin-support-messages').children.length === 0, 'Firebase revoked stream');
         check('Firebase revocation clears connected Admin data', admin.get('admin-support-list').children.length === 0);
-        await pool.request().input('uid', sql.Int, staffTwo.id).query("UPDATE dbo.users SET role='customer' WHERE id=@uid;");
+        await pool.request().input('uid', sql.Int, adminTwoUser.id).query("UPDATE dbo.users SET role='customer' WHERE id=@uid;");
         await until(() => adminTwo.get('admin-support-list').children.length === 0, 'SQL role revoked');
         check('SQL role change closes Admin stream and clears inbox', adminTwo.get('admin-support-messages').children.length === 0);
         await pool.request().input('cid', sql.BigInt, cid).query(`UPDATE dbo.support_guest_sessions SET created_at=DATEADD(minute,-10,SYSUTCDATETIME()),

@@ -34,11 +34,14 @@
         //   .adm-thumb (bảng sản phẩm) : ẩn ảnh, giữ chỗ trống như cũ.
         //   #top-products img          : đổi sang ảnh dự phòng, đúng MỘT lần — ảnh dự phòng
         //                                đang thiếu (P-1), không chặn thì lỗi -> đổi -> lỗi lặp.
+        //   #adm-user-img (user card)  : ảnh avatar hỏng -> về icon người mặc định.
         var TOP_IMG_FALLBACK = 'img/breeze.png';
         document.addEventListener('error', function (e) {
             var img = e.target;
             if (!img || img.tagName !== 'IMG' || !img.closest) return;
-            if (img.classList.contains('adm-thumb')) {
+            if (img.id === 'adm-user-img') {
+                showUserAvatar(null);
+            } else if (img.classList.contains('adm-thumb')) {
                 img.style.visibility = 'hidden';
             } else if (img.closest('#top-products') && img.getAttribute('src') !== TOP_IMG_FALLBACK) {
                 img.src = TOP_IMG_FALLBACK;
@@ -53,6 +56,10 @@
             if (_toastTimer) clearTimeout(_toastTimer);
             _toastTimer = setTimeout(function () { t.className = ''; }, 2800);
         }
+        // change-password.js (modal đổi mật khẩu dùng chung với trang profile) gọi
+        // window.ProfileToast(msg) để báo thành công ngoài modal. Ở admin trỏ về toast admin.
+        // Quy ước tham số như trang profile: ok === false -> lỗi.
+        window.ProfileToast = function (msg, ok) { toast(msg, ok === false); };
 
         // --- Access states ---------------------------------------------------
         function showState(which) {
@@ -62,7 +69,7 @@
             $('panel').style.display = 'none';
             $('bar-right').style.visibility = 'hidden';
             document.body.classList.toggle('adm-authed', which === 'panel');
-            if (which !== 'panel') { _exportEpoch++; closeDrawer(); closeCustomerDetail(); }
+            if (which !== 'panel') { _exportEpoch++; closeDrawer(); closeCustomerDetail(); closeUserMenu(false); setPermissions(null); setLogoRole(null); }
             if (which !== 'panel' && window.BreezeAdminReviews) window.BreezeAdminReviews.reset();
             if (which !== 'panel' && window.BreezeAdminSupport) window.BreezeAdminSupport.reset();
             if (which === 'panel') {
@@ -79,21 +86,82 @@
             api('/api/me')
                 .then(function (r) { if (!r.ok) throw new Error('me ' + r.status); return r.json(); })
                 .then(function (me) {
-                    if (me.role !== 'admin') { showState('state-forbidden'); return; }
+                    // Cổng UI: admin + staff (backend tự chặn lại bằng requireBackOffice).
+                    if (!isBackOfficeRole(me.role)) { showState('state-forbidden'); return; }
                     showState('panel');
-                    return loadCategories().then(loadProducts).then(function () { return loadOrders(1); })
-                        .then(loadDashboard).then(function () { return loadUsers(1); })
-                        .then(function () { return loadBlacklist(1); });
+                    setPermissions(me.permissions);
+                    applyPerms();
+                    setLogoRole(me.role);
+                    _fbUser = user;
+                    setUserCard(me, user);
+                    fillProfileView(me);   // dùng luôn /api/me vừa gọi, không tốn request
+                    // Không có quyền xem Tổng quan -> mở mục đầu tiên được phép (hoặc Hồ sơ).
+                    if (!can('dashboard:read')) showView(firstPermittedView());
+
+                    // Chỉ gọi loader khi có quyền — không bắn request chắc chắn bị 403.
+                    // Giữ đúng thứ tự cũ: danh mục -> sản phẩm -> đơn -> tổng quan -> user -> blacklist.
+                    var chain = Promise.resolve();
+                    if (can('product:read')) chain = chain.then(loadCategories).then(loadProducts);
+                    if (can('order:read')) chain = chain.then(function () { return loadOrders(1); });
+                    if (can('dashboard:read')) chain = chain.then(loadDashboard);
+                    if (can('user:read')) {
+                        chain = chain.then(function () { return loadUsers(1); })
+                            .then(function () { return loadBlacklist(1); });
+                    }
+                    return chain;
                 })
                 .catch(function (e) { console.error('[admin] auth/me lỗi:', e); showState('state-forbidden'); });
+        }
+
+        // --- Quyền phía quản trị (GET /api/me -> role, permissions) ----------
+        // CHỈ để ẩn/hiện. Mọi kiểm tra thật ở backend (requirePermission). Thiếu
+        // permissions hoặc không phải mảng -> coi như không có quyền nào (đóng mặc định).
+        var _perms = [];
+        function isBackOfficeRole(role) { return role === 'admin' || role === 'staff'; }
+        // Chữ nhỏ cạnh logo: STAFF cho staff, ADMIN cho mọi trường hợp khác (CSS in hoa).
+        // Đổi cả data-i18n để i18n.js áp lại đúng chữ khi đổi VI/EN; gán bằng textContent.
+        function setLogoRole(role) {
+            var el = $('adm-logo-role');
+            if (!el) return;
+            var staff = role === 'staff', key = staff ? 'adm.logoStaff' : 'adm.logoAdmin';
+            el.setAttribute('data-i18n', key);
+            el.textContent = tr(key, null, staff ? 'Staff' : 'Admin');
+        }
+        function setPermissions(list) {
+            _perms = Array.isArray(list) ? list.filter(function (p) { return typeof p === 'string'; }) : [];
+        }
+        function can(perm) { return _perms.indexOf(perm) !== -1; }
+        // Nút do JS sinh: gắn sẵn data-perm (+ hidden nếu thiếu quyền) ngay trong chuỗi HTML.
+        function permAttrs(perm) { return ' data-perm="' + perm + '"' + (can(perm) ? '' : ' hidden'); }
+        // Phần tử tĩnh trong admin.html mang data-perm (mục menu trái, nút Thêm sản phẩm).
+        function applyPerms() {
+            document.querySelectorAll('[data-perm]').forEach(function (el) {
+                el.hidden = !can(el.getAttribute('data-perm'));
+            });
+        }
+        // Mục menu đầu tiên còn hiện (theo thứ tự trong admin.html); không còn mục nào -> Hồ sơ.
+        function firstPermittedView() {
+            var items = document.querySelectorAll('.adm-nav-item');
+            for (var i = 0; i < items.length; i++) {
+                var perm = items[i].getAttribute('data-perm');
+                if (perm && can(perm)) return items[i].getAttribute('data-nav');
+            }
+            return 'profile';
         }
 
         // Đổi VI/EN: nhãn tĩnh đã do i18n.js áp lại; bảng/biểu đồ do JS sinh thì
         // nạp lại đúng view đang mở (bỏ qua khi chưa qua cổng quyền admin).
         function reloadCurrentView() {
             if (!document.body.classList.contains('adm-authed')) return;
+            renderUserName();   // tên dự phòng "Quản trị viên"/"Admin" theo ngôn ngữ
+            // Hồ sơ không có mục trong menu trái -> không mục nào active, phải xét riêng,
+            // nếu không sẽ rơi vào default và nạp lại Dashboard vô ích.
             var active = document.querySelector('.adm-nav-item.active');
-            switch (active ? active.getAttribute('data-nav') : 'dashboard') {
+            var current = _currentView === 'profile' ? 'profile' : (active ? active.getAttribute('data-nav') : 'dashboard');
+            switch (current) {
+                case 'profile': // Nhãn tĩnh do i18n.js lo; vẽ lại ngày tháng theo locale mới.
+                    if (_profileMe) fillProfileView(_profileMe);
+                    break;
                 case 'products': loadProducts(); break;
                 case 'orders': loadOrders(_orderPage); break;
                 case 'statistics': loadStatistics(); break;
@@ -121,55 +189,281 @@
             users: 'view-users',
             reviews: 'view-reviews',
             blacklist: 'view-blacklist',
-            feedback: 'view-feedback'
+            feedback: 'view-feedback',
+            profile: 'view-profile'      // không có nút trong menu trái — mở từ popup user card
         };
+        var _currentView = 'dashboard';
+        // Chuyển view: dùng chung cho nút menu trái và mục "section" trong popup user card.
+        // View không có nút trong menu (profile) -> không nút nào active, user card sáng nhẹ.
+        function showView(t) {
+            if (!NAV_VIEWS[t]) return;
+            var fromDrawer = isDrawerOpen();   // chỉ ≤1023px mới mở được drawer
+            _currentView = t;
+            document.querySelectorAll('.adm-nav-item').forEach(function (b) {
+                b.classList.remove('active'); b.removeAttribute('aria-current');
+                if (b.getAttribute('data-nav') === t) { b.classList.add('active'); b.setAttribute('aria-current', 'page'); }
+            });
+            Object.keys(NAV_VIEWS).forEach(function (k) {
+                var el = $(NAV_VIEWS[k]);
+                if (el) el.style.display = (k === t) ? 'block' : 'none';
+            });
+            var userBtn = $('adm-user-btn');
+            if (userBtn) userBtn.classList[t === 'profile' ? 'add' : 'remove']('is-current');
+            closeDrawer();
+            // Chọn từ drawer: mục vừa bấm bị ẩn theo drawer -> focus sang h1 của view mới
+            // (tabindex="-1"), thay vì rơi về <body>. Desktop giữ nguyên focus như cũ.
+            if (fromDrawer) focusViewHeading(t);
+            if (t === 'profile') refreshProfileView();
+            if (t === 'reviews' && window.BreezeAdminReviews) window.BreezeAdminReviews.load(1);
+            if (t === 'feedback' && window.BreezeAdminSupport) window.BreezeAdminSupport.load(1);
+            else if (window.BreezeAdminSupport) window.BreezeAdminSupport.hide();
+        }
+        function focusViewHeading(t) {
+            var sec = $(NAV_VIEWS[t]);
+            var h = sec && sec.querySelector('h1');
+            if (h) h.focus();
+        }
         function bindNav() {
-            var items = document.querySelectorAll('.adm-nav-item');
-            items.forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    items.forEach(function (b) { b.classList.remove('active'); b.removeAttribute('aria-current'); });
-                    btn.classList.add('active');
-                    btn.setAttribute('aria-current', 'page');
-                    var t = btn.getAttribute('data-nav');
-                    Object.keys(NAV_VIEWS).forEach(function (k) {
-                        var el = $(NAV_VIEWS[k]);
-                        if (el) el.style.display = (k === t) ? 'block' : 'none';
-                    });
-                    closeDrawer();
-                    if (t === 'reviews' && window.BreezeAdminReviews) window.BreezeAdminReviews.load(1);
-                    if (t === 'feedback' && window.BreezeAdminSupport) window.BreezeAdminSupport.load(1);
-                    else if (window.BreezeAdminSupport) window.BreezeAdminSupport.hide();
-                });
+            document.querySelectorAll('.adm-nav-item').forEach(function (btn) {
+                btn.addEventListener('click', function () { showView(btn.getAttribute('data-nav')); });
             });
         }
 
         // --- Drawer (sidebar overlay ở tablet/mobile) ------------------------
+        // Chỉ mở được bằng nút ☰ (nút này chỉ hiện ≤1023px). Mở -> focus mục menu đầu;
+        // đóng bằng Esc / bấm nền mờ -> focus về ☰ (returnFocus). Đóng vì chọn mục menu
+        // thì không kéo focus đi.
+        function isDrawerOpen() { return document.body.classList.contains('adm-drawer-open'); }
+        // Drawer mở -> gắn inert cho mọi thứ NGOÀI drawer để Tab/trình đọc màn hình chỉ
+        // còn trong drawer. CHỪA RA (inert chặn cả click): #adm-backdrop (chạm để đóng),
+        // nút ☰ (bấm lại để đóng — nằm trong topbar nên inert từng con của topbar trừ ☰),
+        // #toast (không có gì để focus, giữ thông báo), và <script>.
+        var _inertEls = [];
+        function setOutsideInert(on) {
+            _inertEls.forEach(function (el) { el.inert = false; el.removeAttribute('inert'); });
+            _inertEls = [];
+            if (!on) return;
+            var keep = [$('adm-sidebar'), $('adm-backdrop'), $('toast')];
+            var mb = $('adm-menu-btn'), topbar = mb && mb.parentNode;
+            Array.prototype.forEach.call(document.body.children, function (el) {
+                if (keep.indexOf(el) !== -1 || el.tagName === 'SCRIPT') return;
+                if (el === topbar) {
+                    Array.prototype.forEach.call(topbar.children, function (c) { if (c !== mb) _inertEls.push(c); });
+                } else {
+                    _inertEls.push(el);
+                }
+            });
+            _inertEls.forEach(function (el) { el.inert = true; el.setAttribute('inert', ''); });
+        }
         function openDrawer() {
             document.body.classList.add('adm-drawer-open');
             var mb = $('adm-menu-btn'); if (mb) mb.setAttribute('aria-expanded', 'true');
+            setOutsideInert(true);
+            // CSS đổi visibility ngay khi mở (trễ 0s), focus() ép tính lại style nên focus được luôn.
+            var first = document.querySelector('.adm-nav-item');
+            if (first) first.focus();
         }
-        function closeDrawer() {
+        function closeDrawer(returnFocus) {
+            var wasOpen = isDrawerOpen();
             document.body.classList.remove('adm-drawer-open');
             var mb = $('adm-menu-btn'); if (mb) mb.setAttribute('aria-expanded', 'false');
+            setOutsideInert(false);   // gỡ TRƯỚC khi focus: h1 trong <main> phải hết inert
+            if (returnFocus && wasOpen && mb) mb.focus();
         }
         function toggleDrawer() {
-            if (document.body.classList.contains('adm-drawer-open')) closeDrawer(); else openDrawer();
+            if (isDrawerOpen()) closeDrawer(); else openDrawer();
+        }
+        // Esc theo lớp, mỗi lần nhấn đóng MỘT lớp: popup user card trước, nhấn tiếp mới
+        // đóng drawer. Bỏ qua nếu Esc đã được xử lý (modal, ô tìm kiếm gọi preventDefault).
+        function onEscape(e) {
+            if (e.key !== 'Escape' || e.defaultPrevented) return;
+            if (isUserMenuOpen()) { e.preventDefault(); closeUserMenu(true); return; }
+            if (isDrawerOpen()) { e.preventDefault(); closeDrawer(true); }
         }
 
-        // --- Dropdown tài khoản (email + Đăng xuất) --------------------------
-        function openAccountMenu() {
-            var m = $('adm-account-menu'), b = $('adm-account-btn');
-            if (m) m.hidden = false;
-            if (b) b.setAttribute('aria-expanded', 'true');
+        // --- User card (đáy sidebar) + popup ---------------------------------
+        // Các mục popup. Thêm mục mới = thêm 1 phần tử, không phải sửa markup:
+        //   id      : định danh (gắn vào data-user-item)
+        //   label   : KHOÁ i18n — phải có cả VI lẫn EN trong i18n.js
+        //   icon    : class Font Awesome 4.7 (vd 'fa-user-circle-o')
+        //   section : tên view trong NAV_VIEWS — hoặc — action: hàm gọi khi chọn
+        //   danger  : true -> chữ đỏ + đường phân cách phía trên
+        var USER_MENU_ITEMS = [
+            { id: 'profile', label: 'adm.profile', icon: 'fa-user-circle-o', section: 'profile' },
+            { id: 'logout', label: 'com.signout', icon: 'fa-sign-out', action: adminSignOut, danger: true }
+        ];
+        var _userMenuButtons = [];
+        var _userName = '';
+
+        function adminSignOut() {
+            if (window.firebase && firebase.auth) firebase.auth().signOut();
+            setTimeout(function () { window.location.href = window.BreezeRoutes.to('login'); }, 200);
         }
-        function closeAccountMenu() {
-            var m = $('adm-account-menu'), b = $('adm-account-btn');
+
+        // Vẽ lại mỗi lần mở -> nhãn luôn đúng ngôn ngữ hiện tại. Dựng bằng DOM API +
+        // textContent (không innerHTML), không handler inline (CSP).
+        function renderUserMenu() {
+            var menu = $('adm-user-menu');
+            if (!menu) return;
+            if (menu.replaceChildren) menu.replaceChildren(); else menu.textContent = '';
+            _userMenuButtons = [];
+            USER_MENU_ITEMS.forEach(function (item, i) {
+                if (item.danger && i > 0) {
+                    var sep = document.createElement('div');
+                    sep.className = 'adm-user-sep';
+                    sep.setAttribute('role', 'separator');
+                    menu.appendChild(sep);
+                }
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'adm-user-item' + (item.danger ? ' is-danger' : '');
+                b.setAttribute('role', 'menuitem');
+                b.setAttribute('data-user-item', item.id);
+                if (item.icon) {
+                    var ic = document.createElement('i');
+                    ic.className = 'fa ' + item.icon;
+                    ic.setAttribute('aria-hidden', 'true');
+                    b.appendChild(ic);
+                }
+                var label = document.createElement('span');
+                label.textContent = tr(item.label);
+                b.appendChild(label);
+                b.addEventListener('click', function () { chooseUserItem(item); });
+                menu.appendChild(b);
+                _userMenuButtons.push(b);
+            });
+        }
+        function isUserMenuOpen() {
+            var m = $('adm-user-menu');
+            return !!m && !m.hidden;
+        }
+        function openUserMenu(focusIndex) {
+            var m = $('adm-user-menu'), b = $('adm-user-btn');
+            if (!m || !b) return;
+            renderUserMenu();
+            m.hidden = false;
+            b.setAttribute('aria-expanded', 'true');
+            if (focusIndex != null) focusUserItem(focusIndex);
+        }
+        function closeUserMenu(returnFocus) {
+            var m = $('adm-user-menu'), b = $('adm-user-btn');
             if (m) m.hidden = true;
-            if (b) b.setAttribute('aria-expanded', 'false');
+            if (b) {
+                b.setAttribute('aria-expanded', 'false');
+                if (returnFocus) b.focus();
+            }
         }
-        function toggleAccountMenu() {
-            var m = $('adm-account-menu');
-            if (m && m.hidden) openAccountMenu(); else closeAccountMenu();
+        function focusUserItem(i) {
+            var n = _userMenuButtons.length;
+            if (!n) return;
+            _userMenuButtons[((i % n) + n) % n].focus();   // vòng tròn: cuối -> đầu và ngược lại
+        }
+        function chooseUserItem(item) {
+            if (item.section) {
+                closeUserMenu(true);
+                showView(item.section);
+            } else {
+                closeUserMenu(false);
+                if (typeof item.action === 'function') item.action();
+            }
+        }
+
+        // Tên: display_name trong DB (GET /api/me) -> displayName của Firebase -> nhãn
+        // "Quản trị viên". KHÔNG dùng email. Gán bằng textContent; CSS cắt ellipsis.
+        function setUserCard(me, fbUser) {
+            _userName = (me && me.display_name) || (fbUser && fbUser.displayName) || '';
+            renderUserName();
+            showUserAvatar(me && me.avatar_url);
+            // Pill "Nhân viên" cạnh tên — CHỈ staff; chữ do data-i18n trong admin.html lo.
+            var rolePillEl = $('adm-user-role');
+            if (rolePillEl) rolePillEl.hidden = !(me && me.role === 'staff');
+        }
+        function renderUserName() {
+            var el = $('adm-user-name');
+            if (!el) return;
+            var name = String(_userName || '').trim() || tr('adm.adminFallback', null, 'Quản trị viên');
+            el.textContent = name;
+            el.setAttribute('title', name);   // tên bị cắt vẫn xem đủ khi rê chuột
+        }
+        // Có avatar_url -> hiện ảnh (img.src), ẩn icon. Không có / ảnh lỗi -> icon người.
+        function showUserAvatar(url) {
+            var img = $('adm-user-img'), btn = $('adm-user-btn');
+            if (!img) return;
+            if (url) {
+                img.src = url;
+                img.hidden = false;
+            } else {
+                img.hidden = true;
+                img.removeAttribute('src');
+            }
+            if (btn) btn.classList[url ? 'add' : 'remove']('has-avatar');
+        }
+        // --- Section Hồ sơ (= tab "Chi tiết tài khoản" của trang profile) --------
+        // Logic dùng chung: js/account-details.js (window.BreezeAccountDetails). Đây chỉ
+        // nối dữ liệu: đổ /api/me vào form, làm mới user card. Hồ sơ là của CHÍNH admin
+        // đang đăng nhập — server lấy uid từ token, client không gửi định danh nào.
+        var _fbUser = null;      // Firebase user lúc qua cổng admin (dự phòng tên cho user card)
+        var _profileMe = null;   // /api/me gần nhất — dựng lại ngày tháng khi đổi VI/EN
+        function accountDetails() { return window.BreezeAccountDetails || null; }
+        function fillProfileView(me) {
+            var AD = accountDetails();
+            if (!me || !AD) return;
+            _profileMe = me;
+            AD.fill(me);
+        }
+        // Mở Hồ sơ -> tải lại /api/me để thấy thay đổi vừa làm ở trang user (tab khác).
+        function refreshProfileView() {
+            if (!accountDetails()) return;
+            api('/api/me')
+                .then(function (r) { if (!r.ok) throw new Error('me ' + r.status); return r.json(); })
+                .then(function (me) { fillProfileView(me); setUserCard(me, _fbUser); })
+                .catch(function (e) { console.error('[admin] tải hồ sơ lỗi:', e); });
+        }
+        // Lưu xong (PUT /api/me trả hồ sơ mới) -> đổ lại form + làm mới user card.
+        function onProfileSaved(me) {
+            fillProfileView(me);
+            setUserCard(me, _fbUser);
+        }
+        function bindProfileView() {
+            var AD = accountDetails();
+            if (!AD) return;
+            AD.init({
+                notify: function (msg, ok) { toast(msg, ok === false); },
+                onSaved: onProfileSaved
+            });
+        }
+
+        function bindUserMenu() {
+            var wrap = $('adm-user'), btn = $('adm-user-btn'), menu = $('adm-user-menu');
+            if (!wrap || !btn || !menu) return;
+            closeUserMenu(false);
+            // e.detail === 0: bấm bằng Enter/Space -> đưa focus vào mục đầu. Bấm chuột thì
+            // giữ focus ở card để không hiện viền focus thừa.
+            btn.addEventListener('click', function (e) {
+                if (isUserMenuOpen()) closeUserMenu(false);
+                else openUserMenu(e && e.detail === 0 ? 0 : null);
+            });
+            btn.addEventListener('keydown', function (e) {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    openUserMenu(e.key === 'ArrowDown' ? 0 : USER_MENU_ITEMS.length - 1);
+                }
+            });
+            menu.addEventListener('keydown', function (e) {
+                var i = _userMenuButtons.indexOf(document.activeElement);
+                if (e.key === 'ArrowDown') { e.preventDefault(); focusUserItem(i + 1); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); focusUserItem(i < 0 ? -1 : i - 1); }
+                else if (e.key === 'Home') { e.preventDefault(); focusUserItem(0); }
+                else if (e.key === 'End') { e.preventDefault(); focusUserItem(-1); }
+            });
+            // Tab ra khỏi card + popup -> đóng (không kéo focus về).
+            wrap.addEventListener('focusout', function (e) {
+                if (isUserMenuOpen() && e.relatedTarget && !wrap.contains(e.relatedTarget)) closeUserMenu(false);
+            });
+            document.addEventListener('click', function (e) {
+                if (isUserMenuOpen() && !wrap.contains(e.target)) closeUserMenu(false);
+            });
+            // Esc: xử lý chung với drawer trong onEscape().
         }
 
 
@@ -237,11 +531,11 @@
                 '<td>' + stockBadge(p.stock) + '</td>' +
                 '<td>' + (p.is_active ? '<span class="pill on">' + tr('adm.pillOn') + '</span>' : '<span class="pill off">' + tr('adm.pillOff') + '</span>') + '</td>' +
                 '<td><div class="adm-actions">' +
-                    '<button type="button" class="adm-btn ghost small" data-edit="' + p.id + '">' + tr('com.edit') + '</button>' +
+                    '<button type="button" class="adm-btn ghost small" data-edit="' + p.id + '"' + permAttrs('product:write') + '>' + tr('com.edit') + '</button>' +
                     '<button type="button" class="adm-btn ghost small" data-inventory="' + p.id + '">' + tr('adm.inventoryHistory') + '</button>' +
-                    (p.size_kind !== 'base-only' || p.size_configured ? '<button type="button" class="adm-btn ghost small" data-sizes="' + p.id + '">' + tr('adm.manageSizes') + '</button>' : '') +
+                    (p.size_kind !== 'base-only' || p.size_configured ? '<button type="button" class="adm-btn ghost small" data-sizes="' + p.id + '"' + permAttrs('product:write') + '>' + tr('adm.manageSizes') + '</button>' : '') +
                     '<button type="button" class="adm-btn ghost small" data-colors="' + p.id + '">' + tr('adm.manageColors') + '</button>' +
-                    '<button type="button" class="adm-btn danger small" data-del="' + p.id + '">' + tr('com.delete') + '</button>' +
+                    '<button type="button" class="adm-btn danger small" data-del="' + p.id + '"' + permAttrs('product:delete') + '>' + tr('com.delete') + '</button>' +
                 '</div></td>' +
             '</tr>';
         }
@@ -833,11 +1127,11 @@
                     '<td>' + payLabel + '</td>' +
                     '<td class="num">' + money(o.total_amount) + '</td>' +
                     '<td><select class="status-sel" data-order="' + o.id + '" data-order-code="' + esc(window.BreezeOrderShipping.code(o)) + '" data-current="' + esc(o.status) + '"' +
-                        (next.length ? '' : ' disabled') + '>' + opts + '</select></td>' +
+                        (next.length && can('order:update_status') ? '' : ' disabled') + '>' + opts + '</select></td>' +
                     '<td style="white-space:nowrap;">' +
                         '<button type="button" class="adm-btn ghost small" data-toggle="' + o.id + '">' + tr('adm.btnDetail') + '</button> ' +
                         invoiceBtn +
-                        '<button type="button" class="adm-btn danger small" data-del-order="' + o.id + '" data-order-code="' + esc(window.BreezeOrderShipping.code(o)) + '">' + tr('com.delete') + '</button>' +
+                        '<button type="button" class="adm-btn danger small" data-del-order="' + o.id + '" data-order-code="' + esc(window.BreezeOrderShipping.code(o)) + '"' + permAttrs('order:delete') + '>' + tr('com.delete') + '</button>' +
                     '</td>' +
                 '</tr>' +
                 '<tr class="oi-detail" id="oi-' + o.id + '" style="display:none;"><td colspan="7">' +
@@ -854,7 +1148,7 @@
             if (o.shipping_version !== 2) return '';
             var next = o.allowed_shipping_statuses || [];
             return '<label class="adm-shipping-control">' + esc(tr('ship.update')) +
-                ' <select data-shipping-order="' + o.id + '"' + (next.length ? '' : ' disabled') + '>' +
+                ' <select data-shipping-order="' + o.id + '"' + (next.length && can('order:update_status') ? '' : ' disabled') + '>' +
                 [o.shipping_status].concat(next).map(function (s) {
                     return '<option value="' + esc(s) + '">' + esc(tr('ship.status.' + s)) + '</option>';
                 }).join('') + '</select></label>';
@@ -1205,12 +1499,12 @@
                         }
                     },
                     scales: {
-                        x: { border: { display: false }, grid: { display: false }, ticks: { color: muted, font: { family: uiFont, size: 11 } } },
+                        x: { border: { display: false }, grid: { display: false }, ticks: { color: muted, font: { family: uiFont, size: 13 } } },
                         y: {
                             beginAtZero: true,
                             border: { display: false },
                             grid: { color: line },
-                            ticks: { color: muted, font: { family: uiFont, size: 11 }, callback: function (v) { return compactVnd(v); } }
+                            ticks: { color: muted, font: { family: uiFont, size: 13 }, callback: function (v) { return compactVnd(v); } }
                         }
                     }
                 }
@@ -1394,10 +1688,23 @@
                 });
         }
 
+        // Role hiển thị: admin | staff | customer (giá trị lạ -> customer, như trước).
+        function roleKey(role) {
+            var r = String(role || '').toLowerCase();
+            return r === 'admin' || r === 'staff' ? r : 'customer';
+        }
+        function roleLabel(role) {
+            var k = roleKey(role);
+            return tr(k === 'admin' ? 'adm.roleAdmin' : k === 'staff' ? 'adm.roleStaff' : 'adm.roleCustomer');
+        }
         function rolePill(role) {
-            var isAdmin = String(role || '').toLowerCase() === 'admin';
-            var label = isAdmin ? tr('adm.roleAdmin') : tr('adm.roleCustomer');
-            return '<span class="pill role-' + (isAdmin ? 'admin' : 'customer') + '">' + esc(label) + '</span>';
+            return '<span class="pill role-' + roleKey(role) + '">' + esc(roleLabel(role)) + '</span>';
+        }
+        // Nút "Xem chi tiết": dòng có role admin cần user:view_admin_detail (backend cũng trả 404).
+        // Thiếu quyền -> '—' (dòng admin vẫn hiện, chỉ không mở được chi tiết).
+        function detailCell(u) {
+            if (roleKey(u.role) === 'admin' && !can('user:view_admin_detail')) return '—';
+            return '<button type="button" class="adm-btn ghost small" data-customer-detail="' + u.id + '">' + tr('adm.btnDetail') + '</button>';
         }
 
         function renderUsers(data) {
@@ -1409,14 +1716,15 @@
                 return;
             }
             $('user-body').innerHTML = users.map(function (u) {
-                var isAdmin = String(u.role || '').toLowerCase() === 'admin';
                 var blCell;
-                if (isAdmin) {
-                    blCell = '—'; // không cho blacklist tài khoản admin
+                if (roleKey(u.role) !== 'customer') {
+                    blCell = '—'; // không cho blacklist tài khoản quản trị (admin/staff) — backend cũng chặn
                 } else if (u.is_blacklisted) {
                     blCell = '<span class="pill off">' + tr('adm.inBlacklist') + '</span>';
                 } else {
-                    blCell = '<button type="button" class="adm-btn danger small" data-blacklist="' + u.id + '">' + tr('adm.addBlacklist') + '</button>';
+                    blCell = can('user:blacklist')
+                        ? '<button type="button" class="adm-btn danger small" data-blacklist="' + u.id + '"' + permAttrs('user:blacklist') + '>' + tr('adm.addBlacklist') + '</button>'
+                        : '—';   // thiếu quyền thêm -> '—', không để ô trống
                 }
                 return '<tr>' +
                     '<td>' + esc(u.email || '—') + '</td>' +
@@ -1425,7 +1733,7 @@
                     '<td>' + (u.created_at ? fmtDate(u.created_at) : '—') + '</td>' +
                     '<td>' + (u.last_login ? fmtDate(u.last_login) : '—') + '</td>' +
                     '<td>' + blCell + '</td>' +
-                    '<td><button type="button" class="adm-btn ghost small" data-customer-detail="' + u.id + '">' + tr('adm.btnDetail') + '</button></td>' +
+                    '<td>' + detailCell(u) + '</td>' +
                 '</tr>';
             }).join('');
 
@@ -1519,7 +1827,7 @@
                 ['pf.phone', u.phone], ['pf.dob', dob],
                 ['pf.gender', u.gender === 'male' ? tr('pf.genderMale') : u.gender === 'female' ? tr('pf.genderFemale') : '—'],
                 ['pf.country', u.country ? tr('pf.c' + u.country, null, u.country) : '—'],
-                ['adm.thRole', u.role === 'admin' ? tr('adm.roleAdmin') : tr('adm.roleCustomer')],
+                ['adm.thRole', roleLabel(u.role)],
                 ['pf.createdAt', u.created_at ? fmtDate(u.created_at) : '—'],
                 ['pf.lastLogin', u.last_login ? fmtDate(u.last_login) : '—'],
                 ['adm.customerStatus', tr(u.is_blacklisted ? 'adm.inBlacklist' : 'adm.customerActive')]
@@ -1644,7 +1952,9 @@
                     '<td class="num">' + (noOrder ? '—' : money(o.total_amount)) + '</td>' +
                     '<td>' + statusCell + '</td>' +
                     '<td style="white-space:nowrap;">' +
-                        '<button type="button" class="adm-btn accent small" data-release="' + o.user_id + '">' + tr('adm.btnRelease') + '</button>' +
+                        (can('user:blacklist_release')
+                            ? '<button type="button" class="adm-btn accent small" data-release="' + o.user_id + '"' + permAttrs('user:blacklist_release') + '>' + tr('adm.btnRelease') + '</button>'
+                            : '—') +   // thiếu quyền gỡ -> '—', không để ô trống
                     '</td>' +
                 '</tr>';
             }).join('');
@@ -1728,16 +2038,24 @@
         document.addEventListener('DOMContentLoaded', function () {
             bindNav();
             var menuBtn = $('adm-menu-btn'); if (menuBtn) menuBtn.addEventListener('click', toggleDrawer);
-            var backdrop = $('adm-backdrop'); if (backdrop) backdrop.addEventListener('click', closeDrawer);
+            var backdrop = $('adm-backdrop'); if (backdrop) backdrop.addEventListener('click', function () { closeDrawer(true); });
+            document.addEventListener('keydown', onEscape);
+            // Đang mở drawer mà kéo cửa sổ lên ≥1024px: drawer thành sidebar cố định, nút ☰
+            // biến mất -> phải đóng để gỡ inert, nếu không nội dung chính bị khoá.
+            if (window.matchMedia) {
+                var drawerMq = window.matchMedia('(max-width: 1023px)');
+                var onDrawerMq = function (e) { if (!e.matches) closeDrawer(); };
+                if (drawerMq.addEventListener) drawerMq.addEventListener('change', onDrawerMq);
+                else if (drawerMq.addListener) drawerMq.addListener(onDrawerMq);
+            }
 
-            // Dropdown tài khoản: toggle khi bấm icon, đóng khi click ra ngoài / Escape.
-            var accBtn = $('adm-account-btn');
-            if (accBtn) accBtn.addEventListener('click', function (e) { e.stopPropagation(); toggleAccountMenu(); });
-            document.addEventListener('click', function (e) {
-                var acc = $('adm-account');
-                if (acc && !acc.contains(e.target)) closeAccountMenu();
-            });
-            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAccountMenu(); });
+            // User card đáy sidebar: popup Hồ sơ / Đăng xuất (đóng: bấm lại card, click ra
+            // ngoài, Esc, Tab ra ngoài, hoặc sau khi chọn một mục).
+            bindUserMenu();
+            bindProfileView();
+            // Phiên hết hạn (auth-helper.js đã tự làm mới token mà vẫn 401): báo cho admin.
+            // Trước đây admin không nghe sự kiện này -> 401 im lặng (vd nút Lưu ở Hồ sơ).
+            document.addEventListener('authexpired', function () { toast(tr('pf.sessionExpired'), true); });
             // Nhãn tĩnh do js/i18n.js lo (data-i18n). Ở đây chỉ vẽ lại phần do JS sinh.
             document.addEventListener('langchange', reloadCurrentView);
             $('btn-add-prod').addEventListener('click', function () { openModal(null); });
@@ -1776,7 +2094,7 @@
                 if (e.key !== 'Enter') return;
                 e.preventDefault();
                 var v = topSearch.value.trim();
-                if (!v) return;
+                if (!v || !can('order:read')) return;   // tìm = mở Đơn hàng -> cần quyền xem đơn
                 var ordersNav = document.querySelector('.adm-nav-item[data-nav="orders"]');
                 if (ordersNav) ordersNav.click();            // chuyển view + đóng drawer
                 var stSel = $('order-status-filter'); if (stSel) stSel.value = '';  // bỏ lọc status để đơn tìm thấy luôn hiện
@@ -1896,10 +2214,6 @@
             $('confirm-ok').addEventListener('click', function () { closeConfirm(true); });
             $('confirm-modal').addEventListener('click', function (e) { if (e.target === $('confirm-modal')) closeConfirm(false); });
             $('confirm-modal').addEventListener('keydown', onConfirmKeydown);
-            $('btn-logout').addEventListener('click', function () {
-                if (window.firebase && firebase.auth) firebase.auth().signOut();
-                setTimeout(function () { window.location.href = window.BreezeRoutes.to('login'); }, 200);
-            });
 
             if (window.AuthHelper) window.AuthHelper.onChange(onAuth);
             else showState('state-login');

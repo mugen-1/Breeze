@@ -18,12 +18,15 @@ const { buildUserActionLimiter } = require('../middleware/security');
 const { getPool, sql } = require('../db');
 const { isMomoPhone, normalizeVnPhone } = require('../lib/payment-readiness');
 const { MAX_IMAGE_BYTES: AVATAR_MAX_BYTES, ALLOWED_MIME, detectImage, writeFileAtomic } = require('../lib/image-upload');
+const { permsFor } = require('../lib/permissions');
 
 // Cột trả về cho client — dùng chung mọi nơi SELECT lại user sau khi ghi.
 const USER_COLS = `id, firebase_uid, email, display_name, role, created_at, last_login,
                    phone, dob, gender, country, avatar_url`;
 
-// Row DB -> JSON trả client (đồng nhất cho GET & PUT & POST /avatar).
+// Row DB -> JSON trả client (đồng nhất cho GET & PUT & PATCH /phone & POST /avatar).
+// permissions: tính từ role (lib/permissions.js) — frontend CHỈ dùng để ẩn/hiện;
+// backend vẫn tự kiểm quyền ở requirePermission.
 function toDto(u) {
   return {
     id: u.id,
@@ -31,6 +34,7 @@ function toDto(u) {
     email: u.email,
     display_name: u.display_name,
     role: u.role,
+    permissions: [...permsFor(u.role)],
     created_at: u.created_at,
     last_login: u.last_login,
     phone: u.phone,

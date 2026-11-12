@@ -48,8 +48,14 @@ function securityLogger(req, res, next) {
     const code = res.statusCode;
     let type = null, sev = 'low';
     if (code === 429) { type = 'RATE_LIMIT'; sev = 'medium'; }
-    else if (code === 403) { type = 'FORBIDDEN'; sev = 'medium'; }
-    else if (code === 404) { type = 'NOT_FOUND'; sev = 'low'; }
+    // Route/middleware có thể ghi rõ loại sự kiện cho 403 và 404 (vd requirePermission, hoặc
+    // GET /users/:id/detail trả 404 che chi tiết admin) -> PERMISSION_DENIED, mức medium.
+    // Dùng THAY cho FORBIDDEN/NOT_FOUND để mỗi request vẫn chỉ ghi 1 dòng.
+    else if (code === 403) { type = (res.locals && res.locals.securityEventType) || 'FORBIDDEN'; sev = 'medium'; }
+    else if (code === 404) {
+      const declared = res.locals && res.locals.securityEventType;
+      type = declared || 'NOT_FOUND'; sev = declared ? 'medium' : 'low';
+    }
     else if (code === 400) { type = 'BAD_REQUEST'; sev = 'low'; }
     if (!type) return;
     if (type === 'BAD_REQUEST' && injectionLogged) return;

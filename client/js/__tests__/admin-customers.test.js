@@ -2,6 +2,7 @@
 const { check, eq } = require('./helpers/assert');
 const { load, wait } = require('./helpers/sandbox');
 const { El, makeDoc } = require('./helpers/dom');
+const { adminMe } = require('./helpers/me');
 const doc = makeDoc(), g = id => doc.getElementById(id);
 const calls = [];
 let auth, responseStatus = 200, deferred = null, rejectRequest = false;
@@ -54,7 +55,7 @@ const r = load('admin.js', { doc, deps: ['routes.js', 'utils-format.js', 'order-
           json: async () => payload(Number(match[1]), Number(match[2])) });
       }
       let data = {};
-      if (url === '/api/me') data = { role: 'admin' };
+      if (url === '/api/me') data = adminMe();
       else if (url === '/api/categories') data = [];
       else if (url.startsWith('/api/admin/stats/order-status')) data = [];
       else if (url.startsWith('/api/admin/users?')) data = { users: [user], total: 21, total_pages: 2 };

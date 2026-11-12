@@ -1,6 +1,8 @@
 /* regression.js — chay lai dung bo kiem cua TASK 10.2 tren toan site sau khi migrate EJS.
 
    Dung:  node regression.js
+          BREEZE_BASE=http://127.0.0.1:3100 node regression.js   (server test rieng)
+          PowerShell: $env:BREEZE_BASE='http://127.0.0.1:3100'; node regression.js
    Thoat khac 0 neu co hang muc do.
 */
 const http = require('http');
@@ -11,7 +13,15 @@ const { execFileSync } = require('child_process');
 const { readCatalog, checkListings } = require('./product-listing-check');
 
 const CLIENT = process.env.BREEZE_CLIENT || path.join(__dirname, '..', '..', 'client');
-const BASE = 'http://localhost:3000';
+// Server can kiem. Mac dinh localhost:3000 nhu cu; BREEZE_BASE de chay tren server test
+// rieng (vd cong 3100) ma khong tieu quota rate limit cua server nguoi dung dang dung.
+// Chi nhan http:// vi req() dung module http; bo dau / cuoi.
+const BASE = (process.env.BREEZE_BASE || 'http://localhost:3000').trim().replace(/\/+$/, '');
+if (!/^http:\/\/[^/]+$/.test(BASE)) {
+  console.error('BREEZE_BASE khong hop le: "' + BASE + '" — can dang http://host:port (khong https, khong duong dan).');
+  process.exit(2);
+}
+console.log('BASE: ' + BASE);
 
 const ALL_PAGES = [
   'index', 'cart', 'checkout', 'orders', 'product', 'search', 'invoice', 'admin',

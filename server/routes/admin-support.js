@@ -1,6 +1,8 @@
 'use strict';
-// Mounted behind the existing Admin router's Firebase + SQL-role middleware.
+// Mounted behind the existing Admin router's Firebase + SQL-role (back-office) middleware.
+// principal.kind = 'admin' nghĩa là "phía quản trị" (admin hoặc staff), không phải tên role.
 const router = require('express').Router();
+const { requirePermission } = require('../middleware/requirePermission');
 const { getPool } = require('../db');
 const { buildUserActionLimiter } = require('../middleware/security');
 const support = require('../lib/customer-support');
@@ -8,6 +10,7 @@ const { jsonMutation, handle } = require('../middleware/support');
 const { stream } = require('../middleware/support-stream');
 const principal = req => ({ kind: 'admin', userId: req.user.id });
 router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+router.use(requirePermission('support:reply')); // Mọi route dưới /api/admin/support, gồm SSE.
 router.get('/events', handle(async (req, res) => {
   await stream.open(req, res, { ...principal(req), firebaseUid: req.user.firebase_uid });
 }));

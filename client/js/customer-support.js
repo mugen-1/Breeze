@@ -368,9 +368,9 @@
             }).then(function (me) {
                 if (epoch !== authEpoch) return;
                 accessPending = false;
-                if (!me || me.firebase_uid !== user.uid || (me.role !== 'customer' && me.role !== 'admin')) return;
-                roleChecked = true;
-                if (me.role === 'admin') return;
+                if (!me || me.firebase_uid !== user.uid || (me.role !== 'customer' && me.role !== 'admin' && me.role !== 'staff')) return;
+                roleChecked = true;   // đã biết role -> không gọi lại /api/me khi quay lại trang
+                if (me.role !== 'customer') return;   // admin/staff dùng hộp thư quản trị, không hiện widget
                 permitted = true;
                 textLabels();
                 syncVisibility();

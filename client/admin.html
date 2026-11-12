@@ -30,7 +30,7 @@
                 aria-controls="adm-sidebar" aria-expanded="false">
             <i class="fa fa-bars" aria-hidden="true"></i>
         </button>
-        <a href="index.html" class="adm-logo">BREEZE <small>Admin</small></a>
+        <a href="index.html" class="adm-logo">BREEZE <small id="adm-logo-role" data-i18n="adm.logoAdmin">Admin</small></a>
         <!-- Nút đổi VI/EN đặt NGOÀI #bar-right để dùng được ngay ở màn hình
              đăng nhập / không đủ quyền (khi #bar-right còn ẩn). -->
         <div id="lang-switcher-host" class="adm-lang"></div>
@@ -46,40 +46,31 @@
             <button type="button" class="adm-bell" aria-label="Thông báo" data-i18n-aria="adm.notif">
                 <i class="fa fa-bell-o" aria-hidden="true"></i>
             </button>
-            <div class="adm-account" id="adm-account">
-                <button type="button" class="adm-account-btn" id="adm-account-btn"
-                        aria-haspopup="true" aria-expanded="false" aria-label="Tài khoản" data-i18n-aria="com.account">
-                    <i class="fa fa-user" aria-hidden="true"></i>
-                </button>
-                <div class="adm-account-menu" id="adm-account-menu" role="menu" hidden>
-                    <button type="button" class="adm-logout" id="btn-logout" data-i18n="com.signout" role="menuitem">Đăng xuất</button>
-                </div>
-            </div>
         </div>
     </header>
 
     <!-- Sidebar điều hướng -->
     <aside class="adm-sidebar" id="adm-sidebar">
         <nav class="adm-nav" aria-label="Điều hướng quản trị" data-i18n-aria="adm.navAria">
-            <button type="button" class="adm-nav-item active" data-nav="dashboard" aria-current="page">
+            <button type="button" class="adm-nav-item active" data-nav="dashboard" data-perm="dashboard:read" aria-current="page">
                 <i class="fa fa-tachometer" aria-hidden="true"></i> <span data-i18n="adm.dashboard">Dashboard</span>
             </button>
-            <button type="button" class="adm-nav-item" data-nav="products">
+            <button type="button" class="adm-nav-item" data-nav="products" data-perm="product:read">
                 <i class="fa fa-shopping-bag" aria-hidden="true"></i> <span data-i18n="adm.products">Sản phẩm</span>
             </button>
-            <button type="button" class="adm-nav-item" data-nav="orders">
+            <button type="button" class="adm-nav-item" data-nav="orders" data-perm="order:read">
                 <i class="fa fa-file-text-o" aria-hidden="true"></i> <span data-i18n="adm.orders">Hoá đơn</span>
             </button>
-            <button type="button" class="adm-nav-item" data-nav="statistics">
+            <button type="button" class="adm-nav-item" data-nav="statistics" data-perm="dashboard:read">
                 <i class="fa fa-bar-chart" aria-hidden="true"></i> <span data-i18n="adm.statistics">Thống kê</span>
             </button>
-            <button type="button" class="adm-nav-item" data-nav="users">
+            <button type="button" class="adm-nav-item" data-nav="users" data-perm="user:read">
                 <i class="fa fa-users" aria-hidden="true"></i> <span data-i18n="adm.users">Người dùng</span>
             </button>
-            <button type="button" class="adm-nav-item" data-nav="reviews" aria-controls="view-reviews">
+            <button type="button" class="adm-nav-item" data-nav="reviews" data-perm="review:moderate" aria-controls="view-reviews">
                 <i class="fa fa-star-o" aria-hidden="true"></i> <span data-i18n="adm.reviews">Đánh giá</span>
             </button>
-            <button type="button" class="adm-nav-item" data-nav="blacklist">
+            <button type="button" class="adm-nav-item" data-nav="blacklist" data-perm="user:read">
                 <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <circle cx="12" cy="12" r="2.2"/>
                     <path d="M12 12 L12 3.2 A8.8 8.8 0 0 1 19.6 7.6 Z"/>
@@ -88,10 +79,31 @@
                 </svg>
                 <span data-i18n="adm.blacklist">Danh sách Đen</span>
             </button>
-            <button type="button" class="adm-nav-item" data-nav="feedback" aria-controls="view-feedback">
+            <button type="button" class="adm-nav-item" data-nav="feedback" data-perm="support:reply" aria-controls="view-feedback">
                 <i class="fa fa-comments-o" aria-hidden="true"></i> <span data-i18n="admSupport.title">Phản hồi của khách hàng</span>
             </button>
         </nav>
+        <!-- User card dính đáy sidebar. Popup nằm SAU nút trong DOM để Tab đi thẳng vào
+             các mục, nhưng CSS đặt nó hiện phía TRÊN card. Các mục do admin.js vẽ từ
+             mảng USER_MENU_ITEMS. Tên/ảnh gán bằng textContent / img.src lúc qua cổng admin. -->
+        <div class="adm-user" id="adm-user">
+            <button type="button" class="adm-user-btn" id="adm-user-btn"
+                    aria-haspopup="menu" aria-expanded="false" aria-controls="adm-user-menu"
+                    aria-label="Menu tài khoản" data-i18n-aria="adm.userMenu">
+                <span class="adm-user-avatar" aria-hidden="true">
+                    <img class="adm-user-img" id="adm-user-img" alt="" hidden>
+                    <i class="fa fa-user"></i>
+                </span>
+                <span class="adm-user-name" id="adm-user-name"></span>
+                <span class="pill role-staff adm-user-role" id="adm-user-role" data-i18n="adm.roleStaff" hidden>Nhân viên</span>
+                <svg class="adm-user-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                     stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M5 6.5 8 3.5l3 3"/>
+                    <path d="M5 9.5 8 12.5l3-3"/>
+                </svg>
+            </button>
+            <div class="adm-user-menu" id="adm-user-menu" role="menu" aria-labelledby="adm-user-btn" hidden></div>
+        </div>
     </aside>
     <div class="adm-backdrop" id="adm-backdrop" aria-hidden="true"></div>
 
@@ -121,17 +133,14 @@
 
     <!-- Panel chính (các view, chuyển bằng sidebar) -->
     <div id="panel">
-        <!-- Dashboard: page header (zone B) + KPI cards (zone C hàng 1) -->
+        <!-- Dashboard: page header (zone B) + KPI cards (zone C hàng 1)
+             Không breadcrumb, không hiện chữ "Dashboard" (mục sidebar đã nói rõ đang ở đâu):
+             chỉ hiện khoảng thời gian. h1 GIỮ trong DOM nhưng ẩn bằng CSS (.dash-title) —
+             trình đọc màn hình vẫn có tiêu đề trang, focusViewHeading() vẫn có chỗ đặt focus. -->
         <section id="view-dashboard">
-            <nav class="adm-crumb" aria-label="Breadcrumb">
-                <ol>
-                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
-                    <li aria-current="page" data-i18n="adm.crumbDashboard">Dashboard</li>
-                </ol>
-            </nav>
             <div class="dash-header">
                 <div class="dash-header-left">
-                    <h1 class="dash-title" data-i18n="adm.dashboard">Dashboard</h1>
+                    <h1 class="dash-title" tabindex="-1" data-i18n="adm.dashboard">Dashboard</h1>
                     <p class="dash-subtitle" id="dash-range">—</p>
                 </div>
                 <div class="dash-header-right">
@@ -248,13 +257,7 @@
 
         <!-- Tab sản phẩm -->
         <section id="tab-products" style="display:none;">
-            <nav class="adm-crumb" aria-label="Breadcrumb">
-                <ol>
-                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
-                    <li aria-current="page" data-i18n="adm.crumbProducts">Sản phẩm</li>
-                </ol>
-            </nav>
-            <h1 class="adm-page-title" data-i18n="adm.products">Sản phẩm</h1>
+            <h1 class="adm-page-title" tabindex="-1" data-i18n="adm.products">Sản phẩm</h1>
             <div class="prod-filters" role="group" aria-label="Lọc theo tồn kho" data-i18n-aria="adm.stockFilterAria">
                 <button type="button" class="prod-filter-btn active" data-stock-filter="all" aria-current="true" data-i18n="adm.fAll">Tất cả</button>
                 <button type="button" class="prod-filter-btn" data-stock-filter="low" data-i18n="adm.fLow">Sắp hết</button>
@@ -262,7 +265,7 @@
             </div>
             <div class="adm-section-head">
                 <h2><span data-i18n="adm.productsList">Danh sách sản phẩm</span> <span class="adm-count" id="prod-count"></span></h2>
-                <button type="button" class="adm-btn small" id="btn-add-prod"><i class="fa fa-plus"></i> <span data-i18n="adm.addProd">Thêm sản phẩm</span></button>
+                <button type="button" class="adm-btn small" id="btn-add-prod" data-perm="product:write"><i class="fa fa-plus"></i> <span data-i18n="adm.addProd">Thêm sản phẩm</span></button>
             </div>
             <div class="adm-table-wrap">
                 <table class="adm-table">
@@ -280,13 +283,7 @@
 
         <!-- Tab đơn hàng -->
         <section id="tab-orders" style="display:none;">
-            <nav class="adm-crumb" aria-label="Breadcrumb">
-                <ol>
-                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
-                    <li aria-current="page" data-i18n="adm.crumbOrders">Hoá đơn</li>
-                </ol>
-            </nav>
-            <h1 class="adm-page-title" data-i18n="adm.orders">Hoá đơn</h1>
+            <h1 class="adm-page-title" tabindex="-1" data-i18n="adm.orders">Hoá đơn</h1>
             <div class="adm-section-head">
                 <h2><span data-i18n="adm.ordersList">Danh sách hoá đơn</span> <span class="adm-count" id="order-count"></span></h2>
                 <div class="adm-toolbar">
@@ -325,13 +322,7 @@
 
         <!-- Thống kê: sản phẩm bán được trong khoảng (gom theo SẢN PHẨM, không gộp theo đơn) -->
         <section id="view-statistics" style="display:none;">
-            <nav class="adm-crumb" aria-label="Breadcrumb">
-                <ol>
-                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
-                    <li aria-current="page" data-i18n="adm.crumbStatistics">Thống kê</li>
-                </ol>
-            </nav>
-            <h1 class="adm-page-title" data-i18n="adm.statistics">Thống kê</h1>
+            <h1 class="adm-page-title" tabindex="-1" data-i18n="adm.statistics">Thống kê</h1>
             <div class="adm-section-head">
                 <h2><span data-i18n="adm.statTitle">Thống kê sản phẩm bán được</span></h2>
                 <div class="adm-toolbar">
@@ -364,13 +355,7 @@
 
         <!-- Người dùng (chỉ xem) -->
         <section id="view-users" style="display:none;">
-            <nav class="adm-crumb" aria-label="Breadcrumb">
-                <ol>
-                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
-                    <li aria-current="page" data-i18n="adm.crumbUsers">Người dùng</li>
-                </ol>
-            </nav>
-            <h1 class="adm-page-title" data-i18n="adm.users">Người dùng</h1>
+            <h1 class="adm-page-title" tabindex="-1" data-i18n="adm.users">Người dùng</h1>
             <div class="adm-section-head">
                 <h2><span data-i18n="adm.usersList">Danh sách người dùng</span> <span class="adm-count" id="user-count"></span></h2>
             </div>
@@ -389,13 +374,7 @@
 
         <!-- Đánh giá: dữ liệu và quyền moderation từ Admin Review API. -->
         <section id="view-reviews" style="display:none;" aria-labelledby="admin-reviews-title">
-            <nav class="adm-crumb" aria-label="Breadcrumb">
-                <ol>
-                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
-                    <li aria-current="page" data-i18n="adm.reviews">Đánh giá</li>
-                </ol>
-            </nav>
-            <h1 class="adm-page-title" id="admin-reviews-title" data-i18n="adm.reviewsTitle">Quản lý đánh giá</h1>
+            <h1 class="adm-page-title" tabindex="-1" id="admin-reviews-title" data-i18n="adm.reviewsTitle">Quản lý đánh giá</h1>
             <p class="adm-review-description" data-i18n="adm.reviewsDescription">Theo dõi và kiểm soát đánh giá sản phẩm của khách hàng.</p>
             <div class="adm-toolbar">
                 <label for="admin-review-status" data-i18n="adm.thStatus">Trạng thái</label>
@@ -427,13 +406,7 @@
 
         <!-- Danh sách Đen: đơn ĐÃ HUỶ của user đang bị blacklist (theo ĐƠN, không gộp) -->
         <section id="view-blacklist" style="display:none;">
-            <nav class="adm-crumb" aria-label="Breadcrumb">
-                <ol>
-                    <li><a href="index.html" data-i18n="adm.crumbHome">BREEZE</a></li>
-                    <li aria-current="page" data-i18n="adm.crumbBlacklist">Danh sách Đen</li>
-                </ol>
-            </nav>
-            <h1 class="adm-page-title" data-i18n="adm.blacklist">Danh sách Đen</h1>
+            <h1 class="adm-page-title" tabindex="-1" data-i18n="adm.blacklist">Danh sách Đen</h1>
             <div class="adm-section-head">
                 <h2><span data-i18n="adm.cancelledOrders">Đơn hàng đã huỷ</span> <span class="adm-count" id="blacklist-count"></span></h2>
                 <div class="adm-toolbar">
@@ -460,7 +433,7 @@
         </section>
         <!-- Hộp thư CSKH, dữ liệu tải qua API sau cổng quyền Admin. -->
         <section id="view-feedback" style="display:none;" aria-labelledby="admin-support-title">
-            <h1 class="adm-page-title" id="admin-support-title" data-i18n="admSupport.title">Phản hồi của khách hàng</h1>
+            <h1 class="adm-page-title" tabindex="-1" id="admin-support-title" data-i18n="admSupport.title">Phản hồi của khách hàng</h1>
             <div class="adm-support" id="admin-support" data-thread-open="false">
                 <div class="adm-support-inbox" role="region" aria-labelledby="admin-support-inbox-title">
                     <div class="adm-support-inbox-head">
@@ -512,6 +485,83 @@
                         <p id="admin-support-connection" role="status" aria-live="polite" hidden></p>
                     </form>
                 </div>
+            </div>
+        </section>
+
+        <!-- Hồ sơ: KHÔNG có mục trong menu trái, chỉ mở từ popup user card ở đáy sidebar.
+             Nội dung = tab "Chi tiết tài khoản" của trang profile, của CHÍNH tài khoản admin
+             đang đăng nhập. Id ad-* giống hệt trang profile: logic dùng chung ở
+             js/account-details.js (đổ dữ liệu, validate, PUT /api/me). Quyền sửa giữ đúng
+             như trang user: tên/email/ngày tạo/đăng nhập gần nhất chỉ xem; mật khẩu đổi qua
+             modal; SĐT/ngày sinh/giới tính/quốc gia sửa được. -->
+        <section id="view-profile" style="display:none;" aria-labelledby="admin-profile-title">
+            <h1 class="adm-page-title" tabindex="-1" id="admin-profile-title" data-i18n="adm.profile">Hồ sơ</h1>
+            <div class="adm-profile" id="admin-profile-body">
+                <section class="adm-pf-card" aria-labelledby="adm-pf-acct-title">
+                    <h2 class="adm-pf-title" id="adm-pf-acct-title" data-i18n="pf.acctInfo">Thông tin tài khoản</h2>
+                    <dl class="adm-pf-rows">
+                        <div class="adm-pf-row">
+                            <dt data-i18n="pf.fullname">Họ tên</dt>
+                            <dd id="ad-name">—</dd>
+                        </div>
+                        <div class="adm-pf-row">
+                            <dt>Email</dt>
+                            <dd id="ad-email">—</dd>
+                        </div>
+                        <div class="adm-pf-row">
+                            <dt data-i18n="pf.password">Mật khẩu</dt>
+                            <dd>
+                                <span class="adm-pf-dots" aria-hidden="true">••••••••••</span>
+                                <button type="button" class="adm-pf-link" id="cp-open" data-i18n="pf.change">Đổi</button>
+                            </dd>
+                        </div>
+                        <div class="adm-pf-row">
+                            <dt data-i18n="pf.createdAt">Ngày tạo tài khoản</dt>
+                            <dd id="ad-created">—</dd>
+                        </div>
+                        <div class="adm-pf-row">
+                            <dt data-i18n="pf.lastLogin">Đăng nhập gần nhất</dt>
+                            <dd id="ad-last">—</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="adm-pf-card" aria-labelledby="adm-pf-personal-title">
+                    <h2 class="adm-pf-title" id="adm-pf-personal-title" data-i18n="pf.personalInfo">Thông tin cá nhân</h2>
+                    <div class="adm-pf-grid">
+                        <div class="fld">
+                            <label for="ad-phone" data-i18n="pf.phone">Số điện thoại</label>
+                            <input id="ad-phone" type="tel" inputmode="tel"
+                                   placeholder="Chưa cập nhật" data-i18n-ph="pf.notSet" autocomplete="tel">
+                        </div>
+                        <div class="fld">
+                            <label for="ad-dob" data-i18n="pf.dob">Ngày sinh</label>
+                            <input id="ad-dob" type="date" aria-label="Ngày sinh" data-i18n-aria="pf.dob">
+                        </div>
+                        <div class="fld">
+                            <label for="ad-gender" data-i18n="pf.gender">Giới tính</label>
+                            <select id="ad-gender">
+                                <option value="" data-i18n="pf.genderNone">Chưa chọn</option>
+                                <option value="male" data-i18n="pf.genderMale">Nam</option>
+                                <option value="female" data-i18n="pf.genderFemale">Nữ</option>
+                            </select>
+                        </div>
+                        <div class="fld">
+                            <label for="ad-country" data-i18n="pf.country">Quốc gia / Khu vực</label>
+                            <select id="ad-country">
+                                <option value="" data-i18n="pf.countryNone">— Chọn quốc gia —</option>
+                                <option value="VN" data-i18n="pf.cVN">Việt Nam</option>
+                                <option value="US" data-i18n="pf.cUS">Hoa Kỳ</option>
+                                <option value="JP" data-i18n="pf.cJP">Nhật Bản</option>
+                                <option value="KR" data-i18n="pf.cKR">Hàn Quốc</option>
+                                <option value="SG" data-i18n="pf.cSG">Singapore</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="adm-pf-actions">
+                        <button type="button" class="adm-btn" id="ad-save" data-i18n="pf.saveChanges">Lưu thay đổi</button>
+                    </div>
+                </section>
             </div>
         </section>
     </div>
@@ -736,6 +786,62 @@
         </div>
     </div>
 
+    <!-- Modal đổi mật khẩu (mở từ nút "Đổi" ở hàng Mật khẩu của section Hồ sơ).
+         LẶP MARKUP từ server/views/pages/profile.ejs, khối #cp-modal-overlay (không phải
+         partial — viết thẳng trong view đó; admin.html là HTML tĩnh nên không include được).
+         Sửa id / data-i18n / thứ tự ô ở bên đó thì PHẢI sửa cả ở đây, và ngược lại.
+         Hành vi dùng chung js/change-password.js (không sửa): nó chỉ đọc các id cp-* và
+         data-toggle-pw, bật/tắt [hidden] + class .is-open. Class ở đây là class admin. -->
+    <div class="modal-backdrop adm-cp-overlay" id="cp-modal-overlay" hidden>
+        <div class="modal-card adm-cp-card" role="dialog" aria-modal="true" aria-labelledby="cp-modal-title" id="cp-modal">
+            <div class="adm-cp-head">
+                <h3 id="cp-modal-title" data-i18n="au.cpTitle">Đổi mật khẩu</h3>
+                <button type="button" class="adm-cp-close" id="cp-modal-close" aria-label="Đóng" data-i18n-aria="pf.closeAria">&times;</button>
+            </div>
+            <form id="cp-form" novalidate>
+                <div class="fld">
+                    <label for="cp-current" data-i18n="au.cpCurrent">Mật khẩu hiện tại</label>
+                    <div class="adm-pw-wrap">
+                        <input id="cp-current" type="password" autocomplete="current-password" required>
+                        <button type="button" class="adm-pw-toggle" data-toggle-pw="cp-current"
+                                aria-controls="cp-current" aria-pressed="false"
+                                aria-label="Hiện mật khẩu" data-i18n-aria="au.cpShow">
+                            <i class="fa fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="fld">
+                    <label for="cp-new" data-i18n="au.cpNew">Mật khẩu mới</label>
+                    <div class="adm-pw-wrap">
+                        <input id="cp-new" type="password" autocomplete="new-password" required>
+                        <button type="button" class="adm-pw-toggle" data-toggle-pw="cp-new"
+                                aria-controls="cp-new" aria-pressed="false"
+                                aria-label="Hiện mật khẩu" data-i18n-aria="au.cpShow">
+                            <i class="fa fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="fld">
+                    <label for="cp-confirm" data-i18n="au.cpConfirm">Xác nhận mật khẩu mới</label>
+                    <div class="adm-pw-wrap">
+                        <input id="cp-confirm" type="password" autocomplete="new-password" required>
+                        <button type="button" class="adm-pw-toggle" data-toggle-pw="cp-confirm"
+                                aria-controls="cp-confirm" aria-pressed="false"
+                                aria-label="Hiện mật khẩu" data-i18n-aria="au.cpShow">
+                            <i class="fa fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- Vùng thông báo: để TRỐNG, .adm-cp-msg:empty tự ẩn. -->
+                <p class="adm-cp-msg" id="cp-msg" aria-live="polite"></p>
+                <div class="modal-foot">
+                    <button type="button" class="adm-btn ghost" id="cp-cancel" data-i18n="com.cancel">Hủy</button>
+                    <button type="submit" class="adm-btn" id="cp-submit" data-i18n="au.cpSubmit">Đổi mật khẩu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="toast"></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" integrity="sha384-ajMUFBUFMCyjh8uxJg6bkGcKe9RTolyjwbxB3yES0QQMenP3Oztj/W9vA2SJPcIh" crossorigin="anonymous"></script>
@@ -756,7 +862,9 @@
     <script src="js/support-api.js"></script>
     <script src="js/support-session.js"></script>
     <script src="js/admin-support.js"></script>
+    <script src="js/account-details.js"></script>
     <script src="js/admin.js"></script>
+    <script src="js/change-password.js"></script>
     <!-- Chart.js: chỉ dùng cho biểu đồ doanh thu Dashboard (dependency mới duy nhất phase này) -->
 </body>
 </html>

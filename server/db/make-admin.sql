@@ -6,7 +6,8 @@
 
    BỐI CẢNH:
    - Cột dbo.users.role mặc định 'customer' (tạo từ Phase 1/3). 'admin' = toàn quyền
-     quản trị (/api/admin/*). requireAdmin đọc role NÀY từ DB, không phải custom claim.
+     quản trị (/api/admin/*); 'staff' = nhân viên (tạo bằng db/create-staff.js).
+     requireBackOffice/requirePermission đọc role NÀY từ DB, không phải custom claim.
    - Backend chỉ tạo dòng users khi user ĐÃ ĐĂNG NHẬP ít nhất 1 lần (upsert trong
      verifyFirebaseToken). => Hãy đăng nhập bằng tài khoản định làm admin TRƯỚC,
      rồi mới chạy UPDATE bên dưới, nếu không sẽ không tìm thấy dòng để cập nhật.

@@ -69,8 +69,7 @@ async function main() {
         if (!id) return res.status(401).json({ status: 'error' });
         req.user = { id, role: req.headers['x-test-admin'] === '1' ? 'admin' : 'customer' }; next();
       },
-      requireAdmin(req, res, next) { if (req.user.role !== 'admin') return res.status(403).json({ status: 'error' }); next(); },
-    } };
+    } };   // Phân quyền /api/admin dùng requireBackOffice + requirePermission thật, đọc req.user.role ở trên.
     // Simulate a future fee change in this test process only; browser input is still ignored.
     const shipping = require('../config/shipping');
     require.cache[require.resolve('../config/shipping')].exports = { ...shipping,

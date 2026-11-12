@@ -1,6 +1,7 @@
 const {check,eq}=require('./helpers/assert');
 const {load,wait}=require('./helpers/sandbox');
 const {makeDoc,El}=require('./helpers/dom');
+const {adminMe}=require('./helpers/me');
 const fs=require('fs'),path=require('path');
 const html=fs.readFileSync(path.join(__dirname,'../../admin.html'),'utf8');
 const css=fs.readFileSync(path.join(__dirname,'../../css/admin.css'),'utf8');
@@ -47,7 +48,7 @@ function setup(){
         if(state['defer'+kind])return new Promise(resolve=>state.pending.push({url,release(data){resolve(data?response(data):reviewResponse(url,opts));}}));
         return reviewResponse(url,opts);
       }
-      if(url==='/api/me')return response({role:'admin'});if(/order-status|top-products/.test(url))return response([]);
+      if(url==='/api/me')return response(adminMe());if(/order-status|top-products/.test(url))return response([]);
       return response({orders:[],products:[],users:[],items:[],total:0,total_pages:1,current:{},previous:{},dailyRevenue:[]});
     }}}});
   doc.fire('DOMContentLoaded');

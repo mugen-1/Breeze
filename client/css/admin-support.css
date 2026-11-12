@@ -4,7 +4,9 @@
     display: grid;
     grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
     height: 630px;
-    height: clamp(430px, calc(100dvh - 220px), 720px);
+    /* 120px = topbar 60 + #panel padding-top 30 + 30 chừa ở đáy. Trước là 220px vì còn
+       tính body padding-top 70 (global.css) + h1 — cả hai đã bỏ khỏi admin. */
+    height: clamp(430px, calc(100dvh - 120px), 720px);
     border: 1px solid var(--admin-border);
     border-radius: var(--admin-radius);
     background: var(--admin-surface);
@@ -70,7 +72,7 @@
 .adm-support button:focus-visible, .adm-support textarea:focus-visible, #admin-support-contact:focus-visible { outline: 2px solid var(--c-ink); outline-offset: -2px; }
 .adm-support-sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 @media (max-width: 760px) {
-    .adm-support { grid-template-columns: minmax(0, 1fr); height: 580px; height: clamp(390px, calc(100dvh - 210px), 650px); }
+    .adm-support { grid-template-columns: minmax(0, 1fr); height: 580px; height: clamp(390px, calc(100dvh - 110px), 650px); }
     .adm-support-inbox { border-right: none; }
     .adm-support-thread { display: none; }
     .adm-support[data-thread-open="true"] .adm-support-inbox { display: none; }

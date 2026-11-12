@@ -21,26 +21,33 @@
   --admin-gap:       16px;
 }
 
-body { background:var(--c-bg); color:var(--c-ink); font-family:var(--font-ui); min-height:100vh; }
+/* padding-top:0 — global.css đặt body{padding-top:70px} cho header storefront (cao 70px).
+   Admin dùng topbar riêng 60px và .adm-main đã margin-top:60px, nên 70px đó là khoảng
+   trắng thừa phía trên MỌI view. */
+body { background:var(--c-bg); color:var(--c-ink); font-family:var(--font-ui); min-height:100vh; padding-top:0; }
 
 /* Xoá dead space: <section> dính padding-block ~140px từ global.css (dùng chung toàn site).
    KHÔNG sửa global.css — chỉ override trong scope admin bằng selector cụ thể hơn. */
 #panel section { padding-block: 0; }
 
-/* ===== Breadcrumb + h1 (chung cho cả 6 view, đứng đầu mỗi section) ===== */
-.adm-crumb { margin-bottom:10px; }
-.adm-crumb ol { display:flex; align-items:center; flex-wrap:wrap; gap:6px; list-style:none; margin:0; padding:0; }
-.adm-crumb li { font-family:var(--font-ui); font-size:12.5px; color:var(--admin-ink-3); }
-.adm-crumb li:not(:first-child)::before { content:'/'; margin-right:6px; color:var(--admin-border-hv); }
-.adm-crumb a { color:var(--admin-ink-3); text-decoration:none; }
-.adm-crumb a:hover { color:var(--admin-ink); text-decoration:underline; }
-.adm-crumb a:focus-visible { outline:2px solid var(--c-ink); outline-offset:2px; }
-.adm-page-title { font-family:var(--font-display); font-size:30px; font-weight:500; letter-spacing:.3px; color:var(--admin-ink); margin:0 0 20px; }
+/* ===== h1 đầu mỗi view: ẨN KHỎI MẮT, không ẩn khỏi trình đọc màn hình =====
+   Không breadcrumb, không tiêu đề hiện ra ở mọi view — mục đang chọn ở sidebar đã cho biết
+   đang ở đâu, nội dung đẩy sát lên đầu. h1 VẪN trong DOM (không display:none / hidden):
+   - trình đọc màn hình vẫn có tiêu đề trang; aria-labelledby của Đánh giá / Phản hồi /
+     Hồ sơ vẫn trỏ tới id của h1 để đặt tên vùng;
+   - focusViewHeading() (admin.js) vẫn focus được h1 (tabindex="-1") khi chọn mục từ drawer.
+   position:absolute -> không chiếm chỗ, phần tử kế tiếp nằm ngay đầu view. */
+.adm-page-title, .dash-title {
+    position:absolute; width:1px; height:1px; margin:-1px; padding:0; border:0;
+    overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap;
+}
+.adm-page-title:focus, .dash-title:focus { outline:none; }
 
-/* ===== Dashboard — page header (zone B) ===== */
-.dash-header { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
-.dash-title { font-family:var(--font-display); font-size:30px; font-weight:500; letter-spacing:.3px; color:var(--admin-ink); margin:0; }
-.dash-subtitle { font-family:var(--font-ui); font-size:13px; color:var(--admin-ink-3); margin:4px 0 0; font-variant-numeric:tabular-nums; }
+/* ===== Dashboard — page header (zone B) =====
+   Một hàng duy nhất: khoảng thời gian (trái) + chọn kỳ / Xuất CSV (phải). */
+.dash-header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+/* Khoảng thời gian là dòng chữ duy nhất hiện ở header -> to, đậm vừa, màu chữ chính. */
+.dash-subtitle { font-family:var(--font-ui); font-size:17px; font-weight:500; letter-spacing:.2px; color:var(--admin-ink); margin:0; font-variant-numeric:tabular-nums; }
 .dash-header-right { display:flex; align-items:center; gap:10px; }
 .dash-preset, .dash-export {
     font-family:var(--font-ui); font-size:13px; height:38px; box-sizing:border-box;
@@ -49,18 +56,22 @@ body { background:var(--c-bg); color:var(--c-ink); font-family:var(--font-ui); m
 }
 .dash-preset { padding:0 12px; }
 .dash-export { display:inline-flex; align-items:center; gap:7px; padding:0 14px; }
+/* .dash-preset dùng chung với view Thống kê (#stat-preset) — chỉ phóng to trong Dashboard. */
+#view-dashboard .dash-preset, #view-dashboard .dash-export { font-size:14px; height:42px; }
+#view-dashboard .dash-preset { padding:0 14px; }
+#view-dashboard .dash-export { padding:0 16px; }
 .dash-preset:hover, .dash-export:hover { border-color:var(--admin-border-hv); }
 .dash-preset:focus-visible, .dash-export:focus-visible { outline:2px solid var(--admin-ink); outline-offset:2px; }
 
 /* ===== Dashboard — KPI cards (zone C hàng 1) ===== */
-.kpi-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:var(--admin-gap); margin-bottom:24px; }
-.kpi-card { background:var(--admin-surface); border:1px solid var(--admin-border); border-radius:var(--admin-radius); padding:18px 20px; display:flex; flex-direction:column; gap:10px; }
-.kpi-head { display:flex; align-items:center; gap:8px; }
-.kpi-head svg { color:var(--admin-ink-3); flex-shrink:0; }
-.kpi-label { font-family:var(--font-ui); font-size:11px; font-weight:500; letter-spacing:.08em; text-transform:uppercase; color:var(--admin-ink-3); }
-.kpi-value { font-family:var(--font-ui); font-size:26px; font-weight:500; line-height:1.1; color:var(--admin-ink); font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
-.kpi-value.skel { min-width:120px; height:26px; }
-.kpi-trend { font-family:var(--font-ui); font-size:12px; display:inline-flex; align-items:center; gap:5px; align-self:flex-start; padding:3px 9px; border-radius:999px; font-variant-numeric:tabular-nums; }
+.kpi-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:var(--admin-gap); margin-bottom:var(--admin-gap); }
+.kpi-card { background:var(--admin-surface); border:1px solid var(--admin-border); border-radius:var(--admin-radius); padding:20px 24px; display:flex; flex-direction:column; gap:12px; }
+.kpi-head { display:flex; align-items:center; gap:9px; }
+.kpi-head svg { color:var(--admin-ink-3); flex-shrink:0; width:18px; height:18px; }
+.kpi-label { font-family:var(--font-ui); font-size:12.5px; font-weight:500; letter-spacing:.08em; text-transform:uppercase; color:var(--admin-ink-3); }
+.kpi-value { font-family:var(--font-ui); font-size:32px; font-weight:500; line-height:1.1; color:var(--admin-ink); font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
+.kpi-value.skel { min-width:120px; height:35px; }
+.kpi-trend { font-family:var(--font-ui); font-size:13px; display:inline-flex; align-items:center; gap:5px; align-self:flex-start; padding:4px 10px; border-radius:999px; font-variant-numeric:tabular-nums; }
 .kpi-trend.is-up { background:var(--admin-up-bg); color:var(--admin-up); }
 .kpi-trend.is-down { background:var(--admin-down-bg); color:var(--admin-down); }
 .kpi-trend.is-flat { background:#F5F5F4; color:var(--admin-ink-3); }
@@ -68,50 +79,67 @@ body { background:var(--c-bg); color:var(--c-ink); font-family:var(--font-ui); m
 @media (max-width: 640px) { .kpi-grid { grid-template-columns:1fr; } .dash-header-right { width:100%; } .dash-preset { flex:1; } }
 
 /* ===== Dashboard — Zone C hàng 2+3: grid 12 cột bất đối xứng ===== */
-.dash-grid { display:grid; grid-template-columns:repeat(12, 1fr); gap:var(--admin-gap); margin-bottom:24px; }
+.dash-grid { display:grid; grid-template-columns:repeat(12, 1fr); gap:var(--admin-gap); }
 .dash-card { background:var(--admin-surface); border:1px solid var(--admin-border); border-radius:var(--admin-radius); display:flex; flex-direction:column; min-width:0; }
 .dash-card--chart  { grid-column:span 8; }
 .dash-card--status { grid-column:span 4; }
 .dash-card--top    { grid-column:span 5; }
 .dash-card--recent { grid-column:span 7; }
-.dash-card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 20px; border-bottom:1px solid var(--admin-border); }
-.dash-card-head h2 { font-family:var(--font-display); font-size:16px; font-weight:600; letter-spacing:.3px; color:var(--admin-ink); margin:0; }
-.dash-card-action { font-family:var(--font-ui); font-size:12px; color:var(--admin-ink-3); text-decoration:none; white-space:nowrap; }
+.dash-card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 24px; border-bottom:1px solid var(--admin-border); }
+.dash-card-head h2 { font-family:var(--font-display); font-size:20px; font-weight:600; letter-spacing:.3px; color:var(--admin-ink); margin:0; }
+.dash-card-action { font-family:var(--font-ui); font-size:13px; color:var(--admin-ink-3); text-decoration:none; white-space:nowrap; }
 .dash-card-action:hover { color:var(--admin-ink); }
 .dash-card-action:focus-visible { outline:2px solid var(--admin-ink); outline-offset:2px; border-radius:3px; }
-.dash-card-body { padding:18px 20px; flex:1; }
-.dash-card--chart .chart-body { position:relative; height:280px; }
+.dash-card-body { padding:20px 24px; flex:1; }
+.dash-card--chart .chart-body { position:relative; height:360px; }
 
-/* Donut trạng thái */
-.donut-wrap { position:relative; height:180px; display:flex; align-items:center; justify-content:center; }
-.donut-wrap canvas { max-height:180px; }
-.donut-state { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--admin-ink-3); font-size:13px; text-align:center; }
+/* Donut trạng thái — card cao bằng card biểu đồ cùng hàng (grid stretch): body là cột
+   flex, khung donut giãn (flex:1) lấp phần thừa thay vì để trống dưới chú thích.
+   Canvas position:absolute -> chiều cao khung KHÔNG phụ thuộc canvas, nên Chart.js
+   (responsive, đo theo khung cha) không rơi vào vòng lặp resize lớn dần. */
+.dash-card--status .dash-card-body { display:flex; flex-direction:column; }
+.donut-wrap { position:relative; flex:1 1 auto; min-height:220px; }
+.donut-wrap canvas { position:absolute; inset:0; }
+.donut-state { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--admin-ink-3); font-size:14px; text-align:center; }
 .donut-center { position:absolute; inset:0; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
-.donut-total-num { font-family:var(--font-ui); font-size:24px; font-weight:600; color:var(--admin-ink); font-variant-numeric:tabular-nums; line-height:1; }
-.donut-total-lbl { font-family:var(--font-ui); font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--admin-ink-3); margin-top:2px; }
-.donut-legend { list-style:none; margin:16px 0 0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; }
-.donut-legend li { display:flex; align-items:center; gap:8px; font-family:var(--font-ui); font-size:12.5px; color:var(--admin-ink-2); }
-.donut-legend .dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+.donut-total-num { font-family:var(--font-ui); font-size:32px; font-weight:600; color:var(--admin-ink); font-variant-numeric:tabular-nums; line-height:1; }
+.donut-total-lbl { font-family:var(--font-ui); font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--admin-ink-3); margin-top:4px; }
+.donut-legend { list-style:none; margin:18px 0 0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; }
+.donut-legend li { display:flex; align-items:center; gap:9px; font-family:var(--font-ui); font-size:14px; color:var(--admin-ink-2); }
+.donut-legend .dot { width:11px; height:11px; border-radius:3px; flex-shrink:0; }
 .donut-legend .lg-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .donut-legend .lg-pct { color:var(--admin-ink-3); font-variant-numeric:tabular-nums; }
 
 /* Sản phẩm bán chạy */
 .top-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
-.top-list > li { display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--admin-border); }
-.top-list > li:last-child { border-bottom:0; }
-.top-list img { width:40px; height:40px; border-radius:6px; object-fit:cover; background:var(--admin-bg); flex-shrink:0; }
+.top-list > li { display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--admin-border); }
+.top-list > li:first-child { padding-top:0; }
+.top-list > li:last-child { border-bottom:0; padding-bottom:0; }
+.top-list img { width:48px; height:48px; border-radius:6px; object-fit:cover; background:var(--admin-bg); flex-shrink:0; }
 .top-main { flex:1; min-width:0; }
-.top-name { font-family:var(--font-ui); font-size:13.5px; color:var(--admin-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.top-name { font-family:var(--font-ui); font-size:15px; color:var(--admin-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .top-side { text-align:right; white-space:nowrap; }
-.top-units { font-family:var(--font-ui); font-size:13px; color:var(--admin-ink); font-variant-numeric:tabular-nums; }
-.top-rev { font-family:var(--font-ui); font-size:12px; color:var(--admin-ink-3); font-variant-numeric:tabular-nums; margin-top:2px; }
-.top-state { color:var(--admin-ink-3); font-size:13px; padding:24px 0; text-align:center; }
+.top-units { font-family:var(--font-ui); font-size:14px; color:var(--admin-ink); font-variant-numeric:tabular-nums; }
+.top-rev { font-family:var(--font-ui); font-size:13px; color:var(--admin-ink-3); font-variant-numeric:tabular-nums; margin-top:3px; }
+.top-state { color:var(--admin-ink-3); font-size:14px; padding:24px 0; text-align:center; }
 
-/* Bảng đơn gần đây: số tabular-nums, dùng .adm-table sẵn có */
+/* Bảng đơn gần đây: số tabular-nums, dùng .adm-table sẵn có.
+   Bảng nằm sát mép card (không padding body, không khung .adm-table-wrap thứ hai) —
+   card đã có viền; khung lồng khung chỉ tốn chỗ. Cỡ chữ to hơn bảng các view khác. */
 .dash-recent-table td.num, .dash-recent-table th.num { font-variant-numeric:tabular-nums; }
+.dash-card--recent .dash-card-body { padding:0; }
+.dash-card--recent .adm-table-wrap { border:0; border-radius:0 0 var(--admin-radius) var(--admin-radius); }
+.dash-card--recent table.adm-table { font-size:14.5px; min-width:640px; }
+.dash-card--recent table.adm-table th { font-size:12px; padding:13px 18px; }
+.dash-card--recent table.adm-table td { padding:14px 18px; }
 
 @media (max-width: 1024px) {
     .dash-card--chart, .dash-card--status, .dash-card--top, .dash-card--recent { grid-column:span 12; }
+}
+@media (max-width: 560px) {
+    .dash-card--chart .chart-body { height:280px; }
+    .dash-card-head, .dash-card-body { padding-left:18px; padding-right:18px; }
+    .kpi-card { padding:18px 20px; }
 }
 
 /* ===== Shell: topbar cố định + sidebar trái ===== */
@@ -134,7 +162,7 @@ body { background:var(--c-bg); color:var(--c-ink); font-family:var(--font-ui); m
     font-family:var(--font-ui); font-size:11px; letter-spacing:2px; text-transform:uppercase;
     color:var(--c-muted); margin-left:6px;
 }
-/* Search bo tròn (pill), nằm trong cụm bên phải cạnh chuông + tài khoản */
+/* Search bo tròn (pill), nằm trong cụm bên phải cạnh chuông */
 .adm-search { position:relative; flex:0 0 auto; width:240px; display:flex; align-items:center; }
 .adm-search .fa { position:absolute; left:14px; color:var(--c-muted); font-size:13px; pointer-events:none; }
 .adm-search input {
@@ -164,44 +192,20 @@ body { background:var(--c-bg); color:var(--c-ink); font-family:var(--font-ui); m
 .adm-bell { background:none; border:none; cursor:pointer; color:var(--c-ink); font-size:17px; padding:4px; line-height:1; }
 .adm-bell:hover { color:var(--c-muted); }
 
-/* Icon tài khoản + dropdown (email + Đăng xuất) */
-.adm-account { position:relative; }
-.adm-account-btn {
-    display:flex; align-items:center; justify-content:center; width:36px; height:36px;
-    background:var(--c-cream); border:1px solid var(--c-line); border-radius:999px;
-    cursor:pointer; color:var(--c-ink); font-size:16px; line-height:1;
-}
-.adm-account-btn:hover { background:var(--c-ink); color:var(--c-bg); border-color:var(--c-ink); }
-/* Cùng kiểu với popover tài khoản ở storefront (.acct-pop trong js/account-menu.js):
-   thẻ kem bo góc, mục chữ thường đổi nền đen khi hover. Không hiện email — chỉ còn nút. */
-.adm-account-menu {
-    position:absolute; top:calc(100% + 8px); right:0; min-width:170px; z-index:700;
-    background:var(--c-cream); border:1px solid var(--c-line); border-radius:10px;
-    box-shadow:0 10px 30px rgba(14,14,14,.15);
-    padding:6px; display:flex; flex-direction:column;
-    font-family:var(--font-ui);
-}
-.adm-account-menu[hidden] { display:none; }
-.adm-logout {
-    appearance:none; -webkit-appearance:none; border:0; background:transparent;
-    font:inherit; font-size:14px; letter-spacing:.02em; color:var(--c-ink);
-    text-align:left; padding:10px 14px; cursor:pointer; border-radius:7px;
-    transition:background-color .18s var(--ease, ease), color .18s var(--ease, ease);
-}
-.adm-account-menu .adm-logout:hover,
-.adm-account-menu .adm-logout:focus-visible { background:var(--c-ink); color:var(--c-cream); outline:none; }
 .adm-topbar button:focus-visible, .adm-topbar input:focus-visible, .adm-nav-item:focus-visible {
     outline:2px solid var(--c-ink); outline-offset:2px;
 }
 
 /* --- Sidebar --- */
+/* Flex column: danh sách menu tự cuộn khi dài (min-height:0 cho phép co lại),
+   user card .adm-user dùng margin-top:auto nên luôn dính đáy, không cuộn theo. */
 .adm-sidebar {
     position:fixed; top:60px; left:0; bottom:0; width:232px; z-index:500;
     background:var(--c-cream); border-right:1px solid var(--c-line);
-    overflow-y:auto; display:none;
+    display:none; flex-direction:column;
 }
-body.adm-authed .adm-sidebar { display:block; }
-.adm-nav { display:flex; flex-direction:column; padding:16px 12px; gap:2px; }
+body.adm-authed .adm-sidebar { display:flex; }
+.adm-nav { display:flex; flex-direction:column; padding:16px 12px; gap:2px; flex:0 1 auto; min-height:0; overflow-y:auto; }
 .adm-nav-item {
     display:flex; align-items:center; gap:12px; width:100%; text-align:left;
     background:none; border:none; border-left:2px solid transparent; cursor:pointer;
@@ -213,6 +217,59 @@ body.adm-authed .adm-sidebar { display:block; }
 .adm-nav-icon { width:18px; height:15px; flex-shrink:0; }
 .adm-nav-item:hover { color:var(--c-ink); background:rgba(14,14,14,.04); }
 .adm-nav-item.active { color:var(--c-ink); font-weight:600; border-left-color:var(--c-ink); background:rgba(14,14,14,.05); }
+
+/* --- User card đáy sidebar + popup (mục do admin.js vẽ từ USER_MENU_ITEMS) ---
+   Chỉ dùng token --c-* nên tự đổi theo dark mode nếu sau này admin bỏ ép sáng. */
+.adm-user { position:relative; flex-shrink:0; margin-top:auto; padding:12px; }
+.adm-user-btn {
+    display:flex; align-items:center; gap:10px; width:100%; box-sizing:border-box;
+    padding:8px 10px; text-align:left; cursor:pointer;
+    background:var(--c-bg); color:var(--c-ink);
+    border:1px solid var(--c-line); border-radius:var(--admin-radius);
+    font-family:inherit; font-size:13.5px; letter-spacing:.3px; line-height:1.3;
+    transition:border-color .18s var(--ease, ease);
+}
+.adm-user-btn:hover { border-color:var(--c-muted); }
+.adm-user-btn[aria-expanded="true"] { border-color:var(--c-ink); }
+/* Đang ở Hồ sơ: không mục menu trái nào active -> card sáng nhẹ. */
+.adm-user-btn.is-current { border-color:var(--c-muted); }
+.adm-user-btn.is-current .adm-user-name { font-weight:600; }
+.adm-user-btn:focus-visible { outline:2px solid var(--c-ink); outline-offset:2px; }
+/* Avatar tròn — cùng kiểu icon tài khoản cũ trên header (nền kem, viền mảnh, icon người). */
+.adm-user-avatar {
+    position:relative; flex:0 0 32px; width:32px; height:32px; border-radius:999px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--c-cream); border:1px solid var(--c-line); color:var(--c-ink); font-size:14px;
+}
+.adm-user-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.adm-user-img[hidden] { display:none; }
+.adm-user-btn.has-avatar .adm-user-avatar .fa { visibility:hidden; }
+.adm-user-name { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Pill "Nhân viên" cạnh tên — chỉ staff (admin.js bật/tắt [hidden]); không co, tên co trước. */
+.adm-user-role { flex:0 0 auto; }
+.adm-user-role[hidden] { display:none; }
+.adm-user-chevron { flex:0 0 16px; width:16px; height:16px; color:var(--c-muted); }
+/* Popup mở LÊN TRÊN card, rộng đúng bằng card (cùng lề 12px với .adm-user). */
+.adm-user-menu {
+    position:absolute; left:12px; right:12px; bottom:calc(100% - 4px); z-index:10;
+    display:flex; flex-direction:column; padding:6px;
+    background:var(--c-bg); border:1px solid var(--c-line); border-radius:var(--admin-radius);
+    box-shadow:0 10px 30px var(--c-shadow);
+}
+.adm-user-menu[hidden] { display:none; }
+.adm-user-item {
+    display:flex; align-items:center; gap:10px; width:100%; box-sizing:border-box; text-align:left;
+    -webkit-appearance:none; appearance:none; border:0; background:transparent; cursor:pointer;
+    font:inherit; font-size:13.5px; color:var(--c-ink); padding:9px 10px; border-radius:7px;
+    transition:background-color .18s var(--ease, ease), color .18s var(--ease, ease);
+}
+.adm-user-item .fa { width:16px; text-align:center; font-size:14px; color:var(--c-muted); }
+.adm-user-item:hover, .adm-user-item:focus-visible { background:var(--c-surface); }
+.adm-user-item:focus-visible { outline:2px solid var(--c-ink); outline-offset:-2px; }
+.adm-user-item.is-danger, .adm-user-item.is-danger .fa { color:var(--c-danger); }
+.adm-user-item.is-danger:hover, .adm-user-item.is-danger:focus-visible { background:var(--c-danger-bg); color:var(--c-danger-text); }
+.adm-user-item.is-danger:hover .fa, .adm-user-item.is-danger:focus-visible .fa { color:var(--c-danger-text); }
+.adm-user-sep { height:1px; background:var(--c-line); margin:6px 4px; }
 
 /* --- Main content + backdrop --- */
 .adm-main { margin-top:60px; margin-left:0; min-height:calc(100vh - 60px); }
@@ -249,19 +306,21 @@ body.adm-authed .adm-main { margin-left:232px; }
 .adm-btn:disabled:hover { opacity:.4; }
 
 /* --- Panel (khung view, chuyển bằng sidebar) --- */
-/* max-width KHÔNG đặt ở #panel nữa — mỗi view tự quyết định độ rộng (xem dưới).
-   Đơn hàng/Sản phẩm/Người dùng/Danh sách Đen (bảng dữ liệu) giãn full chiều rộng
-   còn lại sau sidebar, tránh khoảng trắng thừa hai bên; Dashboard (bố cục card/grid,
-   không phải bảng dài) giữ độ rộng đọc thoải mái 1180px. */
+/* max-width KHÔNG đặt ở #panel — mỗi view tự quyết định độ rộng. Bảng dữ liệu
+   (Đơn hàng/Sản phẩm/Người dùng/Danh sách Đen) và cả Dashboard đều giãn full chiều
+   rộng còn lại sau sidebar, tránh khoảng trắng thừa hai bên (Dashboard trước đây
+   giới hạn 1180px, màn rộng bị trống ~200px mỗi bên). */
 #panel { max-width:none; padding:30px 28px 80px; display:none; }
-#view-dashboard {
-    max-width:1180px; margin-left:auto; margin-right:auto;
-}
 
 /* --- Pill / badge: trạng thái · vai trò · tồn kho --- */
 .pill.status { background:var(--c-cream); color:var(--c-ink); border:1px solid var(--c-line); }
 .pill.role-admin { background:var(--c-ink); color:var(--c-cream); }
 .pill.role-customer { background:var(--c-cream); color:var(--c-ink); border:1px solid var(--c-line); }
+/* Staff: viền mực, nền trong — nằm giữa admin (nền mực) và khách (nền kem, viền mảnh). */
+.pill.role-staff { background:var(--c-bg); color:var(--c-ink); border:1px solid var(--c-ink); }
+/* Phần tử thiếu quyền (data-perm + hidden, do admin.js gắn): ẩn hẳn, thắng display của
+   .adm-nav-item / .adm-btn. Chỉ là ẩn UI — backend vẫn tự kiểm requirePermission. */
+[data-perm][hidden] { display:none !important; }
 /* Badge tồn kho (contrast AA): xanh dịu / vàng amber / đỏ danger */
 .pill.stock-ok { background:var(--c-success-bg); color:var(--c-success-text); }
 .pill.stock-low { background:var(--c-warning-bg); color:var(--c-warning-text); }
@@ -396,6 +455,96 @@ table.adm-table td.num, table.adm-table th.num { text-align:right; white-space:n
 .fld-check label { margin:0; text-transform:none; letter-spacing:0; font-size:14px; color:var(--c-ink); }
 .modal-err { background:var(--c-danger-bg); color:var(--c-danger-text); padding:10px 14px; font-size:13px; margin-bottom:16px; display:none; }
 .modal-foot { display:flex; justify-content:flex-end; gap:10px; margin-top:8px; }
+
+/* ===== Section Hồ sơ = tab "Chi tiết tài khoản" của trang profile, theo kiểu admin =====
+   Một cột giữa vùng nội dung, KHÔNG khung hộp; các phần ngăn bằng đường kẻ mảnh, mỗi
+   trường xếp dọc (nhãn trên, giá trị / ô nhập dưới). Mọi selector nằm dưới #view-profile:
+   không đụng view khác, không đụng trang profile của user. Chỉ token --c-*.
+   h1 ẩn khỏi mắt bằng style chung .adm-page-title — KHÔNG đổi ở đây. */
+/* margin-top 0: h1 đã ẩn, cột nội dung nằm sát đầu view như mọi view khác. */
+#view-profile .adm-profile { max-width:640px; margin:0 auto; }
+#view-profile .adm-pf-card { background:none; border:0; border-radius:0; box-shadow:none; padding:0; }
+/* Không kẻ ngang giữa 2 khối: tách bằng khoảng trống lớn hơn khoảng giữa các mục (24px). */
+#view-profile .adm-pf-card + .adm-pf-card { margin-top:56px; }
+#view-profile .adm-pf-title {
+    font-family:var(--font-display); font-size:26px; font-weight:500; line-height:1.3; letter-spacing:.3px;
+    color:var(--c-ink); margin:0 0 24px;
+}
+/* Nhãn chung cho dòng chỉ xem (dt) và ô nhập (.fld label). */
+#view-profile .adm-pf-row dt,
+#view-profile .fld label {
+    font-family:var(--font-ui); font-size:13.5px; font-weight:400; line-height:1.4;
+    text-transform:uppercase; letter-spacing:.08em; color:var(--c-muted);
+}
+/* Các mục cách đều nhau 24px — cùng khoảng với các ô nhập bên dưới; không kẻ ngang. */
+#view-profile .adm-pf-rows { display:flex; flex-direction:column; gap:28px; margin:0; }
+#view-profile .adm-pf-row { display:flex; flex-direction:column; gap:8px; padding:0; border:0; }
+/* dd là flex: dòng chữ thường chỉ có 1 mục nên vẫn nằm trái; dòng Mật khẩu có 2 mục
+   (chấm + nút "Đổi") nên nút bị đẩy sang phải cùng hàng — không cần thêm class vào markup. */
+#view-profile .adm-pf-row dd {
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    margin:0; min-width:0; font-size:17px; line-height:1.5; color:var(--c-ink); overflow-wrap:anywhere;
+}
+#view-profile .adm-pf-dots { color:var(--c-muted); letter-spacing:2px; margin:0; }
+/* Vùng bấm 44×44: min-size + padding (cỡ chữ giữ 14px). Margin âm để chữ vẫn thẳng mép
+   phải cột và dòng không cao hơn các dòng khác (44 - 22.5 ≈ 2 × 11). */
+#view-profile .adm-pf-link {
+    -webkit-appearance:none; appearance:none; background:none; border:0; cursor:pointer; flex-shrink:0;
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:44px; min-height:44px; padding:0 10px; margin:-9px -10px -9px 0; box-sizing:border-box;
+    font-family:inherit; font-size:16px; line-height:1.5; color:var(--c-ink);
+    text-decoration:underline; text-underline-offset:3px;
+}
+#view-profile .adm-pf-link:hover { color:var(--c-muted); }
+#view-profile .adm-pf-link:focus-visible { outline:2px solid var(--c-ink); outline-offset:-2px; }
+/* Form: 1 cột, mỗi trường rộng 100%, cách nhau 24px (đều với các dòng chỉ xem). */
+#view-profile .adm-pf-grid { display:flex; flex-direction:column; gap:28px; margin:0; }
+#view-profile .adm-pf-grid .fld { margin:0; }
+#view-profile .fld label { display:block; margin:0 0 10px; }
+/* .fld gốc chỉ style input text/number — ở đây cần tel/date/select. */
+#view-profile .fld input,
+#view-profile .fld select {
+    display:block; width:100%; min-width:0; height:52px; box-sizing:border-box; margin:0; padding:0 16px;
+    border:1px solid var(--c-line); border-radius:var(--admin-radius);
+    background:var(--c-bg); color:var(--c-ink); font-family:inherit; font-size:17px; line-height:1.4;
+}
+#view-profile .fld input:focus-visible,
+#view-profile .fld select:focus-visible { outline:2px solid var(--c-ink); outline-offset:-1px; }
+#view-profile .adm-pf-actions { display:flex; justify-content:flex-end; margin-top:32px; }
+#view-profile .adm-pf-actions .adm-btn { height:52px; padding:0 36px; font-size:14px; }
+/* ≤1023px: cột tràn hết vùng nội dung. Padding ngang do #panel lo — giống mọi view khác. */
+@media (max-width: 1023px) {
+    #view-profile .adm-profile { max-width:100%; margin-left:0; margin-right:0; }
+    #view-profile .adm-pf-actions .adm-btn { width:100%; }
+}
+
+/* Modal đổi mật khẩu — hành vi do js/change-password.js: bật/tắt [hidden] + .is-open.
+   Nền mờ + khung dùng lại .modal-backdrop / .modal-card của admin. */
+.adm-cp-overlay:not([hidden]) { display:flex; }
+.adm-cp-overlay { opacity:0; transition:opacity .22s var(--ease, ease); }   /* .22s = FADE_MS trong change-password.js */
+.adm-cp-overlay.is-open { opacity:1; }
+.adm-cp-card { max-width:460px; }
+/* Ô mật khẩu trong modal (.fld gốc chỉ style text/number) — giữ nguyên như trước, tách
+   khỏi khối Hồ sơ vì modal nằm ngoài #view-profile. */
+.adm-cp-card .fld input {
+    width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--c-line);
+    background:var(--c-bg); font-family:inherit; font-size:14px; color:var(--c-ink);
+}
+.adm-cp-card .fld input:focus-visible { outline:2px solid var(--c-ink); outline-offset:-1px; }
+.adm-cp-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.adm-cp-close { background:none; border:0; padding:0 4px; font-size:26px; line-height:1; color:var(--c-muted); cursor:pointer; }
+.adm-cp-close:hover { color:var(--c-ink); }
+.adm-cp-close:focus-visible, .adm-pw-toggle:focus-visible { outline:2px solid var(--c-ink); outline-offset:2px; }
+.adm-pw-wrap { position:relative; }
+.adm-cp-card .adm-pw-wrap input { padding-right:44px; }
+.adm-pw-toggle {
+    position:absolute; top:0; right:0; bottom:0; width:42px; display:flex; align-items:center; justify-content:center;
+    background:none; border:0; color:var(--c-muted); cursor:pointer; font-size:15px;
+}
+.adm-pw-toggle:hover { color:var(--c-ink); }
+.adm-cp-msg { margin:0 0 14px; font-size:13px; color:var(--c-danger); }
+.adm-cp-msg:empty { display:none; }
+.adm-cp-msg.is-ok { color:var(--c-success); }
 #inventory-modal .modal-card { max-width:850px; }
 #inventory-modal .adm-table-wrap { max-height:60vh; overflow:auto; }
 #inventory-modal .adm-table { min-width:620px; }
@@ -454,13 +603,26 @@ body.customer-detail-open { overflow:hidden; }
 @media (max-width: 1023px) {
     body.adm-authed .adm-main { margin-left:0; }
     body.adm-authed .adm-menu-btn { display:inline-flex; }
+    /* Drawer đóng phải ẨN THẬT (visibility:hidden), không chỉ trượt ra ngoài: nếu
+       không, Tab vẫn đi vào menu + user card vô hình và trình đọc màn hình vẫn đọc.
+       Đóng: visibility trễ đúng bằng thời gian trượt để vẫn thấy animation.
+       Mở: visibility đổi ngay (trễ 0s) để thấy trượt vào và focus được mục đầu. */
     .adm-sidebar {
         transform:translateX(-100%);
-        transition:transform .3s var(--ease);
+        visibility:hidden;
+        transition:transform .3s var(--ease), visibility 0s linear .3s;
         box-shadow:0 0 30px rgba(0,0,0,.12);
     }
-    body.adm-drawer-open .adm-sidebar { transform:none; }
+    body.adm-drawer-open .adm-sidebar {
+        transform:none; visibility:visible;
+        transition:transform .3s var(--ease), visibility 0s linear 0s;
+    }
     body.adm-drawer-open .adm-backdrop { opacity:1; visibility:visible; }
+}
+/* Màn hình cảm ứng (theo kiểu con trỏ, không theo độ rộng): mục popup user card
+   cao tối thiểu 44px cho dễ chạm. Card đã cao ~50px nên không cần. */
+@media (pointer: coarse) {
+    .adm-user-item { min-height:44px; }
 }
 @media (max-width: 620px) {
     .adm-topbar { gap:12px; padding:0 16px; }

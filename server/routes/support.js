@@ -7,10 +7,13 @@ const support = require('../lib/customer-support');
 const { COOKIE, cookieOptions, guestToken, jsonMutation, handle } = require('../middleware/support');
 const { stream } = require('../middleware/support-stream');
 const sessions = require('../lib/support-session');
+const { isBackOffice } = require('../lib/roles');
 function viewer(req, res, next) {
   if (req.headers.authorization !== undefined) return verifyFirebaseToken(req, res, () => {
     if (req.user.role !== 'customer' && req.path !== '/session') return res.status(403).json({ status: 'error', code: 'SUPPORT_CUSTOMER_ONLY', message: 'Admin sử dụng hộp thư quản trị' });
-    req.supportPrincipal = { kind: req.user.role, userId: req.user.id }; next();
+    // Staff đi cùng nhánh với admin: kind 'admin' = phía quản trị (không dùng hộp chat khách;
+    // /session chỉ huỷ phiên khách trên máy này và trả role 'admin').
+    req.supportPrincipal = { kind: isBackOffice(req.user.role) ? 'admin' : req.user.role, userId: req.user.id }; next();
   });
   next();
 }

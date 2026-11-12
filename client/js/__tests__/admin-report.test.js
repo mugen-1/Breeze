@@ -1,6 +1,7 @@
 const {check,eq}=require('./helpers/assert');
 const {load,wait}=require('./helpers/sandbox');
 const {makeDoc,El}=require('./helpers/dom');
+const {adminMe}=require('./helpers/me');
 const fixture=require('../../../server/__tests__/helpers/business-report');
 const i18n=load('i18n.js').win.__i18n;
 i18n.current='vi';
@@ -24,7 +25,7 @@ const r=load('admin.js',{doc,deps:['routes.js','utils-format.js','utils-i18n.js'
     fetch:async()=>({json:async()=>[]})},
   window:{__i18n:i18n,AuthHelper:{onChange(fn){login=fn;},async apiFetch(url){
     calls.push(url);
-    if(url==='/api/me')return response({role:'admin'});
+    if(url==='/api/me')return response(adminMe());
     if(url==='/api/admin/stats/anchor')return response({anchor:'2026-10-07'});
     if(url.startsWith('/api/admin/stats/business-report?')){
       const data=report(url);

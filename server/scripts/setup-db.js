@@ -147,6 +147,10 @@ const STEPS = [
     desc: 'Customer support storage, sender identity and shared read cursor; no chat seeds' },
   { type: 'sql', file: 'db/migrations/021_support_history_revision.sql',
     desc: 'Persistent revision for merged support history snapshots; no chat seeds' },
+  { type: 'sql', file: 'db/migrations/022_security_events.sql',
+    desc: 'Bảng SecurityEvents (request đáng ngờ/bị chặn) cho securityLogger; không seed' },
+  { type: 'sql', file: 'db/migrations/023_staff_role.sql',
+    desc: "CHECK users.role IN ('customer','staff','admin'); dừng nếu có role lạ" },
 ];
 
 if (FRESH) {
@@ -168,7 +172,7 @@ let done = 0, skipped = 0;
 
 for (let idx = 0; idx < STEPS.length; idx++) {
   const step = STEPS[idx];
-  if (BEFORE_VARIANTS && /db\/migrations\/(01[23456789]|02[01])_/.test(step.file)) {
+  if (BEFORE_VARIANTS && /db\/migrations\/(01[23456789]|02[0-3])_/.test(step.file)) {
     skipped++;
     continue;
   }

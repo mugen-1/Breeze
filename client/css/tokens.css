@@ -30,6 +30,9 @@ html[data-theme="light"] {
   --c-success-text: #1c6b2c;
   --c-warning-bg:   #f9e6c2;   /* badge cảnh báo (vd tồn kho thấp) — amber */
   --c-warning-text: #7a4f00;
+
+  /* Màu bóng đổ cho lớp nổi (popup, dropdown): box-shadow: 0 10px 30px var(--c-shadow) */
+  --c-shadow: rgba(0, 0, 0, .16);
 }
 
 /* Footer brand band ("BREEZE" cuối trang) — HẰNG SỐ, luôn tối ở cả 2 theme (không đảo màu). */
@@ -63,6 +66,9 @@ html[data-theme="dark"] {
   --c-success-text: #8fd99a;
   --c-warning-bg:   #332612;   /* amber đậm bão hoà thấp cho nền tối */
   --c-warning-text: #e6c079;
+
+  /* Nền tối: bóng .16 gần như không thấy -> đậm hơn để lớp nổi vẫn tách khỏi nền */
+  --c-shadow: rgba(0, 0, 0, .5);
 }
 
 html[data-theme="light"] { color-scheme: light; }

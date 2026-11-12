@@ -18,7 +18,8 @@ function setup(opts) {
   if (opts.qsa) Object.assign(doc._qsa, opts.qsa);
 
   const r = load('page-profile.js', {
-    deps: ['routes.js', 'utils-i18n.js'],
+    // account-details.js: khối Chi tiết tài khoản dùng chung với admin — nạp TRƯỚC như trang thật.
+    deps: ['routes.js', 'utils-i18n.js', 'account-details.js'],
     doc: doc,
     globals: { alert: function () { acts.push(['alert']); } },
     window: {

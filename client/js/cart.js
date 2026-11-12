@@ -512,11 +512,11 @@ function startCheckout(opts) {
         return;
     }
 
-    // Đã đăng nhập: kiểm tra role qua /api/me (admin không được thanh toán).
+    // Đã đăng nhập: kiểm tra role qua /api/me (admin/staff không được thanh toán).
     window.AuthHelper.apiFetch('/api/me')
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (me) {
-            if (me && me.role === 'admin') {
+            if (me && (me.role === 'admin' || me.role === 'staff')) {
                 onError(_t('acc.adminBlocked'));
                 return;
             }

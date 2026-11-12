@@ -2,6 +2,7 @@
 const { sql } = require('../db');
 const { SupportError, GUEST_IDLE_SECONDS } = require('./customer-support');
 const { hub } = require('./support-events');
+const { isBackOffice } = require('./roles');
 const req = tx => new sql.Request(tx);
 async function transaction(pool, fn) {
   const tx = new sql.Transaction(pool);
@@ -105,7 +106,8 @@ async function discardGuest(pool, principal, hash) {
   if (principal.kind !== 'admin') throw new SupportError(403, 'SUPPORT_FORBIDDEN', 'Chỉ dùng khi đăng nhập Admin');
   const deleted = await transaction(pool, async tx => {
     const user = (await req(tx).input('uid', sql.Int, principal.userId).query('SELECT role FROM dbo.users WITH (UPDLOCK,HOLDLOCK) WHERE id=@uid;')).recordset[0];
-    if (!user || user.role !== 'admin') throw new SupportError(403, 'SUPPORT_FORBIDDEN', 'Tài khoản không có quyền thực hiện thao tác này');
+    // principal.kind 'admin' = phía quản trị: role SQL hiện tại phải là admin hoặc staff.
+    if (!user || !isBackOffice(user.role)) throw new SupportError(403, 'SUPPORT_FORBIDDEN', 'Tài khoản không có quyền thực hiện thao tác này');
     const found = (await req(tx).input('hash', sql.Binary(32), hash).query('SELECT conversation_id FROM dbo.support_guest_sessions WHERE token_hash=@hash;')).recordset[0];
     if (!found) return null;
     const owner = (await req(tx).input('cid', sql.BigInt, found.conversation_id).query('SELECT user_id FROM dbo.support_conversations WITH (UPDLOCK,HOLDLOCK) WHERE id=@cid;')).recordset[0];

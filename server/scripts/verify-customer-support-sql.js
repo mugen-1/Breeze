@@ -93,7 +93,7 @@ async function main() {
     same('second migration run remains empty', await counts(), { conversations: 0, messages: 0, guests: 0, actors: 0 });
 
     const owner = await user('owner'), other = await user('other');
-    const staff = await user('staff', 'admin'), secondStaff = await user('staff-two', 'admin');
+    const admin = await user('admin', 'admin'), secondAdmin = await user('admin-two', 'admin');
     const cid = await conversation(owner), otherCid = await conversation(other);
     await rejects('one continuous conversation per account', () => conversation(owner), [2601, 2627]);
     await rejects('unknown account cannot own conversation', () => conversation(2147483647));
@@ -103,8 +103,8 @@ async function main() {
     same('losing account creation is a uniqueness violation', owners.find(r => r.status === 'rejected').reason.number === 2601 ||
       owners.find(r => r.status === 'rejected').reason.number === 2627, true);
 
-    const aid = await actor(staff), secondAid = await actor(secondStaff);
-    await rejects('staff account has one actor identity', () => actor(staff), [2601, 2627]);
+    const aid = await actor(admin), secondAid = await actor(secondAdmin);
+    await rejects('admin account has one actor identity', () => actor(admin), [2601, 2627]);
     await rejects('actor cannot impersonate a different numeric account', () => actor(owner, other));
     await rejects('live actor must reference an existing account', () => actor(2147483647));
     const key = randomUUID();
@@ -165,18 +165,18 @@ async function main() {
     same('rerun preserves messages, authors, guest credentials and read state', await snapshot(), before);
     await rejects('author identity cannot be deleted while replies reference it', () => pool.request().input('aid', sql.Int, aid)
       .query('DELETE FROM dbo.support_admin_actors WHERE id=@aid;'));
-    const staffCid = await conversation(staff);
-    const staffMessage = await message(staffCid, { kind: 'admin', aid });
-    await read(staffCid, staffMessage);
-    await deleteUser(staff);
-    same('deleting staff detaches live account but retains actual numeric sender',
+    const adminCid = await conversation(admin);
+    const adminMessage = await message(adminCid, { kind: 'admin', aid });
+    await read(adminCid, adminMessage);
+    await deleteUser(admin);
+    same('deleting admin detaches live account but retains actual numeric sender',
       (await pool.request().input('aid', sql.Int, aid).query('SELECT user_id,original_user_id FROM dbo.support_admin_actors WHERE id=@aid;')).recordset[0],
-      { user_id: null, original_user_id: staff });
-    same('staff deletion preserves replies in other customer conversations',
+      { user_id: null, original_user_id: admin });
+    same('admin deletion preserves replies in other customer conversations',
       (await pool.request().input('cid', sql.BigInt, cid).input('aid', sql.Int, aid)
         .query('SELECT COUNT(*) AS n FROM dbo.support_messages WHERE conversation_id=@cid AND admin_actor_id=@aid;')).recordset[0].n, 1);
-    same('staff account own conversation is physically deleted',
-      (await pool.request().input('cid', sql.BigInt, staffCid).query('SELECT COUNT(*) AS n FROM dbo.support_conversations WHERE id=@cid;')).recordset[0].n, 0);
+    same('admin account own conversation is physically deleted',
+      (await pool.request().input('cid', sql.BigInt, adminCid).query('SELECT COUNT(*) AS n FROM dbo.support_conversations WHERE id=@cid;')).recordset[0].n, 0);
 
     await deleteConversation(guestCid);
     same('guest conversation deletion removes messages and credentials including read cursor',

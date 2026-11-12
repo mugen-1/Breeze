@@ -14,6 +14,7 @@ const { allocateOrderCode } = require('../lib/order-code');
 const router = express.Router();
 const { getPool, sql } = require('../db');
 const { verifyFirebaseToken } = require('../middleware/auth');
+const { isBackOffice } = require('../lib/roles');
 const { canCustomerCancel } = require('../lib/order-state');
 const { cancelOrder, CancelError } = require('../lib/cancel-order');
 const { createPayment, fetchPayments, COLUMNS } = require('../lib/order-payment');
@@ -51,7 +52,7 @@ router.get('/shipping-methods', (req, res) => res.json(METHODS));
 // ---- POST /api/orders ----  tạo đơn từ giỏ (transaction; rollback nếu thiếu stock) ----
 router.post('/', async (req, res) => {
   // Cùng quy tắc đã có ở checkout/cart UI, bắt buộc kiểm tra lại tại API.
-  if (req.user.role === 'admin') {
+  if (isBackOffice(req.user.role)) { // admin + staff
     return res.status(403).json({ status: 'error', message: 'Tài khoản quản trị không được đặt hàng' });
   }
   // User bị blacklist (từng huỷ đơn, admin chưa gỡ): chặn đặt hàng ở BACKEND —
@@ -347,7 +348,7 @@ router.post('/:id/payment-simulation', async (req, res) => {
       Object.keys(body).length !== 1 || !['success', 'failure'].includes(body.outcome)) {
     return res.status(400).json({ status: 'error', message: 'Kết quả mô phỏng không hợp lệ' });
   }
-  if (req.user.role === 'admin') {
+  if (isBackOffice(req.user.role)) { // admin + staff
     return res.status(403).json({ status: 'error', message: 'Chỉ chủ đơn hàng được mô phỏng thanh toán' });
   }
   let tx;
@@ -395,7 +396,7 @@ router.post('/:id/cancel', async (req, res) => {
   if (!Number.isSafeInteger(id) || id <= 0) {
     return res.status(400).json({ status: 'error', message: 'id phải là số nguyên dương' });
   }
-  if (req.user.role === 'admin') {
+  if (isBackOffice(req.user.role)) { // admin + staff
     return res.status(403).json({ status: 'error', message: 'Tài khoản quản trị không thể dùng chức năng hủy đơn của khách' });
   }
   const reasonCode = req.body && req.body.reason;

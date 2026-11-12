@@ -200,7 +200,7 @@
                     }
                     if (!$('f-phone').value) $('f-phone').value = me.phone || '';
                 }
-                if (me && me.role === 'admin') {
+                if (me && (me.role === 'admin' || me.role === 'staff')) {   // phía quản trị không đặt đơn
                     adminGuarded = true;
                     window.alert(t('co.adminBlocked'));
                     window.location.replace(window.BreezeRoutes.to('index'));

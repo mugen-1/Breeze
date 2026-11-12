@@ -197,4 +197,24 @@ console.log('cart.js');
   r2.doc.fire('click', { target: el({ 'data-action': 'cart-qty' }) });   // của page-cart.js
   r2.doc.fire('click', { target: El('div') });
   eq('data-action khac / click ngoai nut -> cart.js khong lam gi', called.length, 2);
+
+  // startCheckout: phía quản trị (admin + staff) bị chặn ở giỏ, khách đi tiếp sang checkout.
+  for (const role of ['admin', 'staff', 'customer']) {
+    let auth = null;
+    const errors = [], win = {
+      location: { href: '' }, BreezeRoutes: { to: function (k) { return k + '.html'; } },
+      AuthHelper: {
+        onChange: function (fn) { auth = fn; }, isLoggedIn: function () { return true; },
+        apiFetch: function (url) {
+          return Promise.resolve(url === '/api/me' ? res(200, { role: role }) : res(200, { items: [srvItem(1, 1)] }));
+        },
+      },
+    };
+    const rc = load('cart.js', { window: win });
+    rc.doc.fire('DOMContentLoaded'); auth({ uid: 'u1' }); await wait();
+    rc.sandbox.startCheckout({ onError: function (m) { errors.push(m); } }); await wait();
+    const blocked = role !== 'customer';
+    eq(role + ': startCheckout bao loi chan dat hang', errors, blocked ? ['acc.adminBlocked'] : []);
+    eq(role + ': startCheckout dieu huong', win.location.href, blocked ? '' : 'checkout.html');
+  }
 })();

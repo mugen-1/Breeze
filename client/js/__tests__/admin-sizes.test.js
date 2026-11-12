@@ -2,6 +2,7 @@
 const { check, eq } = require('./helpers/assert');
 const { load, wait } = require('./helpers/sandbox');
 const { El, makeDoc } = require('./helpers/dom');
+const { adminMe } = require('./helpers/me');
 const doc = makeDoc();
 const product = { id: 5, name_vi: 'Áo', slug: 'ao-nam', price: 100, stock: 10, category_id: 1,
   size_kind: 'apparel', size_configured: true, is_active: true };
@@ -31,7 +32,7 @@ const r = load('admin.js', { doc, deps: ['routes.js','utils-format.js'],
     apiFetch(url, options) {
       calls.push({ url, options, body: options && options.body ? JSON.parse(options.body) : null });
       let data = {};
-      if (url === '/api/me') data = { role:'admin' };
+      if (url === '/api/me') data = adminMe();
       else if (url === '/api/categories') data = [];
       else if (url === '/api/admin/products') data = { products:[product] };
       else if (url.includes('inventory-movements')) data = { movements:[{ id:1, size:'M', movement_type:'VARIANT_OPENING', quantity_delta:0, stock_before:3, stock_after:3 }], total_pages:1 };

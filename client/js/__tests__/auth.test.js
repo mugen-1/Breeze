@@ -131,6 +131,18 @@ console.log('auth.js');
   eq('admin trong luong thanh toan -> giu form', r.win.location.href, '');
   eq('admin khong duoc dat hang', r.byId('login-msg').textContent, 'au.errBadAccount');
 
+  // Staff (nhân viên) = phía quản trị: vào admin.html như admin, không được đặt hàng.
+  r = setup({ me: { role: 'staff' } });
+  r.login();
+  await wait();
+  eq('staff -> giao dien quan tri', r.win.location.href, 'admin.html');
+  eq('staff: role hop le, khong bao loi', r.byId('login-msg').textContent, '');
+  r = setup({ search: '?redirect=checkout', me: { role: 'staff' } });
+  r.login();
+  await wait();
+  eq('staff trong luong thanh toan -> giu form', r.win.location.href, '');
+  eq('staff khong duoc dat hang', r.byId('login-msg').textContent, 'au.errBadAccount');
+
   for (const opts of [
     { status: 401 }, { status: 401, search: '?redirect=checkout' },
     { status: 500 }, { networkError: true }, { invalidJson: true },

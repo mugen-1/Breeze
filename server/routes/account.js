@@ -130,6 +130,28 @@ router.delete('/', verifyFirebaseToken, passwordLimiter, async (req, res) => {
     return res.status(500).json({ status: 'error', message: 'Không kiểm tra được đơn hàng' });
   }
 
+  // Chặn xoá admin cuối cùng — không thì không còn ai vào được trang quản trị / tạo staff.
+  // Phải kiểm TRƯỚC khi xoá Firebase (bước d): Firebase đã xoá thì không quay lại được.
+  // RACE ĐÃ CHẤP NHẬN: COUNT không giữ khoá tới lúc xoá, nên 2 admin cuối cùng xoá đồng thời
+  // vẫn có thể cùng lọt. Khoá được thì phải bọc cả bước xoá Firebase trong transaction SQL
+  // (giữ khoá suốt một lời gọi mạng) — không đáng cho thao tác hiếm và cần nhập mật khẩu này.
+  // Khôi phục khi lỡ xoá hết: node db/set-role.js <email> admin (hoặc ADMIN_EMAILS).
+  if (req.user.role === 'admin') {
+    try {
+      const admins = await pool.request()
+        .query("SELECT COUNT(*) AS n FROM dbo.users WHERE role = 'admin';");
+      if (admins.recordset[0].n <= 1) {
+        return res.status(409).json({
+          status: 'error', code: 'LAST_ADMIN',
+          message: 'Đây là tài khoản quản trị (admin) cuối cùng nên không thể xoá. Hãy cấp quyền admin cho tài khoản khác trước.',
+        });
+      }
+    } catch (err) {
+      console.error('[account] delete check last admin lỗi:', err.code || 'database-error');
+      return res.status(500).json({ status: 'error', message: 'Không kiểm tra được quyền quản trị' });
+    }
+  }
+
   // (d) Xóa Firebase Auth TRƯỚC. Middleware dùng verifyIdToken(token, true) để từ chối
   // token cũ; khi SQL chưa có row, nó kiểm tra lại dưới khoá transaction trước INSERT.
   // Xoá Firebase đơn thuần KHÔNG làm chữ ký JWT cũ mất hiệu lực. Nếu lỗi -> dừng, DB chưa đụng.

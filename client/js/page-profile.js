@@ -11,6 +11,10 @@
 //
 // window.PaymentMethods (payment-methods.js) và window.BreezeTheme (theme.js) được
 // dùng BÊN TRONG hàm/handler nên load sau file này vẫn chạy đúng — không đổi thứ tự.
+//
+// Khối "Chi tiết tài khoản" (đổ dữ liệu, validate, lưu PUT /api/me) nằm ở
+// js/account-details.js — dùng chung với section Hồ sơ của admin. File đó PHẢI nạp
+// TRƯỚC file này (pages-config.js, entry profile).
 
 /* Phase 2 — shell + điều hướng section + nạp thông tin tài khoản (read-only).
    Nguồn read-only: GET /api/me (display_name, email, created_at, last_login).
@@ -21,25 +25,13 @@
 
     var SECTIONS = ['account', 'addresses', 'payments', 'theme', 'privacy'];   // section có thể mở
     var _meLoaded = false;                     // tránh gọi /api/me lặp
+    var AD = window.BreezeAccountDetails;      // khối Chi tiết tài khoản dùng chung (account-details.js)
 
     // i18n — nhãn tĩnh do js/i18n.js áp qua data-i18n; t() dùng cho chuỗi JS sinh.
-    function locale() {
-        return (window.__i18n && window.__i18n.current === 'en') ? 'en-GB' : 'vi-VN';
-    }
 
     function show(id, mode) {
         var el = document.getElementById(id);
         if (el) el.style.display = mode || 'none';
-    }
-
-    function setText(id, val) {
-        var el = document.getElementById(id);
-        if (el) el.textContent = (val == null || val === '') ? '—' : val;
-    }
-
-    function setVal(id, val) {
-        var el = document.getElementById(id);
-        if (el) el.value = (val == null) ? '' : val;
     }
 
     // Toast: mặc định thành công; ok=false -> biến thể lỗi (đỏ trầm).
@@ -60,43 +52,11 @@
     // cơ chế này thay vì tự dựng thông báo thứ hai. Chỉ export, không đổi hành vi.
     window.ProfileToast = toast;
 
-    // display_name; nếu trống -> phần trước @ của email (khớp account-menu.js).
-    function nameOf(u) {
-        if (!u) return '';
-        var n = u.display_name || u.displayName;
-        if (!n && u.email) n = u.email.split('@')[0];
-        return n || t('pf.you');
-    }
-
-    function fmtDate(s) {
-        if (!s) return '—';
-        var d = new Date(s);
-        if (isNaN(d.getTime())) return '—';
-        return d.toLocaleDateString(locale(), {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
-    }
-
-    // Hiện tên/email tức thì từ Firebase trong lúc chờ /api/me.
-    function fillFromFirebase(user) {
-        if (!user) return;
-        setText('ad-name', nameOf(user));
-        setText('ad-email', user.email);
-    }
-
     // Đổ toàn bộ hồ sơ (read-only + field cá nhân) từ dữ liệu server.
     var _lastMe = null;        // hồ sơ vừa nạp — dựng lại khi đổi VI/EN
     function fillProfile(u) {
         _lastMe = u;
-        setText('ad-name', nameOf(u));
-        setText('ad-email', u.email);
-        setText('ad-created', fmtDate(u.created_at));
-        setText('ad-last', fmtDate(u.last_login));
-        setVal('ad-phone', u.phone);
-        setVal('ad-dob', u.dob ? String(u.dob).slice(0, 10) : '');   // ISO -> YYYY-MM-DD
-        setVal('ad-gender', u.gender || '');
-        setVal('ad-country', u.country || '');
+        AD.fill(u);
         // Dùng luôn dữ liệu /api/me, không gọi thêm API. Nhớ giữ lại URL hiện tại
         // để khi upload lỗi còn trả preview về đúng ảnh cũ.
         _avatarUrl = u.avatar_url || null;
@@ -117,56 +77,7 @@
             });
     }
 
-    // ---- Lưu field cá nhân (PUT /api/me) ----
-    var PHONE_RE = /^[0-9+\-\s()]{6,20}$/;
-
-    function formValues() {
-        return {
-            phone: (document.getElementById('ad-phone').value || '').trim(),
-            dob: document.getElementById('ad-dob').value || '',
-            gender: document.getElementById('ad-gender').value || '',
-            country: document.getElementById('ad-country').value || ''
-        };
-    }
-
-    // Validate phía client (đồng bộ với server); trả thông báo lỗi hoặc null.
-    function validate(v) {
-        if (v.phone && !PHONE_RE.test(v.phone)) return t('pf.errPhone');
-        if (v.dob) {
-            var dobMs = new Date(v.dob + 'T00:00:00Z').getTime();
-            if (isNaN(dobMs)) return t('pf.errDob');
-            if (dobMs > Date.now()) return t('pf.errDobFuture');
-        }
-        return null;
-    }
-
-    function saveProfile() {
-        var btn = document.getElementById('ad-save');
-        if (!btn || btn.disabled) return;
-        var v = formValues();
-        var err = validate(v);
-        if (err) { toast(err, false); return; }
-
-        var label = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = t('pf.saving');
-        window.AuthHelper.apiFetch('/api/me', { method: 'PUT', body: JSON.stringify(v) })
-            .then(function (r) {
-                return r.json().catch(function () { return {}; }).then(function (data) {
-                    return { ok: r.ok, status: r.status, data: data };
-                });
-            })
-            .then(function (out) {
-                if (out.ok) { fillProfile(out.data); toast(t('pf.savedChanges')); return; }
-                if (out.status === 401) return;   // phiên hết hạn -> 'authexpired' lo phần báo + đăng nhập lại
-                toast((out.data && out.data.message) || t('pf.errSaveChanges'), false);
-            })
-            .catch(function (e) {
-                console.error('[profile] lưu lỗi:', e);
-                toast(t('pf.errSaveChanges'), false);
-            })
-            .then(function () { btn.disabled = false; btn.textContent = label; });
-    }
+    // ---- Lưu field cá nhân (PUT /api/me): account-details.js (AD.save qua AD.init bên dưới) ----
 
     /* ============================================================
        Địa chỉ giao hàng (Phase 4) — CRUD qua /api/account/addresses.
@@ -874,7 +785,7 @@
         show('profile-login', 'none');
         show('settings-body', 'grid');
         applySection(currentSection());
-        fillFromFirebase(user);   // tên/email tức thì
+        AD.fillFromFirebase(user);   // tên/email tức thì
         loadMe();                 // chi tiết read-only từ server
     }
 
@@ -894,11 +805,9 @@
     // theme.js phát event trên document (không bubble) -> phải nghe ở document.
     document.addEventListener('breeze:themechange', syncThemeUI);
 
-    // Khởi tạo form: giới hạn ngày sinh <= hôm nay + gắn nút Lưu.
-    var dobEl = document.getElementById('ad-dob');
-    if (dobEl) dobEl.max = new Date().toISOString().slice(0, 10);
-    var saveBtn = document.getElementById('ad-save');
-    if (saveBtn) saveBtn.addEventListener('click', saveProfile);
+    // Khởi tạo form: giới hạn ngày sinh <= hôm nay + gắn nút Lưu (account-details.js).
+    // Lưu xong -> fillProfile (đổ lại field + avatar) rồi toast, đúng thứ tự cũ.
+    AD.init({ notify: toast, onSaved: fillProfile });
     initAddresses();   // gắn sự kiện khối "Địa chỉ giao hàng"
     bindPrivacy();     // gắn sự kiện khối "Quyền riêng tư" + modal xoá tài khoản
 
