@@ -2,6 +2,14 @@
 
 const { sql } = require('../db');
 
+// Variant alias must be v. Read committed transfer history, not current stock:
+// sales, cancellations and manual adjustments must not replace the last transfer.
+const LAST_ALLOCATION_SQL = `(SELECT TOP (1) m.quantity_delta
+  FROM dbo.inventory_movements m
+  WHERE m.product_id = v.product_id AND m.variant_id = v.id
+    AND m.movement_type = 'VARIANT_TRANSFER_IN' AND m.quantity_delta > 0
+  ORDER BY m.created_at DESC, m.id DESC)`;
+
 // Call only inside the same transaction that changes variant stock and its product aggregate.
 async function recordInventoryMovement(tx, data) {
   return new sql.Request(tx)
@@ -21,4 +29,4 @@ async function recordInventoryMovement(tx, data) {
       VALUES (@pid, @vid, @oid, @oref, @type, @delta, @before, @after, @reason, @actor);`);
 }
 
-module.exports = { recordInventoryMovement };
+module.exports = { recordInventoryMovement, LAST_ALLOCATION_SQL };

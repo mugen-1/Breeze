@@ -11,6 +11,7 @@
 
 const express = require('express');
 const R = require('../lib/client-routes');
+const { addVersions } = require('../lib/asset-version');
 
 const router = express.Router();
 
@@ -32,8 +33,14 @@ Object.keys(PAGES).forEach((key) => {
   const urlPath = R.PATHS[key];
   if (!urlPath) throw new Error('[pages] khoá "' + key + '" không có trong PATHS của routes.js');
 
-  const handler = (req, res) => {
-    res.render('layouts/main', Object.assign({ page: cfg.view, pageKey: key }, cfg));
+  /* Render xong mới gắn ?v=<hash> vào link CSS/JS nội bộ (lib/asset-version.js): sửa
+     CSS/JS là F5 thấy ngay, không phải đợi cache Cloudflare 4 giờ. Gắn ở đây thay vì
+     trong partial để phủ cả thẻ script nằm giữa view (page-index-slider.js ở index). */
+  const handler = (req, res, next) => {
+    res.render('layouts/main', Object.assign({ page: cfg.view, pageKey: key }, cfg), (err, html) => {
+      if (err) return next(err);
+      res.send(addVersions(html).html);
+    });
   };
   router.get('/' + urlPath, handler);
   /* express.static đang serve index.html ở '/'. Route EJS đứng trước nó nên phải nhận

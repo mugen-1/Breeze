@@ -1,7 +1,7 @@
 'use strict';
 
 const { sql } = require('../db');
-const { recordInventoryMovement } = require('./inventory-movement');
+const { recordInventoryMovement, LAST_ALLOCATION_SQL } = require('./inventory-movement');
 const APPAREL = ['S', 'M', 'L', 'XL'];
 const MEN_SHOES = ['39', '40', '40.5', '41', '42', '42.5', '43', '44', '44.5', '45', '45.5', '46'];
 
@@ -39,8 +39,10 @@ async function readSizes(pool, productId) {
     FROM dbo.products p JOIN dbo.categories c ON c.id = p.category_id WHERE p.id = @pid;`)).recordset[0];
   if (!product) reject('PRODUCT_NOT_FOUND', 'Không tìm thấy sản phẩm', 404);
   const variants = (await pool.request().input('pid', sql.Int, productId).query(`
-    SELECT id, sku, size, stock, is_active, is_base FROM dbo.product_variants
-    WHERE product_id = @pid AND color IS NULL ORDER BY is_base DESC, id;`)).recordset;
+    SELECT v.id, v.sku, v.size, v.stock, v.is_active, v.is_base,
+      COALESCE(${LAST_ALLOCATION_SQL}, 0) AS last_allocation_quantity
+    FROM dbo.product_variants v
+    WHERE v.product_id = @pid AND v.color IS NULL ORDER BY v.is_base DESC, v.id;`)).recordset;
   const profile = sizeProfile(product);
   variants.sort((a, b) => Number(b.is_base) - Number(a.is_base) || profile.sizes.indexOf(a.size) - profile.sizes.indexOf(b.size));
   return { product, kind: profile.kind, allowed_sizes: profile.sizes, variants };

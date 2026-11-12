@@ -143,16 +143,43 @@ function buildHelmet() {
   });
 }
 
-// Rate limit chung cho /api: chống brute-force/spam. 300 request / 15 phút / IP.
-// Đủ thoáng cho thao tác mua sắm bình thường, đủ chặt để cản dò quét tự động.
-function buildApiLimiter() {
-  return rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 300,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    message: { status: 'error', message: 'Quá nhiều yêu cầu, vui lòng thử lại sau ít phút' },
-  });
+// Mỗi nhóm có 300 request / 15 phút / IP. Heartbeat/SSE không được tiêu hết
+// quota kiểm tra phiên đăng nhập hay thao tác mua hàng. Không miễn giới hạn route nào;
+// limiter theo user của chat/avatar vẫn được áp thêm tại router như trước.
+function buildApiLimiter({ windowMs = 15 * 60 * 1000, limit = 300 } = {}) {
+  function bucket(scope) {
+    return rateLimit({
+      windowMs, limit,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+      message: { status: 'error', code: 'API_RATE_LIMITED', message: 'Quá nhiều yêu cầu, vui lòng thử lại sau ít phút' },
+      handler(req, res, _next, options) {
+        if (req.rateLimit.used === req.rateLimit.limit + 1) {
+          console.warn('[rate-limit] quota exhausted:', scope);
+        }
+        res.status(options.statusCode).json(options.message);
+      },
+    });
+  }
+  const general = bucket('general'), session = bucket('session'), realtime = bucket('support-realtime');
+  return (req, res, next) => {
+    // Mounted at /api: req.path excludes that prefix and the query string.
+    const route = req.path.toLowerCase().replace(/\/+$/, '');
+    const read = req.method === 'GET' || req.method === 'HEAD';
+    // Guest /support/session also runs on page focus; only the authenticated
+    // transfer belongs to the login bucket. Routing here never verifies a token:
+    // the existing router still performs Firebase verification afterwards.
+    const accountSession = req.method === 'POST' && route === '/support/session' &&
+      /^Bearer [^\s]+$/i.test(req.headers.authorization || '');
+    if ((read && route === '/me') || accountSession) {
+      return session(req, res, next);
+    }
+    if ((req.method === 'POST' && (route === '/support/heartbeat' || route === '/support/session')) ||
+        (read && (route === '/support/events' || route === '/admin/support/events'))) {
+      return realtime(req, res, next);
+    }
+    return general(req, res, next);
+  };
 }
 
 // Rate limit theo TỪNG USER (không theo IP) cho thao tác nhạy cảm cần mật khẩu.

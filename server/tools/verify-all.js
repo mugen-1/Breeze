@@ -14,7 +14,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const BASELINE_REF = '21ca387';
+const BASELINE_REF = '5e7c57106234a9e25b0db3147b116529548e4265';
 
 /* MỐC RIÊNG TỪNG TRANG — cho trang đã đổi CÓ CHỦ Ý sau khi migrate.
    Những thay đổi đó làm lúc trang đã là EJS, nên không có bản .html nào chứa chúng: 18
@@ -26,7 +26,7 @@ const BASELINE_REF = '21ca387';
      profile — modal đổi mật khẩu (Phase 2B) thêm sau 21ca387. So với 21ca387 là 222
                khác biệt đúng, không phải lỗi. */
 const PAGE_BASELINE = {
-  profile: { ejsRef: 'b723d26' },
+  profile: { ejsRef: '5cdb680b748e1ae14a6cd8397d8d2a30010d7ee0' },
 };
 
 const PAGES = [

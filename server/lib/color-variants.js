@@ -4,7 +4,7 @@ const { sql } = require('../db');
 const fs = require('node:fs');
 const path = require('node:path');
 const { sizeProfile, SIZE_CONFIGURED_SQL, COLOR_CONFIGURED_SQL } = require('./size-variants');
-const { recordInventoryMovement } = require('./inventory-movement');
+const { recordInventoryMovement, LAST_ALLOCATION_SQL } = require('./inventory-movement');
 
 class ColorError extends Error {
   constructor(status, code, message) { super(message); this.status = status; this.code = code; }
@@ -51,8 +51,9 @@ async function readColors(pool, productId) {
     SELECT id, color_key, label, swatch_hex, is_active FROM dbo.product_colors
     WHERE product_id = @pid ORDER BY id;`)).recordset;
   const variants = (await pool.request().input('pid', sql.Int, productId).query(`
-    SELECT id, sku, size, color, stock, is_active, is_base FROM dbo.product_variants
-    WHERE product_id = @pid ORDER BY id;`)).recordset;
+    SELECT v.id, v.sku, v.size, v.color, v.stock, v.is_active, v.is_base,
+      COALESCE(${LAST_ALLOCATION_SQL}, 0) AS last_allocation_quantity
+    FROM dbo.product_variants v WHERE v.product_id = @pid ORDER BY v.id;`)).recordset;
   const images = (await pool.request().input('pid', sql.Int, productId).query(`
     SELECT i.id, i.color_id, i.image_path, i.sort_order, i.is_primary
     FROM dbo.product_color_images i JOIN dbo.product_colors c ON c.id = i.color_id

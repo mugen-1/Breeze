@@ -61,6 +61,15 @@ function dropDuplicateEnd(tokens) {
    attribute khác trên cùng thẻ vẫn bị bắt. */
 const IGNORED_ATTRS = new Set(['nonce']);
 
+/* ?v=<hash> trên src/href của CSS/JS nội bộ — server/lib/asset-version.js gắn vào mỗi
+   lần trả trang để phá cache Cloudflare; bản gốc không có. Chỉ bỏ ĐÚNG phần ?v= đó,
+   và chỉ trên link js/... hoặc css/...: đổi tên file vẫn bị bắt (selftest kiểm). */
+const ASSET_VERSION_RE = /^((?:js|css)\/[^"?#]+\.(?:js|css))\?v=[^"#]*$/;
+function stripAssetVersion(attr, val) {
+  if (val === null || (attr !== 'src' && attr !== 'href')) return val;
+  return val.replace(ASSET_VERSION_RE, '$1');
+}
+
 function tokenize(html) {
   const tags = [], comments = [];
   const re = /<!--([\s\S]*?)-->|<(\/?)([a-zA-Z][\w:-]*)((?:"[^"]*"|'[^']*'|[^>"'])*?)(\/?)>/g;
@@ -80,7 +89,8 @@ function tokenize(html) {
     let a;
     while ((a = ar.exec(m[4])) !== null) {
       if (IGNORED_ATTRS.has(a[1].toLowerCase())) continue;
-      const val = a[3] !== undefined ? a[3] : a[4] !== undefined ? a[4] : a[5] !== undefined ? a[5] : null;
+      const raw = a[3] !== undefined ? a[3] : a[4] !== undefined ? a[4] : a[5] !== undefined ? a[5] : null;
+      const val = stripAssetVersion(a[1].toLowerCase(), raw);
       attrs.push(a[1].toLowerCase() + (val === null ? '' : '="' + val.replace(/\s+/g, ' ').trim() + '"'));
     }
     attrs.sort();
@@ -251,7 +261,18 @@ function selftest() {
   const sriOk = sriGood.diffs === 0 && sriGood.known === 1 && sriBad.diffs > 0;
   console.log('  ' + (sriGood.diffs === 0 ? 'OK      ' : 'SAI     ') + '  SRI dung hash -> ' + sriGood.diffs + ' khac biet, ' + sriGood.known + ' da duyet');
   console.log('  ' + (sriBad.diffs > 0 ? 'BAT DUOC' : 'LOT LUOI') + '  SRI sai 1 ky tu hash (' + sriBad.diffs + ' khac biet)');
-  const pass = ok === cases.length && same.diffs === 0 && nonceOk && sriOk;
+  /* ?v= (asset-version.js): thêm vào link nội bộ thì PHẢI bỏ qua; nhưng đổi tên file đi
+     kèm ?v= hay gắn ?v= vào link CDN thì PHẢI bị bắt — chỉ nuốt đúng phần phiên bản. */
+  const vBase = base.replace('<title>', '<script src="js/a.js"></script><title>');
+  const vOnly = compare(vBase, vBase.replace('js/a.js', 'js/a.js?v=0123abcdef'), 'v');
+  const vRenamed = compare(vBase, vBase.replace('js/a.js', 'js/b.js?v=0123abcdef'), 'v-doi-ten');
+  const vCdn = compare(vBase.replace('js/a.js', 'https://cdn.x/a.js'),
+    vBase.replace('js/a.js', 'https://cdn.x/a.js?v=0123abcdef'), 'v-cdn');
+  const vOk = vOnly.diffs === 0 && vRenamed.diffs > 0 && vCdn.diffs > 0;
+  console.log('  ' + (vOnly.diffs === 0 ? 'OK      ' : 'SAI     ') + '  chi them ?v= -> ' + vOnly.diffs + ' khac biet (phai la 0)');
+  console.log('  ' + (vRenamed.diffs > 0 ? 'BAT DUOC' : 'LOT LUOI') + '  ?v= + doi ten file (' + vRenamed.diffs + ' khac biet)');
+  console.log('  ' + (vCdn.diffs > 0 ? 'BAT DUOC' : 'LOT LUOI') + '  ?v= tren link CDN (' + vCdn.diffs + ' khac biet)');
+  const pass = ok === cases.length && same.diffs === 0 && nonceOk && sriOk && vOk;
   console.log(pass ? 'NEGATIVE CONTROL: DAT — phep kiem co gia tri.' : 'NEGATIVE CONTROL: HONG — dung tin ket qua.');
   process.exit(pass ? 0 : 1);
 }

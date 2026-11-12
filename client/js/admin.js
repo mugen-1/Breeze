@@ -80,7 +80,6 @@
                 .then(function (r) { if (!r.ok) throw new Error('me ' + r.status); return r.json(); })
                 .then(function (me) {
                     if (me.role !== 'admin') { showState('state-forbidden'); return; }
-                    $('who').textContent = me.email || me.display_name || me.firebase_uid;
                     showState('panel');
                     return loadCategories().then(loadProducts).then(function () { return loadOrders(1); })
                         .then(loadDashboard).then(function () { return loadUsers(1); })
@@ -398,7 +397,7 @@
                 return '<tr data-size-row="' + v.id + '"><td>' + esc(v.size) + '</td>' +
                     '<td><input type="number" min="0" max="2147483647" step="1" data-size-stock="' + v.id + '" value="' + v.stock + '" aria-label="' + esc(tr('adm.sizeStock') + ' ' + v.size) + '"></td>' +
                     '<td><input type="checkbox" data-size-active="' + v.id + '"' + (v.is_active ? ' checked' : '') + ' aria-label="' + esc(tr('adm.sizeActive') + ' ' + v.size) + '"></td>' +
-                    '<td><input type="number" min="0" step="1" data-size-allocation="' + v.id + '" value="0" aria-label="' + esc(tr('adm.sizeAllocate') + ' ' + v.size) + '"></td>' +
+                    '<td>' + allocationInput(v, 'size', !!base && base.stock > 0) + '</td>' +
                     '<td><button type="button" class="adm-btn ghost small" data-size-save="' + v.id + '">' + tr('com.save') + '</button></td></tr>';
             }).join('');
         }
@@ -408,7 +407,10 @@
             $('sizes-error').textContent = '';
             return api('/api/admin/products/' + _sizesProduct.id + '/' + suffix, { method: method, body: JSON.stringify(body) })
                 .then(function (r) { return r.json().then(function (data) { if (!r.ok) throw new Error(data.message || tr('com.netErr')); return data; }); })
-                .then(function (data) { renderSizesAdmin(data); loadProducts(); })
+                .then(function (data) {
+                    renderSizesAdmin(data); loadProducts();
+                    if (suffix === 'size-allocation') toast(tr('adm.allocationSuccess'));
+                })
                 .catch(function (e) { $('sizes-error').textContent = e.message; return loadSizes(); })
                 .finally(function () { _sizesBusy = false; });
         }
@@ -419,13 +421,33 @@
             }) : [$('sizes-add').value];
             return mutateSizes('sizes', 'POST', { sizes: sizes });
         }
+        // Persisted quantities remain visible, but only explicitly edited fields
+        // are commands. An untouched last transfer must never be sent again.
+        function allocationInput(v, kind, enabled) {
+            return '<input type="number" min="0" max="2147483647" step="1" data-' + kind + '-allocation="' + v.id +
+                '" value="' + (v.last_allocation_quantity || 0) + '"' + (enabled ? '' : ' disabled') +
+                ' aria-label="' + esc(tr('adm.sizeAllocate') + ' ' + (v.size || v.sku)) +
+                '" title="' + esc(tr('adm.allocationLastHint')) + '">';
+        }
+        function markAllocationEdited(e) {
+            var input = e.target;
+            if (input && !input.disabled && (input.getAttribute('data-size-allocation') !== null ||
+                input.getAttribute('data-color-allocation') !== null)) {
+                input.setAttribute('data-allocation-edited', 'true');
+            }
+        }
         function allocateSizes() {
             if (!_sizesData || _sizesBusy) return;
             var list = [];
             $('sizes-body').querySelectorAll('[data-size-allocation]').forEach(function (input) {
+                if (input.disabled || input.getAttribute('data-allocation-edited') !== 'true') return;
                 var qty = Number(input.value);
                 if (qty !== 0) list.push({ variant_id: Number(input.getAttribute('data-size-allocation')), quantity: qty });
             });
+            if (!list.length) { $('sizes-error').textContent = tr('adm.allocationNoChanges'); return; }
+            if (list.some(function (x) { return !Number.isInteger(x.quantity) || x.quantity < 1 || x.quantity > 2147483647; })) {
+                $('sizes-error').textContent = tr('adm.allocationInvalid'); return;
+            }
             var total = list.reduce(function (sum, x) { return sum + x.quantity; }, 0);
             return confirmDialog(tr('adm.sizeConfirm', { total: total })).then(function (ok) {
                 if (ok) return mutateSizes('size-allocation', 'POST', { allocations: list });
@@ -487,7 +509,7 @@
                         '<td><input type="number" min="0" step="1" data-color-stock="' + v.id + '" value="' + v.stock + '"></td>' +
                         '<td><input type="checkbox" data-color-variant-active="' + v.id + '"' + (v.is_active ? ' checked' : '') + '></td>' +
                         '<td>' + (source ? source.stock : '—') + '</td>' +
-                        '<td><input type="number" min="0" step="1" data-color-allocation="' + v.id + '" value="0"' + (source && source.stock ? '' : ' disabled') + '></td>' +
+                        '<td>' + allocationInput(v, 'color', !!source && source.stock > 0) + '</td>' +
                         '<td><button type="button" class="adm-btn ghost small" data-color-variant-save="' + v.id + '">' + tr('com.save') + '</button></td></tr>';
                 }).join('');
                 var images = c.images.map(function (im) {
@@ -518,7 +540,10 @@
             return api('/api/admin/products/' + _colorsProduct.id + '/' + suffix,
                 { method: method, body: JSON.stringify(body || {}) })
                 .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.message); return d; }); })
-                .then(function (d) { renderColorsAdmin(d); loadProducts(); })
+                .then(function (d) {
+                    renderColorsAdmin(d); loadProducts();
+                    if (suffix === 'color-allocation') toast(tr('adm.allocationSuccess'));
+                })
                 .catch(function (e) { $('colors-error').textContent = e.message || tr('com.netErr'); return loadColors(); })
                 .finally(function () { _colorsBusy = false; });
         }
@@ -555,14 +580,19 @@
             if (!_colorsData || _colorsBusy) return;
             var list = [];
             $('colors-body').querySelectorAll('[data-color-allocation]').forEach(function (input) {
+                if (input.disabled || input.getAttribute('data-allocation-edited') !== 'true') return;
                 var quantity = Number(input.value), id = Number(input.getAttribute('data-color-allocation'));
-                if (!quantity) return;
+                if (quantity === 0) return;
                 var target = _colorsData.variants.find(function (v) { return v.id === id; });
                 var source = _colorsData.variants.find(function (v) { return v.color == null &&
                     (target.size == null ? v.is_base : v.size === target.size); });
                 if (source) list.push({ source_variant_id: source.id, target_variant_id: id, quantity: quantity,
                     expected_source_stock: source.stock, expected_target_stock: target.stock });
             });
+            if (!list.length) { $('colors-error').textContent = tr('adm.allocationNoChanges'); return; }
+            if (list.some(function (x) { return !Number.isInteger(x.quantity) || x.quantity < 1 || x.quantity > 2147483647; })) {
+                $('colors-error').textContent = tr('adm.allocationInvalid'); return;
+            }
             var total = list.reduce(function (n, x) { return n + x.quantity; }, 0);
             if (!total) return;
             return confirmDialog(tr('adm.colorConfirm', { total: total })).then(function (ok) {
@@ -1816,6 +1846,7 @@
             $('sizes-create-all').addEventListener('click', function () { createSizes(true); });
             $('sizes-allocate').addEventListener('click', allocateSizes);
             $('sizes-body').addEventListener('click', saveSize);
+            $('sizes-body').addEventListener('input', markAllocationEdited);
             $('sizes-modal').addEventListener('click', function (e) { if (e.target === $('sizes-modal')) closeSizes(); });
             $('sizes-modal').addEventListener('keydown', function (e) {
                 if (e.key === 'Escape') { e.preventDefault(); closeSizes(); return; }
@@ -1835,6 +1866,7 @@
             });
             $('colors-allocate').addEventListener('click', allocateColors);
             $('colors-body').addEventListener('click', colorBodyClick);
+            $('colors-body').addEventListener('input', markAllocationEdited);
             $('colors-modal').addEventListener('click', function (e) { if (e.target === $('colors-modal')) closeColors(); });
             $('colors-modal').addEventListener('keydown', function (e) {
                 if (e.key === 'Escape') { e.preventDefault(); closeColors(); return; }

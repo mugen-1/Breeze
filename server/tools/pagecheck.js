@@ -113,7 +113,8 @@ function allMatches(re, s) {
   });
 
   /* 4. thu tu script + 3 rang buoc cung ---------------------------------------- */
-  const scripts = allMatches(/<script[^>]*\ssrc="([^"]+)"/g, html).map((s) => s.split('/').pop());
+  // Bỏ ?v= (server/lib/asset-version.js) trước khi lấy tên file.
+  const scripts = allMatches(/<script[^>]*\ssrc="([^"]+)"/g, html).map((s) => s.split('?')[0].split('/').pop());
   const groups = scripts.map(groupOf);
   /* index.html co y dat page-index-slider.js (nhom 6) giua trang -> bo qua phan tu dau
      khi kiem tinh don dieu, dung nhu ngoai le da chot trong CLAUDE.md. */
@@ -140,7 +141,7 @@ function allMatches(re, s) {
   /* 5. partial dung chung phai nam SAU markup (7 file doc DOM luc parse) -------- */
   ['account-menu.js', 'drawer-menu.js'].forEach((f) => {
     if (!has(f)) return;
-    const tagPos = html.indexOf('src="js/' + f + '"');
+    const tagPos = html.search(new RegExp('src="js/' + f.replace(/\./g, '\\.') + '(\\?v=[^"]*)?"'));
     const lastMarkup = Math.max(html.lastIndexOf('</footer>'), html.lastIndexOf('</main>'), html.lastIndexOf('</div>'));
     if (tagPos < lastMarkup) fails.push(f + ' nam TRUOC markup -- no doc DOM ngay luc parse');
   });

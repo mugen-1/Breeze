@@ -7,15 +7,15 @@ const product = { id: 5, name_vi: 'Áo', slug: 'ao-nam', price: 100, stock: 10, 
   size_kind: 'apparel', size_configured: true, is_active: true };
 const sizeData = { product, allowed_sizes: ['S','M','L','XL'], variants: [
   { id: 50, size: null, is_base: true, stock: 5, is_active: true },
-  { id: 51, size: 'M', is_base: false, stock: 3, is_active: true },
-  { id: 52, size: 'L', is_base: false, stock: 2, is_active: false },
+  { id: 51, size: 'M', is_base: false, stock: 3, is_active: true, last_allocation_quantity: 2 },
+  { id: 52, size: 'L', is_base: false, stock: 2, is_active: false, last_allocation_quantity: 7 },
 ] };
 const colorData = { product, allowed_sizes:['S','M','L','XL'], variants:[
   { id:50, size:null, color:null, is_base:true, stock:5, is_active:true },
   { id:51, size:'M', color:null, is_base:false, stock:3, is_active:true },
   { id:61, size:'M', color:'den', is_base:false, stock:0, is_active:true, sku:'BR-P5-DEN-M' },
 ], colors:[{ id:7, color_key:'den', label:'Đen', swatch_hex:'#000000', is_active:true,
-  variants:[{ id:61, size:'M', color:'den', stock:0, is_active:true, sku:'BR-P5-DEN-M' }], images:[] }] };
+  variants:[{ id:61, size:'M', color:'den', stock:0, is_active:true, sku:'BR-P5-DEN-M', last_allocation_quantity:1 }], images:[] }] };
 const calls = [];
 const buttons = {};
 for (const kind of ['edit','sizes','colors','inventory']) {
@@ -35,8 +35,22 @@ const r = load('admin.js', { doc, deps: ['routes.js','utils-format.js'],
       else if (url === '/api/categories') data = [];
       else if (url === '/api/admin/products') data = { products:[product] };
       else if (url.includes('inventory-movements')) data = { movements:[{ id:1, size:'M', movement_type:'VARIANT_OPENING', quantity_delta:0, stock_before:3, stock_after:3 }], total_pages:1 };
-      else if (url.includes('/colors') || url.includes('/color-allocation')) data = colorData;
-      else if (url.includes('/sizes') || url.includes('/size-allocation')) data = sizeData;
+      else if (url.includes('/colors') || url.includes('/color-allocation')) {
+        data = colorData;
+        if (url.endsWith('/color-allocation')) for (const item of JSON.parse(options.body).allocations) {
+          const v = colorData.colors[0].variants.find(v => v.id === item.target_variant_id);
+          v.last_allocation_quantity = item.quantity;
+        }
+      }
+      else if (url.includes('/sizes') || url.includes('/size-allocation')) {
+        data = sizeData;
+        if (url.endsWith('/size-allocation')) for (const item of JSON.parse(options.body).allocations) {
+          const v = sizeData.variants.find(v => v.id === item.variant_id);
+          v.stock += item.quantity; v.last_allocation_quantity = item.quantity;
+          sizeData.variants[0].stock -= item.quantity;
+        }
+        if (url.endsWith('/sizes/51')) sizeData.variants[1].stock = JSON.parse(options.body).stock;
+      }
       return Promise.resolve({ ok:true, status:200, json:async () => data });
     }
   } }
@@ -57,6 +71,8 @@ const g = id => doc.getElementById(id);
   buttons['[data-sizes]'][0].fire('click'); await wait();
   check('size management opens existing-style modal', g('sizes-modal').classList.contains('open'));
   check('admin sees inactive size stock', g('sizes-body').innerHTML.includes('data-size-stock="52" value="2"'));
+  check('last BASE transfer restored independently of current stock', g('sizes-body').innerHTML.includes('data-size-allocation="51" value="2"'));
+  check('inactive size also retains its last transfer', g('sizes-body').innerHTML.includes('data-size-allocation="52" value="7"'));
   check('add select contains only missing whitelist sizes', /value="S"/.test(g('sizes-add').innerHTML) && /value="XL"/.test(g('sizes-add').innerHTML) && !/value="M"/.test(g('sizes-add').innerHTML));
   g('sizes-create-all').fire('click'); await wait();
   eq('create uses missing whitelist, no stock guessing', calls.find(c => c.url.endsWith('/sizes') && c.options).body, { sizes:['S','XL'] });
@@ -68,16 +84,41 @@ const g = id => doc.getElementById(id);
   g('sizes-body').fire('click',{ target:save }); await wait();
   eq('admin size save includes SQL snapshot for stale check', calls.find(c => c.url.endsWith('/sizes/51')).body,
     { stock:4,expected_stock:3,is_active:true,reason:'Nhập thêm' });
+  check('saving current stock retains last transfer', g('sizes-body').innerHTML.includes('data-size-stock="51" value="4"') &&
+    g('sizes-body').innerHTML.includes('data-size-allocation="51" value="2"'));
   const allocation = El('input'); allocation.value='2'; allocation.setAttribute('data-size-allocation','51');
-  g('sizes-body').querySelectorAll = () => [allocation];
+  const untouched = El('input'); untouched.value='7'; untouched.setAttribute('data-size-allocation','52');
+  g('sizes-body').querySelectorAll = () => [allocation, untouched];
+  g('sizes-allocate').fire('click'); await wait();
+  check('retained numbers alone do not open confirmation', !g('confirm-modal').classList.contains('open'));
+  check('untouched previous transfer cannot be replayed', !calls.some(c => c.url.endsWith('/size-allocation')));
+  g('sizes-body').fire('input', { target: allocation });
   g('sizes-allocate').fire('click');
   check('allocation waits for confirmation', g('confirm-modal').classList.contains('open'));
   check('no allocation API before confirmation', !calls.some(c => c.url.endsWith('/size-allocation')));
   g('confirm-ok').fire('click'); await wait();
   eq('allocation sends variant and delta only', calls.find(c => c.url.endsWith('/size-allocation')).body,
     { allocations:[{variant_id:51,quantity:2}] });
+  check('allocation uses current stock, not previous snapshot', g('sizes-body').innerHTML.includes('data-size-stock="51" value="6"'));
+  check('saved transfer remains displayed after successful allocation', g('sizes-body').innerHTML.includes('data-size-allocation="51" value="2"'));
+  check('render clears edited markers after success', !g('sizes-body').innerHTML.includes('data-allocation-edited'));
+  allocation.removeAttribute('data-allocation-edited');
+  const previousCalls = calls.filter(c => c.url.endsWith('/size-allocation')).length;
+  g('sizes-allocate').fire('click'); await wait();
+  eq('clicking allocate again without editing performs no transfer', calls.filter(c => c.url.endsWith('/size-allocation')).length, previousCalls);
+  allocation.value='1.5'; g('sizes-body').fire('input', {target:allocation});
+  g('sizes-allocate').fire('click'); await wait();
+  check('fractional quantity rejected before confirmation', !g('confirm-modal').classList.contains('open'));
+  allocation.value='3'; g('sizes-body').fire('input', {target:allocation});
+  g('sizes-allocate').fire('click'); g('confirm-ok').fire('click'); await wait();
+  check('latest transfer replaces rather than adds to displayed quantity', g('sizes-body').innerHTML.includes('data-size-allocation="51" value="3"'));
+  check('exhausted BASE still displays last transfer with disabled input', g('sizes-body').innerHTML.includes('data-size-allocation="51" value="3" disabled'));
   g('sizes-close').fire('click');
   check('close restores focus', buttons['[data-sizes]'][0]._focused);
+  buttons['[data-sizes]'][0].fire('click'); await wait();
+  check('closing and reopening retains database transfer and stock', g('sizes-body').innerHTML.includes('data-size-allocation="51" value="3"') &&
+    g('sizes-body').innerHTML.includes('data-size-stock="51" value="9"'));
+  g('sizes-close').fire('click');
   buttons['[data-inventory]'][0].fire('click'); await wait();
   check('inventory renders size metadata', g('inventory-body').innerHTML.includes('pd.thSize: M'));
   check('inventory uses opening i18n mapping', g('inventory-body').innerHTML.includes('adm.inv.VARIANT_OPENING'));
@@ -85,6 +126,7 @@ const g = id => doc.getElementById(id);
   check('color management opens existing modal style', g('colors-modal').classList.contains('open'));
   check('admin color row shows exact SKU and source stock', g('colors-body').innerHTML.includes('BR-P5-DEN-M') &&
     g('colors-body').innerHTML.includes('data-color-allocation="61"'));
+  check('color rows restore last source transfer', g('colors-body').innerHTML.includes('data-color-allocation="61" value="1"'));
   check('admin warns missing color images', g('colors-body').innerHTML.includes('adm.noColorImages'));
   g('colors-name').value='Trắng'; g('colors-hex').value='#FFFFFF';
   g('colors-create').fire('click'); await wait();
@@ -92,11 +134,27 @@ const g = id => doc.getElementById(id);
     { label:'Trắng', swatch_hex:'#FFFFFF' });
   const colorAllocation=El('input'); colorAllocation.value='2'; colorAllocation.setAttribute('data-color-allocation','61');
   g('colors-body').querySelectorAll=()=>[colorAllocation];
+  g('colors-allocate').fire('click'); await wait();
+  check('color saved quantity does not replay without editing', !calls.some(c => c.url.endsWith('/color-allocation')));
+  g('colors-body').fire('input', {target:colorAllocation});
   g('colors-allocate').fire('click');
   check('color allocation waits for confirmation', g('confirm-modal').classList.contains('open'));
   g('confirm-ok').fire('click'); await wait();
   eq('color allocation carries exact source/target and SQL snapshots', calls.find(c => c.url.endsWith('/color-allocation')).body,
     { allocations:[{source_variant_id:51,target_variant_id:61,quantity:2,expected_source_stock:3,expected_target_stock:0}] });
+  check('color successful allocation restores latest quantity', g('colors-body').innerHTML.includes('data-color-allocation="61" value="2"'));
   g('colors-close').fire('click');
   check('color modal returns focus', buttons['[data-colors]'][0]._focused);
+  buttons['[data-colors]'][0].fire('click'); await wait();
+  check('color latest transfer survives reopening', g('colors-body').innerHTML.includes('data-color-allocation="61" value="2"'));
+
+  // A fresh JS context models closing the browser tab: no in-memory draft/cache survives.
+  const freshDoc = makeDoc();
+  freshDoc.getElementById('prod-body').querySelectorAll = s => buttons[s] || [];
+  load('admin.js', {doc:freshDoc, deps:['routes.js','utils-format.js'],
+    globals:{setTimeout:()=>0,clearTimeout(){},fetch:async()=>({json:async()=>[]})},
+    window:{__i18n:r.win.__i18n,AuthHelper:r.win.AuthHelper}});
+  freshDoc.fire('DOMContentLoaded'); auth({uid:'admin'}); await wait(50);
+  buttons['[data-sizes]'][0].fire('click'); await wait();
+  check('new browser tab loads last transfer from API', freshDoc.getElementById('sizes-body').innerHTML.includes('data-size-allocation="51" value="3"'));
 })();

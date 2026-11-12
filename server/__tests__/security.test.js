@@ -192,6 +192,15 @@ test('SQL admin is allowed into admin routes', async () => {
   };
   assert.equal((await call('/api/admin/users')).status, 200);
 });
+
+test('existing SQL admin retains role even when Firebase email is unverified', async () => {
+  process.env.ADMIN_EMAILS = 'a@example.test';
+  state.user.role = 'admin';
+  state.decoded.email_verified = false;
+  const r = await call('/api/me');
+  assert.equal(r.status, 200);
+  assert.equal(r.body.role, 'admin');
+});
 test('admin delete always archives even a product with no order references', async () => {
   state.user.role = 'admin';
   let archived = false;

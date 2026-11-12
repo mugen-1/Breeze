@@ -34,6 +34,10 @@ const adminRouter = require('./routes/admin');
 const supportRouter = require('./routes/support');
 
 const app = express();
+// Chỉ tin proxy chạy trên loopback (cloudflared cùng máy). Nhờ vậy req.ip là IP thật
+// của khách (lấy từ X-Forwarded-For) cho express-rate-limit, và req.secure = true khi
+// khách truy cập bằng https. Request đến thẳng từ IP khác thì X-Forwarded-For bị bỏ qua.
+app.set('trust proxy', 'loopback');
 const PORT = Number(process.env.PORT) || 3000;
 
 // --- EJS view engine ---------------------------------------------------------
@@ -166,6 +170,9 @@ app.use((req, res, next) => {
 // mọi đường dẫn có một đoạn bắt đầu bằng '.' (/.env, /.git/config, /.vscode/...) đều bị
 // từ chối, kể cả khi dấu chấm nằm ở thư mục giữa. Với fallthrough mặc định, 403 đó rơi
 // xuống 404 chung của Express — client không phân biệt được "bị chặn" hay "không có".
+// 3 trang .html tĩnh (admin, checkout, invoice) đi qua đây trước để được gắn ?v= vào
+// link CSS/JS — xem routes/static-pages.js. Đứng SAU bộ chặn file nội bộ ở trên.
+app.use(require('./routes/static-pages')(CLIENT_ROOT));
 app.use(express.static(CLIENT_ROOT, { dotfiles: 'deny' }));
 
 // --- Xử lý lỗi tập trung ------------------------------------------------------
@@ -184,10 +191,11 @@ app.use((err, req, res, next) => {
 });
 
 let supportCleanup;
-const httpServer = app.listen(PORT, () => {
+const HOST = process.env.HOST || '127.0.0.1';
+const httpServer = app.listen(PORT, HOST, () => {
   supportCleanup = require('./lib/support-session').startCleanup(require('./db').getPool);
-  console.log(`[server] Breeze Shop API listening on http://localhost:${PORT}`);
-  console.log(`[server] Health check: http://localhost:${PORT}/api/health`);
-  console.log(`[server] Frontend:     http://localhost:${PORT}/index.html`);
+  console.log(`[server] Breeze Shop API listening on http://${HOST}:${PORT}`);
+  console.log(`[server] Health check: http://${HOST}:${PORT}/api/health`);
+  console.log(`[server] Frontend:     http://${HOST}:${PORT}/index.html`);
 });
 httpServer.on('close', () => { if (supportCleanup) supportCleanup.stop(); require('./middleware/support-stream').stream.closeAll(); });

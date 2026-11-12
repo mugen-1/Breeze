@@ -50,7 +50,11 @@ async function makeProduct(category, slug) {
 async function cart(uid, pid, vid, quantity = 1) {
   return call('POST', 'cart', uid, { product_id: pid, variant_id: vid, quantity });
 }
-async function checkout(uid) { return call('POST', 'orders', uid, { paymentMethod: 'cod', size: 'FAKE', stock: 999 }); }
+async function checkout(uid) { return call('POST', 'orders', uid, {
+  paymentMethod: 'cod', size: 'FAKE', stock: 999,
+  shipping_name: 'Disposable size test', shipping_phone: '0901234567', shipping_address: '1 Test',
+  shipping_ward: 'Test ward', shipping_district: 'Test district', shipping_city: 'Test city', shipping_method: 'STANDARD',
+}); }
 async function main() {
   pool = await getPool();
   server = app.listen(0, '127.0.0.1');
@@ -84,6 +88,7 @@ async function main() {
     assert.equal(s.product.stock, 10);
     assert.equal(variant(s, null).stock, 10);
     assert.ok(s.variants.filter(v => !v.is_base).every(v => v.stock === 0));
+    assert.ok(s.variants.every(v => v.last_allocation_quantity === 0), 'new products have no previous transfers');
     const m = variant(s, 'M').id, l = variant(s, 'L').id, baseId = variant(s, null).id;
     await assert.rejects(pool.request().input('pid', sql.Int, shirt)
       .input('sku', sql.VarChar(80), tag + '-duplicate')
@@ -104,12 +109,23 @@ async function main() {
     assert.equal((await change(shirt, 'size-allocation', { allocations: [{ variant_id: m, quantity: 5 }] }, 'POST', 2147483000)).status, 500);
     assert.equal(variant(await state(shirt), null).stock, 10, 'failed transfer ledger rolls back BASE');
     assert.equal(variant(await state(shirt), 'M').stock, 0, 'failed transfer rolls back target');
+    assert.equal(variant(await state(shirt), 'M').last_allocation_quantity, 0, 'failed transfer is not remembered');
     assert.equal((await change(shirt, 'size-allocation', { allocations: [{ variant_id: m, quantity: 5 }, { variant_id: l, quantity: 3 }] })).status, 200);
     s = await state(shirt);
     assert.deepEqual([variant(s, null).stock, variant(s, 'M').stock, variant(s, 'L').stock, s.product.stock], [2,5,3,10]);
+    assert.deepEqual([variant(s, 'M').last_allocation_quantity, variant(s, 'L').last_allocation_quantity], [5,3]);
     assert.equal(variant(s, null).is_active, true, 'BASE with unallocated stock remains active');
     assert.equal((await change(shirt, 'size-allocation', { allocations: [{ variant_id: l, quantity: 2 }] })).status, 200);
     assert.equal((await state(shirt)).product.stock, 10);
+    // Two transfers with equal timestamps must still resolve to the newer ledger id.
+    await pool.request().input('pid', sql.Int, shirt).input('vid', sql.Int, l).query(`
+      UPDATE dbo.inventory_movements SET created_at = (
+        SELECT MAX(created_at) FROM dbo.inventory_movements
+        WHERE product_id = @pid AND variant_id = @vid AND movement_type = 'VARIANT_TRANSFER_IN')
+      WHERE product_id = @pid AND variant_id = @vid AND movement_type = 'VARIANT_TRANSFER_IN';`);
+    s = await state(shirt);
+    assert.equal(variant(s, 'L').last_allocation_quantity, 2, 'latest quantity, not cumulative 5');
+    assert.equal(variant(s, null).stock, 0, 'last quantity remains readable when BASE is exhausted');
     assert.equal((await call('PUT', 'admin/products/' + shirt, admin, { stock: 50, stock_reason: 'bad path' })).status, 409);
     assert.equal((await cart(u1, shirt, m, 6)).status, 409);
     assert.equal((await cart(u1, shirt, m, 2)).status, 200);
@@ -121,6 +137,7 @@ async function main() {
     const order = await checkout(u1);
     assert.equal(order.status, 201, JSON.stringify(order.body));
     assert.equal(variant(await state(shirt), 'M').stock, 3);
+    assert.equal(variant(await state(shirt), 'M').last_allocation_quantity, 5, 'sale does not replace last BASE transfer');
     const detail = (await call('GET', 'orders/' + order.body.order.id, u1)).body;
     const item = (detail.order || detail).items[0];
     assert.equal(item.variant_id, m); assert.equal(item.size_snapshot, 'M');
@@ -130,6 +147,10 @@ async function main() {
     console.log('Classification, whitelist, identity, zero stock, rollback, partial/full allocation, cart, size snapshot, double cancel: PASS');
 
     await setStock(shirt, 'M', 1); await setStock(shirt, 'L', 2);
+    s = await state(shirt);
+    assert.equal(variant(s, 'M').stock, 1, 'save takes the current entered stock');
+    assert.equal(variant(s, 'M').last_allocation_quantity, 5, 'manual save preserves transfer quantity');
+    assert.equal(variant(s, 'L').last_allocation_quantity, 2, 'other size history remains independent');
     assert.equal((await cart(u1, shirt, m)).status, 200);
     assert.equal((await cart(u2, shirt, m)).status, 200);
     const race = await Promise.all([checkout(u1), checkout(u2)]);
@@ -156,6 +177,7 @@ async function main() {
     const stale = await change(shirt, 'sizes/' + l, { stock: 9, expected_stock: 2, reason: 'stale' }, 'PUT');
     assert.equal(stale.status, 409); assert.equal(stale.body.error, 'STALE_STOCK');
     await setStock(shirt, 'M', 1, false);
+    assert.equal(variant(await state(shirt), 'M').last_allocation_quantity, 5, 'hidden size preserves last quantity');
     assert.equal((await cart(u1, shirt, m)).status, 404);
     publicProduct = (await call('GET', 'products/' + shirt, u1)).body;
     assert.ok(!publicProduct.variants.some(v => v.id === m));

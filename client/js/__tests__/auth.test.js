@@ -1,6 +1,6 @@
 /* auth.js — (1) đăng ký gửi email xác minh rồi mới lưu tên hiển thị; gửi lỗi không được
    chặn phần còn lại. (2) link đăng xuất dựng bằng DOM API: displayName là chữ thuần,
-   không bao giờ thành HTML (trước đây ghép thẳng vào innerHTML -> XSS). */
+   không bao giờ thành HTML. (3) chỉ điều hướng login khi API xác nhận được role. */
 const { check, eq } = require('./helpers/assert');
 const { load, wait } = require('./helpers/sandbox');
 const { El } = require('./helpers/dom');
@@ -28,23 +28,32 @@ function setup(opts) {
   };
   const r = load('auth.js', {
     deps: ['routes.js', 'utils-i18n.js'],
-    window: { location: { href: '', search: '' },
+    window: { location: { href: '', search: opts.search || '' },
       BreezeSupportSession: opts.prepare ? { prepare(uid) { steps.push('prepare:' + uid); return opts.prepare(); } } : undefined },
     globals: {
       fetch: function (url, init) {
         steps.push('fetch:' + url);
         eq('login: gui token Firebase toi API', init.headers.Authorization, 'Bearer id-token');
-        return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ role: 'customer' }); } });
+        if (opts.networkError) return Promise.reject(new Error('network error'));
+        return Promise.resolve({
+          status: opts.status == null ? 200 : opts.status,
+          headers: { get: name => name.toLowerCase() === 'retry-after' ? opts.retryAfter || null : null },
+          ok: opts.status == null || opts.status === 200,
+          json: function () {
+            return opts.invalidJson ? Promise.reject(new Error('invalid json'))
+              : Promise.resolve(Object.prototype.hasOwnProperty.call(opts, 'me') ? opts.me : { role: 'customer' });
+          },
+        });
       },
       setTimeout: function (fn, ms) { timers.push(ms); },
       localStorage: { getItem: function () { return null; }, setItem: function () {},
                       removeItem: function () { steps.push('removeItem'); } },
       auth: {
+        onAuthStateChanged: function (fn) { authCb = fn; },
         signInWithEmailAndPassword: function (email, pw) {
           steps.push('signIn:' + email);
-          return Promise.resolve({ user: user });
+          return opts.loginError ? Promise.reject({ code: opts.loginError }) : Promise.resolve({ user: user });
         },
-        onAuthStateChanged: function (fn) { authCb = fn; },
         createUserWithEmailAndPassword: function (email, pw) {
           steps.push('create:' + email);
           return opts.create && opts.create !== 'ok'
@@ -98,6 +107,65 @@ console.log('auth.js');
   await wait();
   eq('email trung -> dung ngay, khong gui xac minh', r.steps, ['create:a@b.vn']);
   eq('email trung -> bao au.eInUse', r.byId('signup-msg').textContent, 'au.eInUse');
+
+  // Điều hướng chỉ sau khi API xác nhận role, không lấy từ email hay localStorage.
+  r = setup({ me: { role: 'admin' } });
+  r.login();
+  await wait();
+  eq('admin -> giao dien quan tri', r.win.location.href, 'admin.html');
+  eq('admin: dang nhap -> lay token -> kiem tra role', r.steps,
+     ['signIn:a@b.vn', 'getIdToken', 'fetch:/api/me']);
+
+  r = setup({ me: { role: 'customer' } });
+  r.login();
+  await wait();
+  eq('customer -> trang chu', r.win.location.href, 'index.html');
+
+  r = setup({ search: '?redirect=checkout', me: { role: 'customer' } });
+  r.login();
+  await wait();
+  eq('customer trong luong thanh toan -> checkout', r.win.location.href, 'checkout.html');
+  r = setup({ search: '?redirect=checkout', me: { role: 'admin' } });
+  r.login();
+  await wait();
+  eq('admin trong luong thanh toan -> giu form', r.win.location.href, '');
+  eq('admin khong duoc dat hang', r.byId('login-msg').textContent, 'au.errBadAccount');
+
+  for (const opts of [
+    { status: 401 }, { status: 401, search: '?redirect=checkout' },
+    { status: 500 }, { networkError: true }, { invalidJson: true },
+    { me: null }, { me: {} }, { me: { role: 'unknown' } },
+  ]) {
+    r = setup(opts);
+    r.login();
+    await wait();
+    eq('khong xac dinh duoc role -> khong chuyen sang user: ' + JSON.stringify(opts), r.win.location.href, '');
+    eq('khong xac dinh duoc role -> bao loi', r.byId('login-msg').textContent, 'au.errRoleCheck');
+  }
+  r = setup({ loginError: 'auth/invalid-credential' });
+  r.login();
+  await wait();
+  eq('sai mat khau -> giu loi Firebase', r.byId('login-msg').textContent, 'au.eBadCred');
+  eq('sai mat khau -> khong goi API', r.steps, ['signIn:a@b.vn']);
+  r = setup({ loginError: 'auth/invalid-login-credentials' });
+  r.login();
+  await wait();
+  eq('ma Firebase moi invalid-login-credentials -> cau tieng Viet, khong hien ma tho',
+    r.byId('login-msg').textContent, 'au.eBadCred');
+
+  for (const retryAfter of ['286', undefined, 'invalid']) {
+    r = setup({ status: 429, retryAfter }); r.login(); await wait();
+    eq('rate limited login stays on the form', r.win.location.href, '');
+    eq('429 is distinguished from role/network errors', r.byId('login-msg').textContent,
+      retryAfter === '286' ? 'au.errRateLimitWait' : 'au.errRateLimit');
+    eq('429 never signs out a valid Firebase session', r.steps.filter(s => s === 'signOut').length, 0);
+    eq('429 never automatically retries authentication', r.steps.filter(s => s.startsWith('fetch:')).length, 1);
+  }
+  const localized = load('i18n.js').win.__i18n;
+  for (const lang of ['vi', 'en']) {
+    localized.current = lang;
+    check('rate limit wait translates seconds in ' + lang, localized.t('au.errRateLimitWait', { seconds: 286 }).includes('286'));
+  }
 
   // Link đăng xuất: displayName độc hại chỉ là CHỮ
   r = setup({});

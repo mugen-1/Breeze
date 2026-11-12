@@ -52,7 +52,6 @@
                     <i class="fa fa-user" aria-hidden="true"></i>
                 </button>
                 <div class="adm-account-menu" id="adm-account-menu" role="menu" hidden>
-                    <div class="adm-account-email" id="who"></div>
                     <button type="button" class="adm-logout" id="btn-logout" data-i18n="com.signout" role="menuitem">Đăng xuất</button>
                 </div>
             </div>
@@ -628,6 +627,7 @@
             <h3 id="sizes-title" data-i18n="adm.manageSizes">Quản lý size</h3>
             <p id="sizes-summary"></p>
             <p class="hint" data-i18n="adm.sizeAllocationHint">Tạo size với tồn 0. Phân bổ từ BASE không làm đổi tổng tồn kho.</p>
+            <p class="hint" data-i18n="adm.allocationLastHint">Số lượng của lần chuyển gần nhất được giữ lại. Chỉnh ô để nhập số lượng chuyển thêm.</p>
             <p id="sizes-error" role="alert"></p>
             <div class="fld"><label for="sizes-add" data-i18n="pd.thSize">Size</label><select id="sizes-add"></select></div>
             <button type="button" class="adm-btn ghost small" id="sizes-create" data-i18n="adm.addSize">Thêm size</button>
@@ -659,6 +659,7 @@
             </div>
             <button type="button" class="adm-btn ghost small" id="colors-create" data-i18n="adm.addColor">Thêm màu</button>
             <p class="hint" data-i18n="adm.colorStockHint">Màu mới có tồn 0. Phân bổ từ BASE hoặc size nguồn; tổng tồn không đổi.</p>
+            <p class="hint" data-i18n="adm.allocationLastHint">Số lượng của lần chuyển gần nhất được giữ lại. Chỉnh ô để nhập số lượng chuyển thêm.</p>
             <div class="fld-row" id="colors-size-row" hidden>
                 <div class="fld"><label for="colors-size" data-i18n="pd.thSize">Size</label><select id="colors-size"></select></div>
                 <button type="button" class="adm-btn ghost small" id="colors-add-size" data-i18n="adm.addSize">Thêm size</button>

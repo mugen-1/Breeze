@@ -150,7 +150,8 @@ function row(name, ok, detail) {
   const NEED = { 'routes.js': 'BreezeRoutes', 'theme.js': 'BreezeTheme', 'i18n.js': '__i18n', 'utils-format.js': 'money' };
   let globalsOk = 0;
   for (const k of ALL_PAGES) {
-    const scripts = allMatches(/<script[^>]*\ssrc="([^"]+)"/g, pages[k].body).map((s) => s.split('/').pop());
+    // Bỏ ?v= (server/lib/asset-version.js) trước khi lấy tên file.
+    const scripts = allMatches(/<script[^>]*\ssrc="([^"]+)"/g, pages[k].body).map((s) => s.split('?')[0].split('/').pop());
     const missing = Object.keys(NEED).filter((f) => !scripts.includes(f));
     if (missing.length === 0) globalsOk++;
     else console.log('   ' + k + ' thieu: ' + missing.join(', '));
@@ -258,6 +259,35 @@ function row(name, ok, detail) {
   cspProblems.slice(0, 10).forEach((m) => console.log('   csp: ' + m));
   row('CSP enforce + nonce + 0 inline + allowlist', cspProblems.length === 0,
     cspProblems.length ? cspProblems.length + ' loi (xem tren)' : '21/21 trang sach');
+
+  /* 14. moi link CSS/JS noi bo mang ?v=<hash noi dung> dung ----------------- */
+  /* Cloudflare giu CSS/JS 4 gio; server/lib/asset-version.js gan ?v= de F5 la thay ban
+     moi. Tinh hash DOC LAP o day (sha256, 10 ky tu dau), khong dung lai code cua server:
+     thieu ?v= (trang moi/partial moi bi bo sot) hoac hash lech noi dung file -> DO. */
+  const crypto = require('crypto');
+  const verProblems = [];
+  let verCount = 0;
+  for (const k of ALL_PAGES) {
+    const refs = allMatches(/\s(?:src|href)="((?:js|css)\/[^"]+)"/g, pages[k].body);
+    for (const ref of refs) {
+      const [file, query] = ref.split('?');
+      if (!/\.(js|css)$/.test(file)) continue;
+      verCount++;
+      let want = null;
+      try {
+        want = crypto.createHash('sha256').update(fs.readFileSync(path.join(CLIENT, file))).digest('hex').slice(0, 10);
+      } catch (e) { /* file khong ton tai: hang muc 2 da bao */ }
+      if (!query || !/^v=[0-9a-f]{10}$/.test(query)) verProblems.push(k + ': ' + ref + ' thieu ?v=');
+      else if (want && query !== 'v=' + want) verProblems.push(k + ': ' + ref + ' lech hash (dung la ' + want + ')');
+    }
+    /* Link noi bo viet sai dang ('/js/..', './css/..', nhay don) thi asset-version.js
+       khong nhan ra -> khong co ?v= -> lai bi cache 4 gio. */
+    allMatches(/\s((?:src|href)=(?:"\.?\/|'\.?\/?)(?:js|css)\/[^"']*)/g, pages[k].body)
+      .forEach((bad) => verProblems.push(k + ': ' + bad + ' sai dang (phai la "js/.." / "css/..")'));
+  }
+  verProblems.slice(0, 10).forEach((m) => console.log('   ?v=: ' + m));
+  row('CSS/JS noi bo co ?v= dung hash', verProblems.length === 0,
+    verProblems.length ? verProblems.length + ' loi / ' + verCount + ' link' : verCount + ' link tren 21 trang');
 
   /* --- in bang ------------------------------------------------------------- */
   console.log('');

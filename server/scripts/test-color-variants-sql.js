@@ -49,7 +49,10 @@ async function makeProduct(category, slug) {
 async function cart(uid, pid, vid, quantity = 1) {
   return call('POST', 'cart', uid, { product_id: pid, variant_id: vid, quantity });
 }
-async function checkout(uid) { return call('POST', 'orders', uid, { paymentMethod: 'cod' }); }
+async function checkout(uid) { return call('POST', 'orders', uid, {
+  paymentMethod: 'cod', shipping_name: 'Disposable color test', shipping_phone: '0901234567', shipping_address: '1 Test',
+  shipping_ward: 'Test ward', shipping_district: 'Test district', shipping_city: 'Test city', shipping_method: 'STANDARD',
+}); }
 async function cancel(uid, id) { return call('POST', `orders/${id}/cancel`, uid, { reason: 'wrong_item' }); }
 async function dbReject(query, input, number, description) {
   await assert.rejects(pool.request().input('pid', sql.Int, input).query(query),
@@ -85,6 +88,8 @@ async function main() {
     assert.equal((await admin('POST', shirt, 'colors', { label: 'Xanh', swatch_hex: 'blue' })).status, 400);
     const blackM = variant(s, 'den', 'M').id, whiteM = variant(s, 'trang', 'M').id;
     const sourceM = variant(s, null, 'M').id;
+    assert.equal(variant(s, null, 'M').last_allocation_quantity, 5, 'size source retains BASE transfer');
+    assert.equal(variant(s, 'den', 'M').last_allocation_quantity, 0, 'new color has no transfer yet');
     assert.equal((await admin('POST', shirt, 'size-allocation', {
       allocations: [{ variant_id: blackM, quantity: 1 }],
     })).status, 400, 'size endpoint cannot transfer BASE directly to a color target');
@@ -122,6 +127,9 @@ async function main() {
     s = await state(shirt);
     assert.deepEqual([variant(s, null, 'M').stock, variant(s,'den','M').stock,
       variant(s,'trang','M').stock, s.product.stock], [0,3,2,10]);
+    assert.deepEqual([variant(s,'den','M').last_allocation_quantity, variant(s,'trang','M').last_allocation_quantity], [3,2]);
+    assert.equal(s.colors.find(c => c.color_key === 'den').variants[0].last_allocation_quantity, 3, 'nested color row includes persisted quantity');
+    assert.equal(variant(s,null,'M').last_allocation_quantity, 5, 'outgoing color transfer does not replace incoming BASE history');
     assert.equal((await admin('POST', shirt, 'color-allocation', { allocations: [
       { source_variant_id: sourceM, target_variant_id: blackM, quantity: 1,
         expected_source_stock: 5, expected_target_stock: 0 },
@@ -141,6 +149,7 @@ async function main() {
     const cancelRace = await Promise.all([cancel(u1, order.body.order.id), cancel(u1, order.body.order.id)]);
     assert.deepEqual(cancelRace.map(x => x.status).sort(), [200,409]);
     assert.equal(variant(await state(shirt), 'den', 'M').stock, 3);
+    assert.equal(variant(await state(shirt), 'den', 'M').last_allocation_quantity, 3, 'checkout and cancel retain latest allocation');
     const publicProduct = (await call('GET', `products/${shirt}`, u1)).body;
     assert.equal(publicProduct.stock, 5);
     assert.ok(publicProduct.variants.some(v => v.id === blackM));
@@ -158,6 +167,13 @@ async function main() {
     }] })).status, 200);
     assert.equal((await cart(u1, colorOnly, only.id)).status, 200);
     assert.equal((await checkout(u1)).status, 201);
+    s = await state(colorOnly);
+    assert.equal(variant(s, 'black').last_allocation_quantity, 1, 'color-only BASE transfer survives sale');
+    assert.equal((await admin('POST', colorOnly, 'color-allocation', { allocations: [{
+      source_variant_id: variant(s,null).id, target_variant_id: only.id, quantity: 2,
+      expected_source_stock: variant(s,null).stock, expected_target_stock: variant(s,'black').stock,
+    }] })).status, 200);
+    assert.equal(variant(await state(colorOnly),'black').last_allocation_quantity, 2, 'latest color quantity, not cumulative 3');
     assert.equal((await admin('POST', colorOnly, 'color-sizes', { size: 'M' })).status, 400);
     const history = (await admin('GET', shirt, 'inventory-movements?limit=100')).body.movements;
     assert.ok(history.some(x => x.variant_id === blackM && x.color === 'Đen' && x.movement_type === 'ORDER_CHECKOUT'));

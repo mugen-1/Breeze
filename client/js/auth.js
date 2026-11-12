@@ -7,11 +7,17 @@ const ERROR_KEYS = {
     'auth/user-not-found': 'au.eNoUser',
     'auth/wrong-password': 'au.eWrongPw',
     'auth/invalid-credential': 'au.eBadCred',
+    // Firebase bản mới gộp "sai mật khẩu" và "không có tài khoản" thành mã này.
+    'auth/invalid-login-credentials': 'au.eBadCred',
     'auth/too-many-requests': 'au.eTooMany'
 };
 
 function authError(error) {
     if (error.purchaseKey) return t(error.purchaseKey);
+    if (error.code === 'API_RATE_LIMITED') {
+        return Number.isFinite(error.retryAfter) && error.retryAfter > 0
+            ? t('au.errRateLimitWait', { seconds: error.retryAfter }) : t('au.errRateLimit');
+    }
     return ERROR_KEYS[error.code] ? t(ERROR_KEYS[error.code]) : error.message;
 }
 
@@ -94,15 +100,31 @@ function dangNhap() {
             return user.getIdToken().then((token) => {
                 const base = window.API_BASE || '';
                 return fetch(base + '/api/me', { headers: { Authorization: 'Bearer ' + token } })
-                    .then((r) => (r.ok ? r.json() : null))
-                    .catch(() => null);
+                    .then(async (r) => {
+                        if (r.status === 429) {
+                            const error = new Error();
+                            error.code = 'API_RATE_LIMITED';
+                            error.retryAfter = Math.ceil(Number(r.headers && r.headers.get('Retry-After')));
+                            throw error;
+                        }
+                        if (!r.ok) throw new Error();
+                        const me = await r.json();
+                        if (!me || (me.role !== 'admin' && me.role !== 'customer')) throw new Error();
+                        return me;
+                    })
+                    .catch((error) => {
+                        if (error.code === 'API_RATE_LIMITED') throw error;
+                        // Chưa xác định được role thì giữ form đăng nhập và báo lỗi.
+                        // Không coi lỗi API là customer rồi chuyển admin về trang chủ.
+                        throw new Error(t('au.errRoleCheck'));
+                    });
             });
         })
         .then((me) => {
             return Promise.resolve(window.BreezeSupportSession ? window.BreezeSupportSession.prepare(signedInUid) : null).then(() => me);
         })
         .then(async (me) => {
-            const isAdmin = !!(me && me.role === 'admin');
+            const isAdmin = me.role === 'admin';
             if (window.BreezePurchase && window.BreezePurchase.requested()) {
                 await window.BreezePurchase.resume(signedInUid, me && me.role);
                 window.location.href = window.BreezeRoutes.to('cart');
