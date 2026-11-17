@@ -31,7 +31,7 @@ check('profile section hidden by default', /<section id="view-profile" style="di
 check('no view has a breadcrumb', !/adm-crumb/.test(html));
 check('profile title uses the shared page-title style', /<h1 class="adm-page-title"[^>]*data-i18n="adm.profile">Hồ sơ<\/h1>/.test(profile));
 const h1s = html.match(/<h1\b[^>]*>/g) || [];
-check('every view h1 can take focus (tabindex="-1")', h1s.length === 9 && h1s.every(h => h.includes('tabindex="-1"')), '(' + h1s.length + ' h1)');
+check('every view h1 can take focus (tabindex="-1")', h1s.length === 10 && h1s.every(h => h.includes('tabindex="-1"')), '(' + h1s.length + ' h1)');
 
 check('old account CSS removed', !/\.adm-account|\.adm-logout/.test(css));
 check('sidebar is a flex column', /body\.adm-authed \.adm-sidebar \{ display:flex; \}/.test(css) && /\.adm-sidebar \{[^}]*flex-direction:column/.test(css));

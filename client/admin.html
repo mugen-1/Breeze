@@ -19,6 +19,7 @@
     <link rel="stylesheet" type="text/css" href="css/global.css">
     <link rel="stylesheet" type="text/css" href="css/admin.css">
     <link rel="stylesheet" href="css/admin-support.css">
+    <link rel="stylesheet" href="css/admin-audit.css">
     <link rel="stylesheet" href="css/order-payment.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -81,6 +82,9 @@
             </button>
             <button type="button" class="adm-nav-item" data-nav="feedback" data-perm="support:reply" aria-controls="view-feedback">
                 <i class="fa fa-comments-o" aria-hidden="true"></i> <span data-i18n="admSupport.title">Phản hồi của khách hàng</span>
+            </button>
+            <button type="button" class="adm-nav-item" data-nav="auditlog" data-perm="audit:read_admin|audit:read_customer" aria-controls="view-auditlog">
+                <i class="fa fa-history" aria-hidden="true"></i> <span data-i18n="admAudit.title">Nhật ký hoạt động</span>
             </button>
         </nav>
         <!-- User card dính đáy sidebar. Popup nằm SAU nút trong DOM để Tab đi thẳng vào
@@ -488,6 +492,52 @@
             </div>
         </section>
 
+        <!-- Nhật ký hoạt động: GET /api/admin/audit-logs, CHỈ ĐỌC. Bảng, hàng chi tiết, ô chọn hành động /
+             loại đối tượng do js/admin-audit.js dựng bằng createElement + textContent (không innerHTML với dữ liệu). -->
+        <section id="view-auditlog" style="display:none;" aria-labelledby="audit-title">
+            <h1 class="adm-page-title" tabindex="-1" id="audit-title" data-i18n="admAudit.title">Nhật ký hoạt động</h1>
+            <form id="audit-filters" class="adm-toolbar audit-filters" novalidate>
+                <label id="audit-group-wrap" hidden><span data-i18n="admAudit.group">Nhóm</span>
+                    <select id="audit-group" class="status-sel">
+                        <option value="" data-i18n="admAudit.groupAll">Tất cả</option>
+                        <option value="admin" data-i18n="admAudit.groupAdmin">Quản trị</option>
+                        <option value="customer" data-i18n="admAudit.groupCustomer">Khách hàng</option>
+                    </select>
+                </label>
+                <label><span data-i18n="admAudit.actor">Người thực hiện</span>
+                    <input type="text" id="audit-actor" inputmode="numeric" autocomplete="off"></label>
+                <label><span data-i18n="admAudit.action">Hành động</span>
+                    <select id="audit-action" class="status-sel"></select></label>
+                <label><span data-i18n="admAudit.entityType">Loại đối tượng</span>
+                    <select id="audit-entity-type" class="status-sel"></select></label>
+                <label><span data-i18n="admAudit.entityId">Mã đối tượng</span>
+                    <input type="text" id="audit-entity-id" maxlength="50" autocomplete="off"></label>
+                <label><span data-i18n="admAudit.from">Từ ngày</span>
+                    <input type="date" id="audit-from"></label>
+                <label><span data-i18n="admAudit.to">Đến ngày</span>
+                    <input type="date" id="audit-to"></label>
+                <button type="submit" class="adm-btn small" id="audit-apply" data-i18n="admAudit.apply">Lọc</button>
+                <button type="button" class="adm-btn ghost small" id="audit-clear" data-i18n="admAudit.clear">Xóa lọc</button>
+            </form>
+            <p id="audit-customer-note" class="audit-note" data-i18n="admAudit.customerOnly" hidden>Chỉ hiển thị hoạt động của khách hàng</p>
+            <p id="audit-filter-error" class="audit-filter-error" role="alert" hidden></p>
+            <div id="audit-chip" class="audit-chip" hidden>
+                <span id="audit-chip-text"></span>
+                <button type="button" id="audit-chip-clear" aria-label="Bỏ lọc đối tượng" data-i18n-aria="admAudit.chipRemove">✕</button>
+            </div>
+            <div class="adm-table-wrap" tabindex="0" role="region" aria-labelledby="audit-title">
+                <table class="adm-table audit-table">
+                    <thead><tr id="audit-head"></tr></thead>
+                    <tbody id="audit-body"></tbody>
+                </table>
+            </div>
+            <div id="audit-pager" class="adm-pager" hidden>
+                <button type="button" id="audit-prev" data-i18n="adm.pgPrev">← Trước</button>
+                <span id="audit-page"></span>
+                <button type="button" id="audit-next" data-i18n="adm.pgNext">Sau →</button>
+            </div>
+        </section>
+
         <!-- Hồ sơ: KHÔNG có mục trong menu trái, chỉ mở từ popup user card ở đáy sidebar.
              Nội dung = tab "Chi tiết tài khoản" của trang profile, của CHÍNH tài khoản admin
              đang đăng nhập. Id ad-* giống hệt trang profile: logic dùng chung ở
@@ -862,6 +912,7 @@
     <script src="js/support-api.js"></script>
     <script src="js/support-session.js"></script>
     <script src="js/admin-support.js"></script>
+    <script src="js/admin-audit.js"></script>
     <script src="js/account-details.js"></script>
     <script src="js/admin.js"></script>
     <script src="js/change-password.js"></script>

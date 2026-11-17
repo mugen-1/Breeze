@@ -2,6 +2,7 @@
 const { sql } = require('../db');
 const { parseId } = require('./review-create');
 const { ReviewError } = require('./review-media');
+const { commitHook } = require('./commit-hook');
 
 function parseAdminQuery(query = {}) {
   const page = query.page === undefined ? 1 : parseId(query.page, 1);
@@ -59,12 +60,29 @@ async function adminReviewDetail(pool, id) {
   if (!recordsets[0].length) throw new ReviewError(404, 'REVIEW_NOT_FOUND', 'Không tìm thấy đánh giá');
   return { ...dto(recordsets[0][0]), images: recordsets[1].filter(i => /^\/review-images\/[a-f0-9]{32}\.webp$/.test(i.image_path)).map(i => ({ url: i.image_path })) };
 }
-async function setReviewVisibility(pool, id, hidden) {
-  // One atomic update serializes with owner edit/delete; no content or image writes.
-  const result = await pool.request().input('rid', sql.Int, id).input('hidden', sql.Bit, hidden).query(`
-    UPDATE dbo.reviews SET is_hidden=@hidden,updated_at=SYSUTCDATETIME()
-    OUTPUT INSERTED.id,INSERTED.is_hidden WHERE id=@rid;`);
-  if (!result.recordset.length) throw new ReviewError(404, 'REVIEW_NOT_FOUND', 'Không tìm thấy đánh giá');
-  return { id: result.recordset[0].id, isHidden: !!result.recordset[0].is_hidden };
+// opts.onCommitting (lib/commit-hook.js): ctx = { before: { isHidden } cũ, product_id }. Đã ở đúng trạng thái đích -> vẫn
+// UPDATE (updated_at) + commit như cũ nhưng KHÔNG gọi hook. Trạng thái cũ lấy từ DELETED của chính câu UPDATE
+// (khoá X giữ tới commit, không cần SELECT UPDLOCK riêng). dbo.reviews không được có trigger: OUTPUT không INTO.
+async function setReviewVisibility(pool, id, hidden, opts = {}) {
+  const hook = commitHook(opts);
+  const tx = new sql.Transaction(pool);
+  try {
+    await tx.begin();
+    // One atomic update serializes with owner edit/delete; no content or image writes.
+    const result = await new sql.Request(tx).input('rid', sql.Int, id).input('hidden', sql.Bit, hidden).query(`
+      UPDATE dbo.reviews SET is_hidden=@hidden,updated_at=SYSUTCDATETIME()
+      OUTPUT INSERTED.id,INSERTED.is_hidden,DELETED.is_hidden AS was_hidden,INSERTED.product_id WHERE id=@rid;`);
+    if (!result.recordset.length) throw new ReviewError(404, 'REVIEW_NOT_FOUND', 'Không tìm thấy đánh giá');
+    const row = result.recordset[0];
+    const value = { id: row.id, isHidden: !!row.is_hidden };
+    if (hook && !!row.was_hidden !== value.isHidden) {
+      await hook(tx, value, { before: { isHidden: !!row.was_hidden }, product_id: row.product_id });
+    }
+    await tx.commit();
+    return value;
+  } catch (err) {
+    try { await tx.rollback(); } catch (_) { /* chưa begin hoặc SQL đã tự rollback */ }
+    throw err;
+  }
 }
 module.exports = { parseAdminQuery, visibilityInput, listAdminReviews, adminReviewDetail, setReviewVisibility };

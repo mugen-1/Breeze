@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { sizeProfile, SIZE_CONFIGURED_SQL, COLOR_CONFIGURED_SQL } = require('./size-variants');
 const { recordInventoryMovement, LAST_ALLOCATION_SQL } = require('./inventory-movement');
+const { commitHook } = require('./commit-hook');
 
 class ColorError extends Error {
   constructor(status, code, message) { super(message); this.status = status; this.code = code; }
@@ -74,8 +75,13 @@ async function writeStock(tx, productId, variant, next, type, reason, actorUserI
 }
 
 // Product lock first, then its variants. Checkout/cancel use the same order.
-async function changeColors(pool, productId, actorUserId, action, payload = {}) {
+// opts.onCommitting (lib/commit-hook.js): mọi action đều ghi, trừ 'adjust' không đổi tồn và không đổi is_active.
+// result = readColors đọc QUA tx trước commit; ctx.before = { product, colors, variants[, images] } chụp
+// ngay sau khi đọc (writeStock sửa variant.stock tại chỗ).
+async function changeColors(pool, productId, actorUserId, action, payload = {}, opts = {}) {
+  const hook = commitHook(opts);
   const tx = new sql.Transaction(pool);
+  let wrote = action !== 'adjust';
   try {
     await tx.begin();
     const product = (await new sql.Request(tx).input('pid', sql.Int, productId).query(`
@@ -89,6 +95,7 @@ async function changeColors(pool, productId, actorUserId, action, payload = {}) 
     const variants = (await new sql.Request(tx).input('pid', sql.Int, productId).query(`
       SELECT id, size, color, stock, is_active, is_base FROM dbo.product_variants WITH (UPDLOCK, HOLDLOCK)
       WHERE product_id = @pid ORDER BY id;`)).recordset;
+    const before = hook ? structuredClone({ product, colors, variants }) : null;
     const base = variants.find(v => v.is_base);
     if (!base) reject(409, 'INVENTORY_INTEGRITY', 'Thiếu biến thể BASE');
     const color = colors.find(c => c.id === payload.color_id);
@@ -200,16 +207,21 @@ async function changeColors(pool, productId, actorUserId, action, payload = {}) 
           await writeStock(tx, productId, target, payload.stock, 'ADMIN_ADJUSTMENT', payload.reason.trim(), actorUserId);
           await new sql.Request(tx).input('pid', sql.Int, productId).input('delta', sql.Int, delta)
             .query('UPDATE dbo.products SET stock=stock+@delta, updated_at=SYSUTCDATETIME() WHERE id=@pid;');
+          wrote = true;
         }
       }
-      if (payload.is_active !== undefined) await new sql.Request(tx).input('vid', sql.Int, target.id)
-        .input('active', sql.Bit, payload.is_active)
-        .query('UPDATE dbo.product_variants SET is_active=@active, updated_at=SYSUTCDATETIME() WHERE id=@vid;');
+      if (payload.is_active !== undefined) {
+        await new sql.Request(tx).input('vid', sql.Int, target.id)
+          .input('active', sql.Bit, payload.is_active)
+          .query('UPDATE dbo.product_variants SET is_active=@active, updated_at=SYSUTCDATETIME() WHERE id=@vid;');
+        wrote = true;
+      }
     } else if (['add-image', 'update-image', 'delete-image'].includes(action)) {
       if (!color) reject(404, 'COLOR_NOT_FOUND', 'Không tìm thấy màu');
       const images = (await new sql.Request(tx).input('cid', sql.Int, color.id).query(`
-        SELECT id, sort_order, is_primary FROM dbo.product_color_images WITH (UPDLOCK, HOLDLOCK)
+        SELECT id, color_id, image_path, sort_order, is_primary FROM dbo.product_color_images WITH (UPDLOCK, HOLDLOCK)
         WHERE color_id=@cid ORDER BY sort_order,id;`)).recordset;
+      if (before) before.images = structuredClone(images);
       if (action === 'add-image') {
         const path = imagePath(payload.image_path);
         const order = payload.sort_order === undefined ? (images.length ? Math.max(...images.map(i => i.sort_order)) + 1 : 0)
@@ -245,6 +257,12 @@ async function changeColors(pool, productId, actorUserId, action, payload = {}) 
         }
       }
     } else reject(400, 'INVALID_ACTION', 'Thao tác không hợp lệ');
+    if (hook && wrote) {
+      const result = await readColors({ request: () => new sql.Request(tx) }, productId);
+      await hook(tx, result, { before });
+      await tx.commit();
+      return result;
+    }
     await tx.commit();
     return readColors(pool, productId);
   } catch (err) {

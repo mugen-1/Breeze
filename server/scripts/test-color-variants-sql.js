@@ -51,7 +51,7 @@ async function cart(uid, pid, vid, quantity = 1) {
 }
 async function checkout(uid) { return call('POST', 'orders', uid, {
   paymentMethod: 'cod', shipping_name: 'Disposable color test', shipping_phone: '0901234567', shipping_address: '1 Test',
-  shipping_ward: 'Test ward', shipping_district: 'Test district', shipping_city: 'Test city', shipping_method: 'STANDARD',
+  shipping_ward: 'Test ward', shipping_district: 'Test district', shipping_city: 'Test city', shipping_method: 'GHN_STANDARD',
 }); }
 async function cancel(uid, id) { return call('POST', `orders/${id}/cancel`, uid, { reason: 'wrong_item' }); }
 async function dbReject(query, input, number, description) {

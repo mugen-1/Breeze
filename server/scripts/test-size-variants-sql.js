@@ -53,7 +53,7 @@ async function cart(uid, pid, vid, quantity = 1) {
 async function checkout(uid) { return call('POST', 'orders', uid, {
   paymentMethod: 'cod', size: 'FAKE', stock: 999,
   shipping_name: 'Disposable size test', shipping_phone: '0901234567', shipping_address: '1 Test',
-  shipping_ward: 'Test ward', shipping_district: 'Test district', shipping_city: 'Test city', shipping_method: 'STANDARD',
+  shipping_ward: 'Test ward', shipping_district: 'Test district', shipping_city: 'Test city', shipping_method: 'GHN_STANDARD',
 }); }
 async function main() {
   pool = await getPool();

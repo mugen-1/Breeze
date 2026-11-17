@@ -16,6 +16,7 @@ class Request {
     const q = raw.replace(/\s+/g, ' ').trim(), p = this.params;
     if (q.startsWith('SELECT id FROM dbo.users WITH')) return result([{ id: 99 }]);
     if (q.startsWith('MERGE dbo.users')) return result([{ id: 99, role: state.role }]);
+    if (q.startsWith('INSERT INTO dbo.audit_logs')) return result([{ id: '1' }]);
     state.queries.push({ q, p });
     if (state.fail) throw Object.assign(Error('PRIVATE_SQL_STACK_PATH'), { code: 'EREQUEST' });
     if (q.startsWith('UPDATE dbo.reviews')) {

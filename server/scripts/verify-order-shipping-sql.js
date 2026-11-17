@@ -7,6 +7,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const express = require('express');
+const mainDb = process.env.DB_NAME; // DB chính trong .env: chỉ SELECT order_code_counter trước/sau, không ghi
 const dbName = `BreezeShippingTest_${process.pid}_${Date.now()}`;
 if (!/^BreezeShippingTest_[0-9]+_[0-9]+$/.test(dbName)) throw new Error('Unsafe test database');
 process.env.DB_NAME = dbName;
@@ -18,6 +19,11 @@ const serverDir = path.join(__dirname, '..');
 let pool, server, created = false, base, configuredTestFee = null;
 function adminSql(statement) {
   execFileSync('sqlcmd', ['-E', '-S', config.server, '-d', 'master', '-No', '-b', '-Q', statement], { stdio: 'pipe' });
+}
+async function mainCounter() { // chỉ đọc DB chính
+  const main = await new sql.ConnectionPool({ ...config, database: mainDb }).connect();
+  try { return (await main.request().query('SELECT last_code FROM dbo.order_code_counter WHERE id = 1;')).recordset[0].last_code; }
+  finally { await main.close(); }
 }
 async function request(user, body, url = '/api/orders', method = 'POST', admin = false) {
   const r = await fetch(base + url, { method,
@@ -50,6 +56,7 @@ async function cart(uid, p, v) {
     .query('INSERT INTO dbo.cart_items(user_id,product_id,variant_id,quantity) VALUES(@u,@p,@v,1);');
 }
 async function main() {
+  const counterBefore = await mainCounter();
   try {
     adminSql(`CREATE DATABASE [${dbName}];`); created = true;
     adminSql(`ALTER AUTHORIZATION ON DATABASE::[${dbName}] TO [${String(config.user).replace(/]/g, ']]')}];`);
@@ -262,13 +269,77 @@ async function main() {
     console.log('Customer Detail, display-code search, internal-ID lookup, dashboard/statistics, movement references and audit: PASS');
     execFileSync(process.execPath, ['scripts/audit-inventory-movements.js'], { cwd: serverDir, env: process.env, stdio: 'pipe' });
     console.log('Inventory audit after shipping, cancellation and concurrency: PASS');
+
+    // ---- Blacklist: 2 route POST chạy trong transaction, đọc user WITH (UPDLOCK, ROWLOCK) ----
+    const mkUser = async (role, tag) => (await pool.request().input('tag', sql.VarChar(128), `blacklist-${tag}-${Date.now()}`)
+      .input('email', sql.VarChar(255), `${tag}@example.test`).input('role', sql.VarChar(20), role)
+      .query('INSERT INTO dbo.users(firebase_uid,email,role) OUTPUT INSERTED.id VALUES(@tag,@email,@role);')).recordset[0].id;
+    const cancelledOrder = u => pool.request().input('u', sql.Int, u)
+      .query("INSERT INTO dbo.orders(user_id,status,total_amount) VALUES(@u,'cancelled',100);");
+    const victim = await mkUser('customer', 'victim'), victim2 = await mkUser('customer', 'victim2');
+    const clean = await mkUser('customer', 'clean'), staffUser = await mkUser('staff', 'staff'), adminUser = await mkUser('admin', 'admin');
+    await cancelledOrder(victim); await cancelledOrder(victim2);
+    const isBlacklisted = async u => (await pool.request().input('u', sql.Int, u)
+      .query('SELECT IsBlacklisted AS b FROM dbo.users WHERE id=@u;')).recordset[0].b;
+    const blockUser = u => adminOrder(`/users/${u}/blacklist`, {}, 'POST');
+    const releaseUser = u => adminOrder(`/blacklist/${u}/release`, {}, 'POST');
+    const okBody = (u, tag, b) => ({ status: 200, body: { status: 'ok', user: { id: u, email: `${tag}@example.test`, is_blacklisted: b } } });
+    const errBody = (status, message) => ({ status, body: { status: 'error', message } });
+
+    assert.deepEqual(await blockUser(victim), okBody(victim, 'victim', true));
+    assert.equal(await isBlacklisted(victim), true);
+    console.log('Blacklist: chặn thành công (JSON 3 trường cũ): PASS');
+    assert.deepEqual(await releaseUser(victim), okBody(victim, 'victim', false));
+    assert.equal(await isBlacklisted(victim), false);
+    console.log('Blacklist: gỡ thành công (JSON 3 trường cũ): PASS');
+    for (const fn of [blockUser, blockUser]) assert.deepEqual(await fn(victim), okBody(victim, 'victim', true));
+    for (const fn of [releaseUser, releaseUser]) assert.deepEqual(await fn(victim), okBody(victim, 'victim', false));
+    console.log('Blacklist: gọi lặp lại chặn x2 / gỡ x2 vẫn 200 như cũ: PASS');
+    const missing = 2147480000;
+    assert.deepEqual(await blockUser(missing), errBody(404, 'Không tìm thấy người dùng'));
+    assert.deepEqual(await releaseUser(missing), errBody(404, 'Không tìm thấy người dùng'));
+    console.log('Blacklist: user không tồn tại -> 404 (chặn và gỡ): PASS');
+    for (const u of [staffUser, adminUser]) {
+      assert.deepEqual(await blockUser(u), errBody(400, 'Không thể đưa tài khoản quản trị vào danh sách đen'));
+      assert.equal(await isBlacklisted(u), false);
+    }
+    console.log('Blacklist: chặn tài khoản staff / admin -> 400, không đổi: PASS');
+    assert.deepEqual(await blockUser(clean), errBody(400, 'Hành Động Không Thành Công'));
+    assert.equal(await isBlacklisted(clean), false);
+    console.log('Blacklist: không có đơn đã huỷ -> 400, không đổi: PASS');
+
+    // Lỗi giữa chừng: trigger tạm làm câu UPDATE dbo.users thất bại (như verify-review-admin-sql.js).
+    assert.equal((await blockUser(victim)).status, 200);
+    const loggedErrors = [], realError = console.error;
+    await pool.request().batch("CREATE TRIGGER dbo.test_blacklist_failure ON dbo.users AFTER UPDATE AS BEGIN THROW 51004,'Fixture failure',1; END;");
+    try {
+      console.error = (...a) => loggedErrors.push(a.join(' '));
+      assert.deepEqual(await releaseUser(victim), errBody(500, 'Không gỡ được người dùng khỏi danh sách đen'));
+      assert.deepEqual(await blockUser(victim2), errBody(500, 'Không thêm được vào danh sách đen'));
+    } finally {
+      console.error = realError;
+      await pool.request().batch('DROP TRIGGER dbo.test_blacklist_failure;');
+    }
+    assert.equal(await isBlacklisted(victim), true, 'gỡ thất bại -> vẫn bị chặn');
+    assert.equal(await isBlacklisted(victim2), false, 'chặn thất bại -> vẫn chưa bị chặn');
+    assert.equal(loggedErrors.length, 2);
+    console.log(`Blacklist: lỗi SQL giữa chừng -> 500 như cũ, rollback, dữ liệu không đổi: PASS (log route: ${JSON.stringify(loggedErrors[0].slice(0, 120))})`);
+    assert.deepEqual(await releaseUser(victim), okBody(victim, 'victim', false));
+    assert.deepEqual(await blockUser(victim2), okBody(victim2, 'victim2', true));
+    console.log('Blacklist: bỏ trigger -> chặn / gỡ chạy lại bình thường (không còn transaction treo): PASS');
   } finally {
     if (server) await new Promise(resolve => server.close(resolve));
     if (pool) await pool.close();
     if (created) {
       adminSql(`ALTER DATABASE [${dbName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [${dbName}];`);
-      console.log('Removed disposable database:', dbName);
+      const left = execFileSync('sqlcmd', ['-E', '-S', config.server, '-d', 'master', '-No', '-b', '-h', '-1', '-Q',
+        `SET NOCOUNT ON; SELECT COUNT(*) FROM sys.databases WHERE name = N'${dbName}';`], { encoding: 'utf8' }).trim();
+      console.log(`Removed disposable database: ${dbName} (còn lại: ${left})`);
+      assert.equal(left, '0');
     }
   }
+  const counterAfter = await mainCounter();
+  assert.equal(counterAfter, counterBefore);
+  console.log(`${mainDb}.order_code_counter ${counterBefore} -> ${counterAfter}, không đổi: PASS`);
 }
 main().catch(e => { console.error(e.message, e.stdout ? String(e.stdout) : ''); process.exitCode = 1; });

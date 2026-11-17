@@ -17,8 +17,13 @@ const { verifyFirebaseToken } = require('../middleware/auth');
 const { requireBackOffice, requirePermission } = require('../middleware/requirePermission');
 const { isBackOffice } = require('../lib/roles');
 const { can } = require('../lib/permissions');
-const { ALL_STATUSES, nextStatuses, canTransition, isTargetStatus } = require('../lib/order-state');
-const { cancelOrder, CancelError } = require('../lib/cancel-order');
+const { ALL_STATUSES, nextStatuses, canTransition, isTargetStatus,
+  DELETE_RESTOCK_STATUSES, DELETE_KEEP_STOCK_STATUSES } = require('../lib/order-state');
+const { cancelOrder, restoreOrderStock, CancelError } = require('../lib/cancel-order');
+const { audit } = require('../lib/audit');
+const { productColumns, createSnapshot, variantChange } = require('../lib/product-audit');
+const { statusChange, shippingChange, deleteSnapshot, ORDER_FIELDS, ITEM_FIELDS, PAYMENT_FIELDS } = require('../lib/order-audit');
+const { blacklistChange } = require('../lib/user-review-audit');
 const businessReport = require('../lib/business-report');
 const { fetchPayments, completeCodPayment } = require('../lib/order-payment');
 const { recordInventoryMovement } = require('../lib/inventory-movement');
@@ -30,6 +35,7 @@ const { readColors, changeColors, ColorError } = require('../lib/color-variants'
 router.use(verifyFirebaseToken, requireBackOffice);
 router.use('/reviews', require('./admin-reviews'));
 router.use('/support', require('./admin-support'));
+router.use('/audit-logs', require('./admin-audit-logs'));
 
 // Bộ lọc gồm cả trạng thái legacy; mục tiêu chuyển trạng thái do order-state.js quản lý.
 const ORDER_STATUSES = ALL_STATUSES;
@@ -236,7 +242,10 @@ for (const [method, suffix, action] of [
     try {
       const payload = { ...(req.body || {}) };
       if (action === 'adjust') payload.variant_id = Number(req.params.variantId);
-      res.json(await changeSizes(await getPool(), id, req.user.id, action, payload));
+      // Audit PRODUCT_VARIANT_CHANGE trong cùng tx (hook onCommitting); adjust delta 0 không gọi hook -> 0 dòng.
+      res.json(await changeSizes(await getPool(), id, req.user.id, action, payload,
+        { onCommitting: (tx, result, ctx) => audit(tx, req, { action: 'PRODUCT_VARIANT_CHANGE', entityType: 'product',
+          entityId: id, ...variantChange('size', action, ctx, result, payload) }) }));
     } catch (err) { sizeResponseError(res, err); }
   });
 }
@@ -270,8 +279,11 @@ for (const [method, route, action] of [
     if (req.params.colorId !== undefined) payload.color_id = Number(req.params.colorId);
     if (req.params.variantId !== undefined) payload.variant_id = Number(req.params.variantId);
     if (req.params.imageId !== undefined) payload.image_id = Number(req.params.imageId);
-    try { res.json(await changeColors(await getPool(), id, req.user.id, action, payload)); }
-    catch (err) { colorResponseError(res, err); }
+    try {
+      res.json(await changeColors(await getPool(), id, req.user.id, action, payload,
+        { onCommitting: (tx, result, ctx) => audit(tx, req, { action: 'PRODUCT_VARIANT_CHANGE', entityType: 'product',
+          entityId: id, ...variantChange('color', action, ctx, result, payload) }) }));
+    } catch (err) { colorResponseError(res, err); }
   });
 }
 function colorResponseError(res, err) {
@@ -342,7 +354,9 @@ router.post('/products', requirePermission('product:write'), async (req, res) =>
         INSERT INTO dbo.products
           (slug, name_vi, name_en, description_vi, description_en, price, sale_price,
            currency, images, category_id, stock, is_active)
-        OUTPUT INSERTED.id
+        OUTPUT INSERTED.id, INSERTED.slug, INSERTED.name_vi, INSERTED.name_en, INSERTED.description_vi,
+               INSERTED.description_en, INSERTED.price, INSERTED.sale_price, INSERTED.currency, INSERTED.images,
+               INSERTED.category_id, INSERTED.stock, INSERTED.is_active
         VALUES
           (@slug, @name_vi, @name_en, @description_vi, @description_en, @price, @sale_price,
            @currency, @images, @category_id, @stock, @is_active);`);
@@ -358,6 +372,9 @@ router.post('/products', requirePermission('product:write'), async (req, res) =>
     await recordInventoryMovement(tx, { productId: newId, variantId: baseVariant.recordset[0].id,
       type: 'PRODUCT_CREATE',
       delta: stock, before: 0, after: stock, actorUserId: req.user.id });
+    // Audit cùng tx: lỗi ghi log -> rollback cả sản phẩm, trả 500 như cũ.
+    await audit(tx, req, { action: 'PRODUCT_CREATE', entityType: 'product', entityId: newId,
+      before: null, after: createSnapshot(ins.recordset[0]) });
     await tx.commit();
     const row = await loadProduct(pool, newId);
     res.status(201).json({ status: 'ok', product: mapProduct(row) });
@@ -424,7 +441,8 @@ router.put('/products/:id', requirePermission('product:write'), async (req, res)
     tx = new sql.Transaction(pool);
     await tx.begin();
     const locked = await new sql.Request(tx).input('id', sql.Int, idc.value)
-      .query(`SELECT stock, price, sale_price, ${SIZE_CONFIGURED_SQL} AS size_configured,
+      .query(`SELECT slug, name_vi, name_en, description_vi, description_en, price, sale_price, currency, images,
+        category_id, stock, is_active, ${SIZE_CONFIGURED_SQL} AS size_configured,
         ${COLOR_CONFIGURED_SQL} AS color_configured
         FROM dbo.products p WITH (UPDLOCK, HOLDLOCK) WHERE id = @id;`);
     if (!locked.recordset.length) {
@@ -475,7 +493,10 @@ router.put('/products/:id', requirePermission('product:write'), async (req, res)
     setParts.push('updated_at = SYSUTCDATETIME()');
 
     const updated = await request.query(`UPDATE dbo.products SET ${setParts.join(', ')}
-      OUTPUT INSERTED.stock AS stock_after WHERE id = @id
+      OUTPUT INSERTED.slug, INSERTED.name_vi, INSERTED.name_en, INSERTED.description_vi, INSERTED.description_en,
+             INSERTED.price, INSERTED.sale_price, INSERTED.currency, INSERTED.images, INSERTED.category_id,
+             INSERTED.stock, INSERTED.is_active
+      WHERE id = @id
         AND CONVERT(BIGINT, stock) + ${stockChanged ? '@delta' : '0'} BETWEEN 0 AND 2147483647;`);
     if (updated.rowsAffected[0] !== 1) throw new Error('Product aggregate would overflow');
     if (stockChanged) {
@@ -495,6 +516,12 @@ router.put('/products/:id', requirePermission('product:write'), async (req, res)
         .query(`UPDATE dbo.product_variants SET is_active = @active, updated_at = SYSUTCDATETIME()
                 WHERE product_id = @pid AND (@active = 0 OR is_base = 1);`);
     }
+    // Audit cùng tx: before = dòng đã khoá UPDLOCK, after = OUTPUT của UPDATE; buildAuditRow giữ cột đổi
+    // (không cột nào đổi vẫn ghi {} / {}). Lỗi ghi log -> rollback, 500 như cũ.
+    const afterRow = productColumns(updated.recordset[0]);
+    if (stockChanged) afterRow.stock_reason = reason.value;
+    await audit(tx, req, { action: 'PRODUCT_UPDATE', entityType: 'product', entityId: idc.value,
+      before: productColumns(current), after: afterRow });
     await tx.commit();
 
     const row = await loadProduct(pool, idc.value);
@@ -524,10 +551,17 @@ router.delete('/products/:id', requirePermission('product:delete'), async (req, 
 
     tx = new sql.Transaction(pool);
     await tx.begin();
-    await new sql.Request(tx).input('id', sql.Int, id)
-      .query('UPDATE dbo.products SET is_active = 0, updated_at = SYSUTCDATETIME() WHERE id = @id;');
+    // DELETED cho trạng thái cũ ngay trong tx (khoá X tới commit). Ẩn lại SP đã ẩn: vẫn chạy + 200 như cũ, KHÔNG log.
+    const hidden = await new sql.Request(tx).input('id', sql.Int, id)
+      .query(`UPDATE dbo.products SET is_active = 0, updated_at = SYSUTCDATETIME()
+        OUTPUT DELETED.is_active AS was_active WHERE id = @id;`);
     await new sql.Request(tx).input('id', sql.Int, id)
       .query('UPDATE dbo.product_variants SET is_active = 0, updated_at = SYSUTCDATETIME() WHERE product_id = @id;');
+    const prev = hidden.recordset[0];
+    if (prev && prev.was_active) {
+      await audit(tx, req, { action: 'PRODUCT_HIDE', entityType: 'product', entityId: id,
+        before: { is_active: true }, after: { is_active: false } });
+    }
     await tx.commit();
     res.json({ status: 'ok', mode: 'soft', message: 'Đã ẩn sản phẩm', product_id: id });
   } catch (err) {
@@ -691,7 +725,11 @@ router.put('/orders/:id/status', requirePermission('order:update_status'), async
   }
   if (status === 'cancelled') {
     try {
-      const order = await cancelOrder(pool, { orderId: idc.value, actorUserId: req.user.id });
+      // Audit ORDER_STATUS_CHANGE qua hook của cancelOrder (cùng tx, sau khi cộng lại kho). Chỉ route admin truyền hook.
+      const order = await cancelOrder(pool, { orderId: idc.value, actorUserId: req.user.id,
+        onCommitting: (tx, result, ctx) => audit(tx, req, { action: 'ORDER_STATUS_CHANGE', entityType: 'order',
+          entityId: idc.value, ...statusChange({ orderCode: ctx.order_code, before: { status: ctx.before.status },
+            after: { status: result.status, cancel_reason: result.cancel_reason }, restored: ctx.restored }) }) });
       return res.json({ status: 'ok', order: { ...order, allowed_next_statuses: nextStatuses(order.status) } });
     } catch (error) {
       if (error instanceof CancelError && error.status < 500) {
@@ -727,7 +765,8 @@ router.put('/orders/:id/status', requirePermission('order:update_status'), async
       .input('shippingStatus', sql.VarChar(30), shippingForOrderStatus(current.recordset[0], status))
       .query(`
         UPDATE dbo.orders SET status = @status, shipping_status = @shippingStatus
-        OUTPUT INSERTED.id, INSERTED.status, INSERTED.total_amount, INSERTED.created_at, INSERTED.user_id
+        OUTPUT INSERTED.id, INSERTED.status, INSERTED.total_amount, INSERTED.created_at, INSERTED.user_id,
+               INSERTED.order_code, INSERTED.shipping_status
         WHERE id = @id AND status = @current;`);
 
     if (upd.recordset.length === 0) {
@@ -737,6 +776,11 @@ router.put('/orders/:id/status', requirePermission('order:update_status'), async
     const order = upd.recordset[0];
 
     if (status === 'completed') await completeCodPayment(tx, idc.value);
+    // Audit cùng tx: before = dòng đã khoá UPDLOCK, after = OUTPUT của UPDATE. Lỗi -> rollback, 500 như cũ.
+    await audit(tx, req, { action: 'ORDER_STATUS_CHANGE', entityType: 'order', entityId: idc.value,
+      ...statusChange({ orderCode: order.order_code,
+        before: { status: previous, shipping_status: current.recordset[0].shipping_status },
+        after: { status: order.status, shipping_status: order.shipping_status } }) });
     await tx.commit();
     res.json({
       status: 'ok',
@@ -780,6 +824,11 @@ router.patch('/orders/:id/shipping-status', requirePermission('order:update_stat
         OUTPUT INSERTED.id, INSERTED.order_code, INSERTED.status, INSERTED.shipping_version, INSERTED.shipping_status
         WHERE id = @id;`)).recordset[0];
     if (orderStatus === 'completed') await completeCodPayment(tx, id);
+    // 1 dòng ORDER_SHIPPING_CHANGE chứa cả status đổi kèm (không sinh thêm ORDER_STATUS_CHANGE).
+    await audit(tx, req, { action: 'ORDER_SHIPPING_CHANGE', entityType: 'order', entityId: id,
+      ...shippingChange({ orderCode: updated.order_code,
+        before: { status: current.status, shipping_status: current.shipping_status },
+        after: { status: updated.status, shipping_status: updated.shipping_status } }) });
     await tx.commit();
     res.json({ status: 'ok', order: { ...updated, allowed_next_statuses: nextStatuses(updated.status),
       allowed_shipping_statuses: nextShippingStatuses(updated) } });
@@ -791,25 +840,55 @@ router.patch('/orders/:id/shipping-status', requirePermission('order:update_stat
 });
 
 // ---- DELETE /api/admin/orders/:id --- xoá hẳn 1 đơn (hard delete) ------------
-// order_items có FK ON DELETE CASCADE -> tự xoá theo, không cần xoá tay.
+// order_items, payment_transactions có FK ON DELETE CASCADE -> tự xoá theo, không cần xoá tay.
+// Một transaction: khoá đơn -> (đơn chưa rời kho) cộng lại kho + ghi ledger ORDER_DELETE -> DELETE.
+// Ledger ghi TRƯỚC DELETE: FK_inventory_movements_order ON DELETE SET NULL đổi order_id về NULL,
+// order_reference_id vẫn giữ id đơn. Nhóm trạng thái ở lib/order-state.js. Lỗi bất kỳ -> rollback hết.
 router.delete('/orders/:id', requirePermission('order:delete'), async (req, res) => {
   const idc = reqInt(req.params.id, 1, 'id');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
 
+  let tx;
   try {
     const pool = await getPool();
-    const del = await pool.request()
+    tx = new sql.Transaction(pool);
+    await tx.begin();
+    const found = await new sql.Request(tx)
       .input('id', sql.Int, idc.value)
+      .query('SELECT id, status FROM dbo.orders WITH (UPDLOCK, HOLDLOCK) WHERE id = @id;');
+    const order = found.recordset[0];
+    if (!order) {
+      await tx.rollback();
+      return res.status(404).json({ status: 'error', message: 'Không tìm thấy đơn hàng' });
+    }
+    // Snapshot cho audit ORDER_DELETE (đơn đã khoá ở trên): đọc trước khi DELETE vì items/payments CASCADE theo.
+    const snap = await new sql.Request(tx).input('id', sql.Int, order.id).query(`
+      SELECT ${ORDER_FIELDS.join(', ')} FROM dbo.orders WHERE id = @id;
+      SELECT ${ITEM_FIELDS.join(', ')} FROM dbo.order_items WHERE order_id = @id ORDER BY id;
+      SELECT ${PAYMENT_FIELDS.join(', ')} FROM dbo.payment_transactions WHERE order_id = @id ORDER BY id;`);
+
+    let restoredStock;
+    if (DELETE_RESTOCK_STATUSES.includes(order.status)) restoredStock = true;
+    else if (DELETE_KEEP_STOCK_STATUSES.includes(order.status)) restoredStock = false;
+    else throw new Error('trạng thái đơn chưa xếp nhóm xoá: ' + order.status); // không tự đoán
+    let restored = [];
+    if (restoredStock) {
+      restored = await restoreOrderStock(tx, { orderId: order.id, type: 'ORDER_DELETE', actorUserId: req.user.id });
+    }
+
+    const del = await new sql.Request(tx)
+      .input('id', sql.Int, order.id)
       .query(`
         DELETE FROM dbo.orders
         OUTPUT DELETED.id
         WHERE id = @id;`);
-
-    if (del.recordset.length === 0) {
-      return res.status(404).json({ status: 'error', message: 'Không tìm thấy đơn hàng' });
-    }
-    res.json({ status: 'ok', deletedId: del.recordset[0].id });
+    if (del.recordset.length !== 1) throw new Error('đơn đã khoá nhưng DELETE không xoá được dòng nào');
+    await audit(tx, req, { action: 'ORDER_DELETE', entityType: 'order', entityId: order.id, after: null,
+      before: deleteSnapshot({ order: snap.recordsets[0][0], items: snap.recordsets[1], payments: snap.recordsets[2], restored }) });
+    await tx.commit();
+    res.json({ status: 'ok', deletedId: del.recordset[0].id, restoredStock });
   } catch (err) {
+    if (tx) { try { await tx.rollback(); } catch (_) { /* chưa begin hoặc SQL đã tự rollback */ } }
     console.error('[admin] delete order error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không xoá được đơn hàng' });
   }
@@ -890,24 +969,38 @@ router.get('/blacklist', requirePermission('user:read'), async (req, res) => {
 });
 
 // ---- POST /api/admin/blacklist/:userId/release --- gỡ 1 user khỏi danh sách đen --
+// Một transaction, KHÔNG SELECT riêng: chính câu UPDATE giữ khoá X tới commit, DELETED cho trạng thái
+// cũ. JSON trả về giữ đúng 3 trường cũ (id, email, is_blacklisted).
 router.post('/blacklist/:userId/release', requirePermission('user:blacklist_release'), async (req, res) => {
   const idc = reqInt(req.params.userId, 1, 'userId');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
 
+  let tx;
   try {
     const pool = await getPool();
-    const upd = await pool.request()
+    tx = new sql.Transaction(pool);
+    await tx.begin();
+    const upd = await new sql.Request(tx)
       .input('uid', sql.Int, idc.value)
       .query(`
         UPDATE dbo.users SET IsBlacklisted = 0
-        OUTPUT INSERTED.id, INSERTED.email, INSERTED.IsBlacklisted AS is_blacklisted
+        OUTPUT INSERTED.id, INSERTED.email, INSERTED.IsBlacklisted AS is_blacklisted,
+               DELETED.IsBlacklisted AS was_blacklisted
         WHERE id = @uid;`);
 
     if (upd.recordset.length === 0) {
+      await tx.rollback();
       return res.status(404).json({ status: 'error', message: 'Không tìm thấy người dùng' });
     }
-    res.json({ status: 'ok', user: upd.recordset[0] });
+    const { was_blacklisted: wasBlacklisted, ...user } = upd.recordset[0];
+    const before = { id: user.id, email: user.email, is_blacklisted: wasBlacklisted };
+    // Audit cùng tx, chỉ khi thật sự đổi (gỡ người chưa bị chặn: vẫn 200 như cũ, 0 dòng). Lỗi -> rollback, 500 như cũ.
+    const change = blacklistChange({ email: before.email, wasBlacklisted: before.is_blacklisted, isBlacklisted: user.is_blacklisted });
+    if (change) await audit(tx, req, { action: 'USER_UNBLACKLIST', entityType: 'user', entityId: user.id, ...change });
+    await tx.commit();
+    res.json({ status: 'ok', user });
   } catch (err) {
+    if (tx) { try { await tx.rollback(); } catch (_) { /* chưa begin hoặc SQL đã tự rollback */ } }
     console.error('[admin] release blacklist error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không gỡ được người dùng khỏi danh sách đen' });
   }
@@ -1247,34 +1340,50 @@ router.get('/users/:userId/detail', requirePermission('user:read'), async (req, 
 // Blacklist là hành động quản trị riêng, KHÔNG tự phát sinh khi hủy đơn.
 // Endpoint vẫn yêu cầu user có đơn cancelled, theo policy cũ. Idempotent;
 // không cho đưa tài khoản quản trị (admin/staff) vào blacklist.
+// Một transaction: dòng user khoá UPDLOCK tới commit nên kiểm role chạy trên dữ liệu dưới khoá
+// (set-role / xoá tài khoản không xen giữa được). Mọi nhánh 4xx rollback trước khi trả lời.
 router.post('/users/:userId/blacklist', requirePermission('user:blacklist'), async (req, res) => {
   const idc = reqInt(req.params.userId, 1, 'userId');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
 
+  let tx;
   try {
     const pool = await getPool();
-    const target = await pool.request().input('uid', sql.Int, idc.value)
-      .query('SELECT id, role FROM dbo.users WHERE id = @uid;');
+    tx = new sql.Transaction(pool);
+    await tx.begin();
+    const target = await new sql.Request(tx).input('uid', sql.Int, idc.value)
+      .query('SELECT id, role FROM dbo.users WITH (UPDLOCK, ROWLOCK) WHERE id = @uid;');
     if (target.recordset.length === 0) {
+      await tx.rollback();
       return res.status(404).json({ status: 'error', message: 'Không tìm thấy người dùng' });
     }
     if (isBackOffice(target.recordset[0].role)) {
+      await tx.rollback();
       return res.status(400).json({ status: 'error', message: 'Không thể đưa tài khoản quản trị vào danh sách đen' });
     }
 
-    const cancelled = await pool.request().input('uid', sql.Int, idc.value)
+    const cancelled = await new sql.Request(tx).input('uid', sql.Int, idc.value)
       .query("SELECT TOP 1 id FROM dbo.orders WHERE user_id = @uid AND status = 'cancelled';");
     if (cancelled.recordset.length === 0) {
+      await tx.rollback();
       return res.status(400).json({ status: 'error', message: 'Hành Động Không Thành Công' });
     }
 
-    const upd = await pool.request().input('uid', sql.Int, idc.value)
+    const upd = await new sql.Request(tx).input('uid', sql.Int, idc.value)
       .query(`
         UPDATE dbo.users SET IsBlacklisted = 1
-        OUTPUT INSERTED.id, INSERTED.email, INSERTED.IsBlacklisted AS is_blacklisted
+        OUTPUT INSERTED.id, INSERTED.email, INSERTED.IsBlacklisted AS is_blacklisted,
+               DELETED.IsBlacklisted AS was_blacklisted
         WHERE id = @uid;`);
-    res.json({ status: 'ok', user: upd.recordset[0] });
+    const { was_blacklisted: wasBlacklisted, ...user } = upd.recordset[0];
+    const before = { ...target.recordset[0], is_blacklisted: wasBlacklisted };
+    // Audit cùng tx, chỉ khi thật sự đổi (chặn người đã bị chặn: vẫn 200 như cũ, 0 dòng). Không lưu role.
+    const change = blacklistChange({ email: user.email, wasBlacklisted: before.is_blacklisted, isBlacklisted: user.is_blacklisted });
+    if (change) await audit(tx, req, { action: 'USER_BLACKLIST', entityType: 'user', entityId: user.id, ...change });
+    await tx.commit();
+    res.json({ status: 'ok', user });
   } catch (err) {
+    if (tx) { try { await tx.rollback(); } catch (_) { /* chưa begin hoặc SQL đã tự rollback */ } }
     console.error('[admin] add blacklist error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không thêm được vào danh sách đen' });
   }

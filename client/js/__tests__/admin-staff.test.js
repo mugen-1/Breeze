@@ -19,15 +19,16 @@ const i18n = fs.readFileSync(path.join(ROOT, 'js', 'i18n.js'), 'utf8');
 console.log('admin-staff.js');
 
 // ---- Markup / CSS / i18n tĩnh ------------------------------------------------
-const NAV = [...html.matchAll(/<button type="button" class="adm-nav-item[^"]*" data-nav="([a-z]+)"(?: data-perm="([a-z_:]+)")?/g)]
+const NAV = [...html.matchAll(/<button type="button" class="adm-nav-item[^"]*" data-nav="([a-z]+)"(?: data-perm="([a-z_:|]+)")?/g)]
   .map(m => [m[1], m[2] || null]);
 eq('mục menu trái mang data-perm theo bảng quyền', NAV, [
   ['dashboard', 'dashboard:read'], ['products', 'product:read'], ['orders', 'order:read'], ['statistics', 'dashboard:read'],
-  ['users', 'user:read'], ['reviews', 'review:moderate'], ['blacklist', 'user:read'], ['feedback', 'support:reply']]);
+  ['users', 'user:read'], ['reviews', 'review:moderate'], ['blacklist', 'user:read'], ['feedback', 'support:reply'],
+  ['auditlog', 'audit:read_admin|audit:read_customer']]);
 check('nút Thêm sản phẩm cần product:write', /id="btn-add-prod" data-perm="product:write"/.test(html));
 const htmlPerms = [...html.matchAll(/data-perm="([^"]+)"/g)].map(m => m[1]);
 const jsPerms = [...js.matchAll(/(?:permAttrs|can)\('([^']+)'\)/g)].map(m => m[1]);
-check('mọi data-perm trong admin.html là permission có thật ở server', htmlPerms.length === 9 && htmlPerms.every(p => PERMISSIONS.includes(p)), htmlPerms.join(','));
+check('mọi data-perm trong admin.html là permission có thật ở server', htmlPerms.length === 10 && htmlPerms.every(p => p.split('|').every(x => PERMISSIONS.includes(x))), htmlPerms.join(','));
 check('mọi permAttrs()/can() trong admin.js là permission có thật', jsPerms.length > 10 && jsPerms.every(p => PERMISSIONS.includes(p)),
   jsPerms.filter(p => !PERMISSIONS.includes(p)).join(','));
 check('pill Nhân viên nằm ngay sau tên trong user card, mặc định ẩn, chữ qua data-i18n',

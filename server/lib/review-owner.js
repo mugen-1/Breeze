@@ -3,6 +3,7 @@ const {sql}=require('../db');
 const {parseId,validateReview}=require('./review-create');
 const {getPurchasedProductVariants}=require('./review-eligibility');
 const {ReviewError}=require('./review-media');
+const {commitHook}=require('./commit-hook');
 const safeImage=/^\/review-images\/[a-f0-9]{32}\.webp$/;
 const columns='id,product_id,variant_id,order_item_id,size_snapshot,color_snapshot,rating,comment,created_at,updated_at';
 function dto(row,images){
@@ -31,7 +32,10 @@ async function getOwnerReview(pool,userId,productId){
   return {review:recordsets[1].length?dto(recordsets[1][0],recordsets[2]):null,
     purchasedVariants:await getPurchasedProductVariants(pool,userId,productId)};
 }
-async function changeOwnerReview(pool,{userId,productId,reviewId,data,images=[],storage,removeReview=false}){
+// onCommitting (lib/commit-hook.js) ở CẢ 2 đường commit, ngay trước commit: xoá -> result null; sửa -> dto trả về.
+// ctx.before = { review, images }: dòng review cũ + ảnh cũ đã khoá trong tx.
+async function changeOwnerReview(pool,{userId,productId,reviewId,data,images=[],storage,removeReview=false,onCommitting}){
+  const hook=commitHook({onCommitting});
   const tx=new sql.Transaction(pool),newPaths=[];
   let committed=false,oldPaths=[];
   try{
@@ -42,7 +46,8 @@ async function changeOwnerReview(pool,{userId,productId,reviewId,data,images=[],
       .query('SELECT id FROM dbo.users WITH (UPDLOCK,HOLDLOCK) WHERE id=@uid;');
     if(!user.recordset.length)throw new ReviewError(401,'REVIEW_AUTH_REQUIRED','Vui lòng đăng nhập');
     const row=(await new sql.Request(tx).input('uid',sql.Int,userId).input('pid',sql.Int,productId).input('rid',sql.Int,reviewId)
-      .query(`SELECT ${columns} FROM dbo.reviews WITH (UPDLOCK,HOLDLOCK) WHERE id=@rid AND user_id=@uid AND product_id=@pid;`)).recordset[0];
+      // +is_hidden CHỈ ở câu khoá này (snapshot audit REVIEW_DELETE qua ctx.before.review); GET /me vẫn dùng `columns`.
+      .query(`SELECT ${columns},is_hidden FROM dbo.reviews WITH (UPDLOCK,HOLDLOCK) WHERE id=@rid AND user_id=@uid AND product_id=@pid;`)).recordset[0];
     if(!row)throw new ReviewError(404,'REVIEW_NOT_FOUND','Không tìm thấy đánh giá của bạn');
     const existing=(await new sql.Request(tx).input('rid',sql.Int,reviewId)
       .query('SELECT id,image_path,sort_order FROM dbo.review_images WITH (UPDLOCK,HOLDLOCK) WHERE review_id=@rid ORDER BY sort_order,id;')).recordset;
@@ -50,6 +55,7 @@ async function changeOwnerReview(pool,{userId,productId,reviewId,data,images=[],
       await new sql.Request(tx).input('rid',sql.Int,reviewId).input('uid',sql.Int,userId)
         .query('DELETE FROM dbo.reviews WHERE id=@rid AND user_id=@uid;');
       oldPaths=existing.map(image=>image.image_path);
+      if(hook)await hook(tx,null,{before:{review:row,images:existing}});
       await tx.commit();committed=true;
       await storage.remove(oldPaths);
       return null;
@@ -84,9 +90,11 @@ async function changeOwnerReview(pool,{userId,productId,reviewId,data,images=[],
       kept.push({id:inserted.id,image_path:url});
     }
     oldPaths=existing.filter(image=>data.removeIds.includes(image.id)).map(image=>image.image_path);
+    const result=dto(updated,kept);
+    if(hook)await hook(tx,result,{before:{review:row,images:existing}});
     await tx.commit();committed=true;
     await storage.remove(oldPaths);
-    return dto(updated,kept);
+    return result;
   }catch(error){
     if(!committed){try{await tx.rollback();}catch(_){}await storage.remove(newPaths);}
     throw error;

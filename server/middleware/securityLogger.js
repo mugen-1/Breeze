@@ -67,3 +67,4 @@ function securityLogger(req, res, next) {
 }
 
 module.exports = { securityLogger };
+module.exports.clientIp = clientIp; // lib/audit.js dùng chung cách lấy IP

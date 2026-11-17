@@ -9,6 +9,8 @@ const { ReviewError, prepareImages, storage } = require('../lib/review-media');
 const { parseId, validateReview, createReview } = require('../lib/review-create');
 const {parseReviewQuery,getPublicReviews}=require('../lib/review-list');
 const {getOwnerReview,validateUpdate,changeOwnerReview}=require('../lib/review-owner');
+const { audit } = require('../lib/audit');
+const { reviewCreate, reviewUpdate, reviewDelete } = require('../lib/user-review-audit');
 const upload = multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:5,fields:3,fieldSize:8192,parts:9}}).array('images',5);
 const editUpload = multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_IMAGE_BYTES,files:5,fields:4,fieldSize:8192,parts:10}}).array('images',5);
 const limiter = buildUserActionLimiter({windowMs:15*60*1000,limit:10});
@@ -40,13 +42,16 @@ router.patch('/:reviewId',verifyFirebaseToken,ownerIds,limiter,uploadBody(editUp
   res.set('Cache-Control','no-store');
   try{
     const data=validateUpdate(req.body),images=await prepareImages(req.files||[]);
-    res.json(await changeOwnerReview(await getPool(),{userId:req.user.id,productId:req.reviewProductId,reviewId:req.reviewId,data,images,storage}));
+    // Audit REVIEW_UPDATE cùng tx qua hook; sửa không đổi gì vẫn ghi 1 dòng.
+    res.json(await changeOwnerReview(await getPool(),{userId:req.user.id,productId:req.reviewProductId,reviewId:req.reviewId,data,images,storage,
+      onCommitting:(tx,result,ctx)=>audit(tx,req,{action:'REVIEW_UPDATE',entityType:'review',entityId:req.reviewId,...reviewUpdate(ctx,result)})}));
   }catch(error){errorResponse(res,error);}
 });
 router.delete('/:reviewId',verifyFirebaseToken,ownerIds,limiter,async(req,res)=>{
   res.set('Cache-Control','no-store');
   try{
-    await changeOwnerReview(await getPool(),{userId:req.user.id,productId:req.reviewProductId,reviewId:req.reviewId,storage,removeReview:true});
+    await changeOwnerReview(await getPool(),{userId:req.user.id,productId:req.reviewProductId,reviewId:req.reviewId,storage,removeReview:true,
+      onCommitting:(tx,result,ctx)=>audit(tx,req,{action:'REVIEW_DELETE',entityType:'review',entityId:req.reviewId,before:reviewDelete(ctx),after:null})});
     res.json({status:'success'});
   }catch(error){errorResponse(res,error);}
 });
@@ -81,7 +86,9 @@ router.post('/',verifyFirebaseToken,(req,res,next)=>{
   try {
     const data = validateReview(req.body);
     const images = await prepareImages(req.files || []);
-    const review = await createReview(await getPool(),{userId:req.user.id,productId:req.reviewProductId,data,images,storage});
+    // Audit REVIEW_CREATE cùng tx qua hook; lỗi -> rollback + xoá file vừa lưu (createReview đã xử lý).
+    const review = await createReview(await getPool(),{userId:req.user.id,productId:req.reviewProductId,data,images,storage,
+      onCommitting:(tx,result)=>audit(tx,req,{action:'REVIEW_CREATE',entityType:'review',entityId:result.id,...reviewCreate(result)})});
     res.status(201).json(review);
   } catch (error) { errorResponse(res,error); }
 });

@@ -12,7 +12,7 @@ const rows = [
 ];
 (async () => {
     const html = read('client/admin.html'), source = read('client/js/admin-support.js');
-    eq('sidebar order remains intact', [...html.matchAll(/data-nav="([^"]+)"/g)].map(m => m[1]), navigation);
+    eq('sidebar order remains intact', [...html.matchAll(/data-nav="([^"]+)"/g)].map(m => m[1]), navigation.concat('auditlog'));
     check('all controls used by script exist in real markup', [...source.matchAll(/\$\('([^']+)'\)/g)].every(m => html.includes('id="' + m[1] + '"')));
     check('shared transport loads before Admin support', html.indexOf('js/support-api.js') < html.indexOf('js/admin-support.js'));
     const r = setup('admin', { shell: true });

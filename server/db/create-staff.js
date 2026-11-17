@@ -15,6 +15,7 @@
 //   đầu tự tạo dòng role 'customer').
 // Đổi role tài khoản ĐÃ CÓ thì dùng db/set-role.js.
 const crypto = require('crypto');
+const { roleChange } = require('../lib/user-review-audit'); // hàm thuần, không kéo theo ../db
 
 const MIN_FIREBASE = 6;    // Firebase Auth từ chối mật khẩu ngắn hơn
 const MIN_STRONG = 12;     // ngắn hơn -> cảnh báo, hỏi y/N
@@ -206,6 +207,11 @@ async function upsertStaffRow(pool, sql, uid, email, displayName) {
       `);
     const row = result.recordset[0];
     if (!row || row.role !== 'staff') throw new StaffError('SQL_UNEXPECTED', 'Dòng dbo.users sau MERGE không phải role staff.');
+    // Audit ROLE_CHANGE cùng tx (actor 'cli', before null). Lỗi -> rollback + createStaff xoá user Firebase vừa tạo.
+    // require muộn: lib/audit kéo theo ../db, không được nạp trước khi main() đọc .env.
+    const { audit } = require('../lib/audit');
+    await audit(tx, null, { action: 'ROLE_CHANGE', entityType: 'user', entityId: row.id, actor: { role: 'cli' },
+      ...roleChange({ email: row.email, oldRole: null, newRole: row.role, source: 'create-staff' }) }, { sql });
     await tx.commit();
     return row;
   } catch (err) {

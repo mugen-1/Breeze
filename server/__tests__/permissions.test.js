@@ -27,15 +27,17 @@ test('isBackOffice: chỉ admin và staff, so khớp chính xác', () => {
   }
 });
 
-test('danh sách permission đúng 14 mục (Phase C thêm view_admin_detail, blacklist_release)', () => {
+test('danh sách permission đúng 16 mục (Phase C thêm view_admin_detail, blacklist_release; thêm audit:read_admin, audit:read_customer)', () => {
   assert.deepEqual([...PERMISSIONS], ['dashboard:read', 'product:read', 'product:write', 'product:delete',
     'order:read', 'order:update_status', 'order:delete', 'user:read', 'user:view_admin_detail',
-    'user:blacklist', 'user:blacklist_release', 'user:manage_role', 'review:moderate', 'support:reply']);
+    'user:blacklist', 'user:blacklist_release', 'user:manage_role', 'review:moderate', 'support:reply',
+    'audit:read_admin', 'audit:read_customer']);
 });
 
 // Ma trận Phase C — bảng này cũng là bảng đưa vào khoá luận; đổi quyền phải sửa cả đây.
-const STAFF_DENIED = ['product:delete', 'order:delete', 'user:view_admin_detail', 'user:blacklist_release', 'user:manage_role'];
-test('admin có tất cả; staff = tất cả trừ 5 quyền Phase C; customer rỗng', () => {
+const STAFF_DENIED = ['product:delete', 'order:delete', 'user:view_admin_detail', 'user:blacklist_release', 'user:manage_role',
+  'audit:read_admin'];
+test('admin có tất cả; staff = tất cả trừ 6 quyền (5 quyền Phase C; thêm audit:read_admin); customer rỗng', () => {
   assert.deepEqual([...permsFor('admin')].sort(), [...PERMISSIONS].sort());
   assert.deepEqual([...permsFor('staff')].sort(), PERMISSIONS.filter(p => !STAFF_DENIED.includes(p)).sort());
   assert.equal(permsFor('customer').size, 0);
@@ -44,7 +46,7 @@ test('admin có tất cả; staff = tất cả trừ 5 quyền Phase C; customer
     assert.equal(can('staff', p), false, 'staff ' + p);
   }
   for (const p of ['dashboard:read', 'product:read', 'product:write', 'order:read', 'order:update_status',
-    'user:read', 'user:blacklist', 'review:moderate', 'support:reply']) {
+    'user:read', 'user:blacklist', 'review:moderate', 'support:reply', 'audit:read_customer']) {
     assert.equal(can('staff', p), true, 'staff vẫn giữ ' + p);
   }
   assert.equal(can('customer', 'order:read'), false);
@@ -115,12 +117,12 @@ test('migration 023 idempotent, có SET XACT_ABORT + TRY/CATCH như 022', () => 
   assert.doesNotMatch(s, /\bUPDATE\b|\bDELETE\b|\bDROP\b/i, 'không sửa/xoá dữ liệu');
 });
 
-test('setup-db --before-variants bỏ qua 012..023 (chain test chạy riêng), vẫn chạy 011', () => {
+test('setup-db --before-variants bỏ qua 012..025 (chain test chạy riêng), vẫn chạy 011', () => {
   const setup = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'setup-db.js'), 'utf8');
   const m = setup.match(/if \(BEFORE_VARIANTS && (\/.+\/)\.test\(step\.file\)\)/);
   assert.ok(m, 'không tìm thấy regex BEFORE_VARIANTS');
   const re = new RegExp(m[1].slice(1, -1));
-  for (let n = 12; n <= 23; n++) {
+  for (let n = 12; n <= 25; n++) {
     assert.ok(re.test(`db/migrations/0${n}_x.sql`), `0${n} phải bị bỏ qua`);
   }
   for (const f of ['001_cart_items', '010_product_order_integrity', '011_inventory_movements']) {

@@ -2,6 +2,7 @@
 
 const { sql } = require('../db');
 const { recordInventoryMovement, LAST_ALLOCATION_SQL } = require('./inventory-movement');
+const { commitHook } = require('./commit-hook');
 const APPAREL = ['S', 'M', 'L', 'XL'];
 const MEN_SHOES = ['39', '40', '40.5', '41', '42', '42.5', '43', '44', '44.5', '45', '45.5', '46'];
 
@@ -49,8 +50,12 @@ async function readSizes(pool, productId) {
 }
 
 // All mutations lock product before its variants, matching checkout/cancel/admin.
-async function changeSizes(pool, productId, actorUserId, action, payload = {}) {
+// opts.onCommitting (lib/commit-hook.js): chỉ gọi khi có ghi; result = readSizes đọc QUA tx trước commit
+// (đọc qua pool lúc tx còn giữ khoá sẽ bị chặn), deepEqual kết quả đường không hook. ctx.before = { product, variants }.
+async function changeSizes(pool, productId, actorUserId, action, payload = {}, opts = {}) {
+  const hook = commitHook(opts);
   const tx = new sql.Transaction(pool);
+  let wrote = false;
   try {
     await tx.begin();
     const product = (await new sql.Request(tx).input('pid', sql.Int, productId).query(`
@@ -61,6 +66,7 @@ async function changeSizes(pool, productId, actorUserId, action, payload = {}) {
     const variants = (await new sql.Request(tx).input('pid', sql.Int, productId).query(`
       SELECT id, size, color, stock, is_active, is_base FROM dbo.product_variants WITH (UPDLOCK, HOLDLOCK)
       WHERE product_id = @pid ORDER BY id;`)).recordset;
+    const before = hook ? structuredClone({ product, variants }) : null;
     const base = variants.find(v => v.is_base);
     if (!base) reject('INVENTORY_INTEGRITY', 'Thiếu biến thể BASE', 409);
     const colorConfigured = variants.some(v => v.color != null);
@@ -80,6 +86,7 @@ async function changeSizes(pool, productId, actorUserId, action, payload = {}) {
             OUTPUT INSERTED.id VALUES (@pid, @sku, @size, 0, 1, 0);`)).recordset[0];
         await recordInventoryMovement(tx, { productId, variantId: v.id, type: 'VARIANT_OPENING',
           delta: 0, before: 0, after: 0, actorUserId });
+        wrote = true;
       }
     } else if (action === 'allocate') {
       const list = payload.allocations;
@@ -99,6 +106,7 @@ async function changeSizes(pool, productId, actorUserId, action, payload = {}) {
         const v = variants.find(v => v.id === item.variant_id);
         await writeStock(tx, productId, v, v.stock + item.quantity, 'VARIANT_TRANSFER_IN', reason, actorUserId);
       }
+      wrote = true;
       // Physical inventory is unchanged, so products.stock is intentionally untouched.
     } else if (action === 'adjust') {
       if (colorConfigured) reject('COLOR_MODE', 'Tồn size nguồn chỉ phân bổ qua Quản lý màu', 409);
@@ -118,12 +126,22 @@ async function changeSizes(pool, productId, actorUserId, action, payload = {}) {
           await writeStock(tx, productId, v, payload.stock, 'ADMIN_ADJUSTMENT', payload.reason.trim(), actorUserId);
           await new sql.Request(tx).input('pid', sql.Int, productId).input('delta', sql.Int, delta)
             .query('UPDATE dbo.products SET stock = stock + @delta, updated_at = SYSUTCDATETIME() WHERE id = @pid;');
+          wrote = true;
         }
       }
-      if (payload.is_active !== undefined) await new sql.Request(tx).input('vid', sql.Int, v.id)
-        .input('active', sql.Bit, payload.is_active)
-        .query('UPDATE dbo.product_variants SET is_active = @active, updated_at = SYSUTCDATETIME() WHERE id = @vid;');
+      if (payload.is_active !== undefined) {
+        await new sql.Request(tx).input('vid', sql.Int, v.id)
+          .input('active', sql.Bit, payload.is_active)
+          .query('UPDATE dbo.product_variants SET is_active = @active, updated_at = SYSUTCDATETIME() WHERE id = @vid;');
+        wrote = true;
+      }
     } else reject('INVALID_ACTION', 'Thao tác không hợp lệ');
+    if (hook && wrote) {
+      const result = await readSizes({ request: () => new sql.Request(tx) }, productId);
+      await hook(tx, result, { before });
+      await tx.commit();
+      return result;
+    }
     await tx.commit();
     return readSizes(pool, productId);
   } catch (err) {

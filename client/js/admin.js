@@ -72,6 +72,7 @@
             if (which !== 'panel') { _exportEpoch++; closeDrawer(); closeCustomerDetail(); closeUserMenu(false); setPermissions(null); setLogoRole(null); }
             if (which !== 'panel' && window.BreezeAdminReviews) window.BreezeAdminReviews.reset();
             if (which !== 'panel' && window.BreezeAdminSupport) window.BreezeAdminSupport.reset();
+            if (which !== 'panel' && window.BreezeAdminAudit) window.BreezeAdminAudit.reset();
             if (which === 'panel') {
                 $('panel').style.display = 'block';
                 $('bar-right').style.visibility = 'visible';
@@ -131,12 +132,17 @@
             _perms = Array.isArray(list) ? list.filter(function (p) { return typeof p === 'string'; }) : [];
         }
         function can(perm) { return _perms.indexOf(perm) !== -1; }
+        // data-perm có thể ghi nhiều quyền ngăn bằng '|' = cần ÍT NHẤT 1 (vd tab Nhật ký: audit:read_admin|audit:read_customer).
+        // Rỗng / gõ sai tên quyền -> không khớp quyền nào -> ẩn (đóng mặc định).
+        function canAny(spec) {
+            return String(spec == null ? '' : spec).split('|').some(function (p) { return p !== '' && can(p); });
+        }
         // Nút do JS sinh: gắn sẵn data-perm (+ hidden nếu thiếu quyền) ngay trong chuỗi HTML.
         function permAttrs(perm) { return ' data-perm="' + perm + '"' + (can(perm) ? '' : ' hidden'); }
         // Phần tử tĩnh trong admin.html mang data-perm (mục menu trái, nút Thêm sản phẩm).
         function applyPerms() {
             document.querySelectorAll('[data-perm]').forEach(function (el) {
-                el.hidden = !can(el.getAttribute('data-perm'));
+                el.hidden = !canAny(el.getAttribute('data-perm'));
             });
         }
         // Mục menu đầu tiên còn hiện (theo thứ tự trong admin.html); không còn mục nào -> Hồ sơ.
@@ -144,7 +150,7 @@
             var items = document.querySelectorAll('.adm-nav-item');
             for (var i = 0; i < items.length; i++) {
                 var perm = items[i].getAttribute('data-perm');
-                if (perm && can(perm)) return items[i].getAttribute('data-nav');
+                if (perm && canAny(perm)) return items[i].getAttribute('data-nav');
             }
             return 'profile';
         }
@@ -169,6 +175,7 @@
                 case 'blacklist': loadBlacklist(_blacklistPage); break;
                 case 'reviews': break; // admin-reviews.js re-renders loaded data on language change.
                 case 'feedback': break; // Nhãn và dữ liệu chat do admin-support.js quản lý.
+                case 'auditlog': break; // admin-audit.js tự vẽ lại từ dữ liệu đã tải khi langchange.
                 default: loadDashboard();
             }
             if ($('inventory-modal').classList.contains('open') && _inventoryData) renderInventory(_inventoryData);
@@ -190,7 +197,8 @@
             reviews: 'view-reviews',
             blacklist: 'view-blacklist',
             feedback: 'view-feedback',
-            profile: 'view-profile'      // không có nút trong menu trái — mở từ popup user card
+            profile: 'view-profile',     // không có nút trong menu trái — mở từ popup user card
+            auditlog: 'view-auditlog'    // Nhật ký hoạt động (admin-audit.js)
         };
         var _currentView = 'dashboard';
         // Chuyển view: dùng chung cho nút menu trái và mục "section" trong popup user card.
@@ -215,6 +223,8 @@
             if (fromDrawer) focusViewHeading(t);
             if (t === 'profile') refreshProfileView();
             if (t === 'reviews' && window.BreezeAdminReviews) window.BreezeAdminReviews.load(1);
+            // Tab Nhật ký: truyền BẢN SAO quyền từ /api/me (module tự quyết cột IP / ô chọn nhóm theo quyền, không theo role).
+            if (t === 'auditlog' && window.BreezeAdminAudit) window.BreezeAdminAudit.load(1, _perms.slice());
             if (t === 'feedback' && window.BreezeAdminSupport) window.BreezeAdminSupport.load(1);
             else if (window.BreezeAdminSupport) window.BreezeAdminSupport.hide();
         }
@@ -629,19 +639,30 @@
                     $('inventory-body').innerHTML = '<tr><td colspan="6" class="adm-empty">' + tr('adm.inventoryError') + '</td></tr>';
                 });
         }
+        // Cột Tham chiếu: đơn còn -> '#<mã đơn>' (đơn cũ chưa có mã -> '#<id>'). Đơn đã bị xoá:
+        // FK order_id ON DELETE SET NULL nhưng order_reference_id vẫn giữ id -> '#<id> (đã xoá)'.
+        // Không gắn đơn -> lý do điều chỉnh. Gán bằng textContent (reason do admin gõ).
+        function inventoryRef(m) {
+            if (m.order_reference_id == null) return m.reason || '—';
+            if (m.order_id == null) return tr('adm.invRefDeleted', { id: m.order_reference_id }, '#' + m.order_reference_id + ' (đã xoá)');
+            return '#' + (m.order_code == null ? m.order_reference_id : m.order_code);
+        }
         function renderInventory(data) {
             var list = data.movements || [];
             $('inventory-title').textContent = tr('adm.inventoryTitle', { name: _inventoryProduct.name_vi });
-            $('inventory-body').innerHTML = list.length ? list.map(function (m) {
-                var ref = m.order_reference_id != null ? '#' + (m.order_code == null ? m.order_reference_id : m.order_code) : (m.reason || '—');
+            $('inventory-body').innerHTML = list.length ? list.map(function (m, i) {
                 return '<tr><td>' + fmtDate(m.created_at) + '</td>' +
                     '<td>' + esc(tr('adm.inv.' + m.movement_type, null, m.movement_type)) +
                     (m.size ? '<br><small>' + tr('pd.thSize') + ': ' + esc(m.size) + '</small>' : '') +
                     (m.color ? '<br><small>' + tr('co.metaColor') + ': ' + esc(m.color) + '</small>' : '') + '</td>' +
                     '<td class="num">' + (m.quantity_delta > 0 ? '+' : '') + m.quantity_delta + '</td>' +
                     '<td class="num">' + m.stock_before + '</td><td class="num">' + m.stock_after + '</td>' +
-                    '<td>' + esc(ref) + '</td></tr>';
+                    '<td data-inv-ref="' + i + '"></td></tr>';
             }).join('') : '<tr><td colspan="6" class="adm-empty">' + tr('adm.inventoryEmpty') + '</td></tr>';
+            Array.prototype.forEach.call($('inventory-body').querySelectorAll('[data-inv-ref]'), function (cell) {
+                var m = list[Number(cell.getAttribute('data-inv-ref'))];
+                if (m) cell.textContent = inventoryRef(m);
+            });
             var pages = data.total_pages || 1;
             $('inventory-pager').innerHTML =
                 '<button type="button" id="inv-prev"' + (_inventoryPage <= 1 ? ' disabled' : '') + '>' + tr('adm.pgPrev') + '</button>' +

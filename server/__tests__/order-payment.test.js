@@ -61,6 +61,7 @@ class Request {
       payment.paid_at = payment.status === 'paid' ? '2026-10-11T07:20:00.000Z' : null;
       return result([clone(payment)]);
     }
+    if (q.startsWith('INSERT INTO dbo.audit_logs')) return { recordset: [{ id: '1' }] };
     throw new Error('Unexpected SQL: ' + q);
   }
 }

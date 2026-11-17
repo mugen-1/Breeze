@@ -6,6 +6,8 @@ const { getPool } = require('../db');
 const { parseId } = require('../lib/review-create');
 const { ReviewError } = require('../lib/review-media');
 const { parseAdminQuery, visibilityInput, listAdminReviews, adminReviewDetail, setReviewVisibility } = require('../lib/review-admin');
+const { audit } = require('../lib/audit');
+const { reviewVisibility } = require('../lib/user-review-audit');
 router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 router.use(requirePermission('review:moderate')); // Mọi route dưới /api/admin/reviews.
 function handle(action) {
@@ -27,6 +29,9 @@ router.get('/', handle(async req => { const options = parseAdminQuery(req.query)
 router.get('/:reviewId', handle(async req => { const rid = id(req); return adminReviewDetail(await getPool(), rid); }));
 router.patch('/:reviewId/visibility', handle(async req => {
   const rid = id(req), hidden = visibilityInput(req.body);
-  return setReviewVisibility(await getPool(), rid, hidden);
+  // Audit REVIEW_VISIBILITY trong cùng tx (hook onCommitting); đã đúng trạng thái đích -> lib không gọi hook -> 0 dòng.
+  return setReviewVisibility(await getPool(), rid, hidden, { onCommitting: (tx, result, ctx) => audit(tx, req, {
+    action: 'REVIEW_VISIBILITY', entityType: 'review', entityId: rid,
+    ...reviewVisibility({ productId: ctx.product_id, wasHidden: ctx.before.isHidden, isHidden: result.isHidden }) }) });
 }));
 module.exports = router;

@@ -26,7 +26,7 @@ class Request {
     state.routeQueries.push(q);
     if (q.startsWith('SELECT COUNT(*) AS total FROM dbo.orders o')) return result([{ total: 0 }]);
     if (q.startsWith('SELECT o.id, o.order_code')) return result([]);
-    if (q.startsWith('SELECT id, role FROM dbo.users WHERE id = @uid')) {
+    if (/^SELECT id, role FROM dbo\.users (WITH \(UPDLOCK, ROWLOCK\) )?WHERE id = @uid/.test(q)) {
       return result(state.target ? [{ id: p.uid, role: state.target }] : []);
     }
     if (q.startsWith("SELECT TOP 1 id FROM dbo.orders WHERE user_id = @uid AND status = 'cancelled'")) return result([]);
@@ -57,6 +57,7 @@ const adminRouter = require('../routes/admin');
 const SUB_ROUTERS = new Map([
   [require('../routes/admin-reviews'), '/reviews'],
   [require('../routes/admin-support'), '/support'],
+  [require('../routes/admin-audit-logs'), '/audit-logs'],
 ]);
 
 const app = express();
@@ -97,14 +98,17 @@ async function securityRows(expected) {
 
 // ---- Liệt kê route của router admin (cả sub-router) và quyền thực tế áp lên từng route ----
 function guardOf(fn) { return fn && typeof fn.permission === 'string' ? fn.permission : null; }
+// requireAnyPermission gắn .permissions (mọi quyền cho qua); requirePermission chỉ có .permission.
+function permsOf(fn) { return fn && Array.isArray(fn.permissions) ? fn.permissions : null; }
 function listRoutes(router, prefix = '', inherited = null) {
   const out = [];
   let perm = inherited;
   for (const layer of router.stack) {
     if (layer.route) {
       const own = layer.route.stack.map(l => guardOf(l.handle)).filter(Boolean);
+      const ownPerms = layer.route.stack.map(l => permsOf(l.handle)).filter(Boolean);
       for (const m of Object.keys(layer.route.methods)) {
-        out.push({ method: m.toUpperCase(), path: prefix + layer.route.path, perm: own[0] || perm, own });
+        out.push({ method: m.toUpperCase(), path: prefix + layer.route.path, perm: own[0] || perm, own, perms: ownPerms[0] || null });
       }
     } else if (Array.isArray(layer.handle && layer.handle.stack)) {
       assert.ok(SUB_ROUTERS.has(layer.handle), 'sub-router lạ trong router admin — thêm vào test này');
@@ -162,6 +166,7 @@ const EXPECTED = {
   'GET /support/conversations/:conversationId/messages': 'support:reply',
   'POST /support/conversations/:conversationId/read': 'support:reply',
   'POST /support/conversations/:conversationId/messages': 'support:reply',
+  'GET /audit-logs/': 'audit:read_admin|audit:read_customer',   // cần ÍT NHẤT 1 trong 2 quyền
 };
 
 test('cổng chung của router admin: verifyFirebaseToken rồi requireBackOffice, trước mọi route', () => {
@@ -218,7 +223,7 @@ for (const r of ROUTES) {
     assert.deepEqual(state.routeQueries, []);
   });
   test('staff thiếu đúng quyền ' + r.perm + ' -> 403 FORBIDDEN, không chạm SQL: ' + key(r), async () => {
-    setPermissionsForTest({ admin: PERMISSIONS, staff: PERMISSIONS.filter(p => p !== r.perm) });
+    setPermissionsForTest({ admin: PERMISSIONS, staff: PERMISSIONS.filter(p => !(r.perms || [r.perm]).includes(p)) });
     const res = await call(r.method, concrete(r.path));
     assert.equal(res.status, 403);
     assert.deepEqual(res.body, { status: 'error', code: 'FORBIDDEN', message: 'Tài khoản không có quyền thực hiện thao tác này' });
@@ -333,7 +338,7 @@ test('GET /api/me trả permissions theo role (đúng thứ tự khai báo)', as
   const expected = {
     admin: [...PERMISSIONS],
     staff: PERMISSIONS.filter(p => !['product:delete', 'order:delete', 'user:view_admin_detail',
-      'user:blacklist_release', 'user:manage_role'].includes(p)),
+      'user:blacklist_release', 'user:manage_role', 'audit:read_admin'].includes(p)),
     customer: [],
   };
   for (const [role, perms] of Object.entries(expected)) {

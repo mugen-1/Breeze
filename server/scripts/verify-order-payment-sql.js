@@ -13,6 +13,8 @@ const { getPool, config, sql } = require('../db');
 const { businessState, audit } = require('./audit-order-shipping');
 const shipping = require('../__tests__/helpers/shipping');
 let pool, server, created = false, base;
+// Số thẻ test chuẩn, hợp lệ Luhn (không phải thẻ thật). Chỉ đi vào parseCard; DB chỉ giữ brand + last4.
+const TEST_CARDS = { visa: '4111111111111111', mastercard: '5555555555554444' };
 function adminSql(statement) {
   execFileSync('sqlcmd', ['-E', '-S', config.server, '-d', 'master', '-No', '-b', '-Q', statement], { stdio: 'pipe' });
 }
@@ -35,6 +37,16 @@ async function fixture(method = 'cod') {
     INSERT INTO dbo.inventory_movements(product_id,variant_id,movement_type,quantity_delta,stock_before,stock_after)
     VALUES(@pid,@vid,'PRODUCT_CREATE',5,0,5);
     INSERT INTO dbo.cart_items(user_id,product_id,variant_id,quantity) VALUES(@uid,@pid,@vid,1);`);
+  // Luật PAYMENT_INFO_REQUIRED (lib/payment-readiness.js): visa/mastercard cần thẻ lưu đúng brand
+  // còn hạn, momo cần users.phone di động. Tạo qua đúng API checkout của client đang gọi.
+  if (TEST_CARDS[method]) {
+    const card = await request(uid, '/api/account/payment-methods', 'POST', { card_number: TEST_CARDS[method],
+      holder_name: 'Payment Fixture', exp_month: 12, exp_year: new Date().getUTCFullYear() + 3, expected_brand: method });
+    assert.equal(card.status, 201, JSON.stringify(card.body));
+  } else if (method === 'momo') {
+    const phone = await request(uid, '/api/me/phone', 'PATCH', { phone: '0901234567' });
+    assert.equal(phone.status, 200, JSON.stringify(phone.body));
+  }
   return { uid, pid, vid, method };
 }
 async function checkout(f, body = {}) {
@@ -71,12 +83,16 @@ async function main() {
     assert.equal((await pool.request().query('SELECT COUNT(*) AS n FROM dbo.payment_transactions;')).recordset[0].n, 0);
     console.log('018 fresh setup, rerun idempotence, internal-ID FK, no legacy payment backfill: PASS');
     require.cache[require.resolve('../middleware/auth')] = { exports: {
-      verifyFirebaseToken(req, res, next) {
+      // Như middleware thật: req.user là row DB (firebase_uid, phone cho checkPaymentInfo / PATCH /api/me/phone).
+      async verifyFirebaseToken(req, res, next) {
         const id = Number(req.headers['x-test-user']); if (!id) return res.status(401).json({ status: 'error' });
-        req.user = { id, role: req.headers['x-test-admin'] ? 'admin' : 'customer' }; next();
+        const row = (await pool.request().input('id', sql.Int, id)
+          .query('SELECT firebase_uid, phone FROM dbo.users WHERE id=@id;')).recordset[0];
+        req.user = { ...row, id, role: req.headers['x-test-admin'] ? 'admin' : 'customer' }; next();
       },
     } };   // Phân quyền /api/admin dùng requireBackOffice + requirePermission thật, đọc req.user.role ở trên.
     const app = express(); app.use(express.json()); app.use('/api/orders', require('../routes/orders')); app.use('/api/admin', require('../routes/admin'));
+    app.use('/api/account/payment-methods', require('../routes/payments')); app.use('/api/me', require('../routes/me'));
     server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve)); base = `http://127.0.0.1:${server.address().port}`;
     assert.equal((await request(null, '/api/orders/1/payment-simulation', 'POST', { outcome: 'success' })).status, 401);
 

@@ -151,6 +151,10 @@ const STEPS = [
     desc: 'Bảng SecurityEvents (request đáng ngờ/bị chặn) cho securityLogger; không seed' },
   { type: 'sql', file: 'db/migrations/023_staff_role.sql',
     desc: "CHECK users.role IN ('customer','staff','admin'); dừng nếu có role lạ" },
+  { type: 'sql', file: 'db/migrations/024_inventory_order_delete.sql',
+    desc: 'Thêm loại movement ORDER_DELETE (xoá đơn chưa rời kho cộng lại tồn); giữ 8 loại cũ' },
+  { type: 'sql', file: 'db/migrations/025_audit_logs.sql',
+    desc: 'Bảng audit_logs append-only (trigger chặn UPDATE/DELETE, không FK); không seed' },
 ];
 
 if (FRESH) {
@@ -172,7 +176,7 @@ let done = 0, skipped = 0;
 
 for (let idx = 0; idx < STEPS.length; idx++) {
   const step = STEPS[idx];
-  if (BEFORE_VARIANTS && /db\/migrations\/(01[23456789]|02[0-3])_/.test(step.file)) {
+  if (BEFORE_VARIANTS && /db\/migrations\/(01[23456789]|02[0-5])_/.test(step.file)) {
     skipped++;
     continue;
   }

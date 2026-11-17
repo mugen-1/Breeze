@@ -38,6 +38,7 @@ class Request {
       if(state.failMetadata)throw Object.assign(Error('PRIVATE metadata path'),{code:'EREQUEST'});
       this.tx.images.push({review_id:p.rid,image_path:p.url,sort_order:p.sort});return result([]);
     }
+    if(q.startsWith('INSERT INTO dbo.audit_logs'))return result([{id:'1'}]);
     throw Error('Unexpected test SQL '+q);
   }
 }

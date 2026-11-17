@@ -31,6 +31,7 @@ class Request{
     if(q.startsWith('UPDATE dbo.review_images')){images.find(i=>i.id===p.image&&i.review_id===p.rid).sort_order=p.sort;return result([]);}
     if(q.startsWith('INSERT INTO dbo.review_images')){if(state.failMetadata)throw Object.assign(Error('PRIVATE metadata'),{code:'EREQUEST'});const id=++state.imageId;images.push({id,review_id:p.rid,image_path:p.url,sort_order:p.sort});return result([{id}]);}
     if(q.startsWith('DELETE FROM dbo.reviews')){if(state.failDelete)throw Error('PRIVATE delete');this.tx.rows=rows.filter(r=>!(r.id===p.rid&&r.user_id===p.uid));this.tx.images=images.filter(i=>i.review_id!==p.rid);return result([]);}
+    if(q.startsWith('INSERT INTO dbo.audit_logs'))return result([{id:'1'}]);
     throw Error('Unexpected test SQL '+q);
   }
 }

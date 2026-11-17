@@ -91,6 +91,7 @@ class Request {
       data.order.cancelled_at = 'database-time';
       return result([clone(data.order)]);
     }
+    if (q.startsWith('INSERT INTO dbo.audit_logs')) return { recordset: [{ id: '1' }] };
     throw new Error('Unexpected SQL: ' + q);
   }
 }

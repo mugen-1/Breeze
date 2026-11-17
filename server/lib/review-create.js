@@ -2,6 +2,7 @@
 const { sql } = require('../db');
 const { getPurchasedProductVariants } = require('./review-eligibility');
 const { ReviewError } = require('./review-media');
+const { commitHook } = require('./commit-hook');
 function parseId(raw, minimum = 0) {
   if (!['string','number'].includes(typeof raw)) return null;
   const value = Number(raw);
@@ -22,9 +23,12 @@ function validateReview(body = {}) {
   if (comment && comment.length > 1000) throw new ReviewError(400,'REVIEW_INVALID_COMMENT','Bình luận tối đa 1000 ký tự');
   return { rating:Number(body.rating),variantId,comment };
 }
-async function createReview(pool, {userId,productId,data,images,storage}) {
+// onCommitting (lib/commit-hook.js): gọi sau khi ghi review + ảnh, ngay trước commit; tạo mới nên ctx = {}.
+// Lỗi của hook được ném lại nguyên văn (không đổi thành REVIEW_ALREADY_EXISTS dù mang number 2601/2627).
+async function createReview(pool, {userId,productId,data,images,storage,onCommitting}) {
+  const hook = commitHook({ onCommitting });
   const tx = new sql.Transaction(pool), paths = [];
-  let committed = false;
+  let committed = false, hookError = null;
   try {
     await tx.begin();
     // Serialize this user's creates and keep account deletion from removing the author mid-insert.
@@ -53,16 +57,18 @@ async function createReview(pool, {userId,productId,data,images,storage}) {
       await new sql.Request(tx).input('rid',sql.Int,row.id).input('url',sql.NVarChar(500),url).input('sort',sql.TinyInt,sort)
         .query('INSERT INTO dbo.review_images(review_id,image_path,sort_order) VALUES(@rid,@url,@sort);');
     }
-    await tx.commit(); committed = true;
-    return {id:row.id,productId,rating:row.rating,comment:row.comment,
+    const result = {id:row.id,productId,rating:row.rating,comment:row.comment,
       variant:{id:variant.variant_id,orderItemId:variant.order_item_id,size:variant.size_snapshot,color:variant.color_snapshot},
       images:paths.map(url=>({url})),createdAt:row.created_at,updatedAt:row.updated_at};
+    if (hook) { try { await hook(tx, result, {}); } catch (error) { hookError = error; throw error; } }
+    await tx.commit(); committed = true;
+    return result;
   } catch (error) {
     if (!committed) {
       try { await tx.rollback(); } catch (_) { /* may already be rolled back by SQL */ }
       await storage.remove(paths);
     }
-    if ([2601,2627].includes(error.number)) throw new ReviewError(409,'REVIEW_ALREADY_EXISTS','Bạn đã đánh giá sản phẩm này');
+    if (error !== hookError && [2601,2627].includes(error.number)) throw new ReviewError(409,'REVIEW_ALREADY_EXISTS','Bạn đã đánh giá sản phẩm này');
     throw error;
   }
 }

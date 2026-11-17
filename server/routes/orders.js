@@ -20,6 +20,8 @@ const { cancelOrder, CancelError } = require('../lib/cancel-order');
 const { createPayment, fetchPayments, COLUMNS } = require('../lib/order-payment');
 const { recordInventoryMovement } = require('../lib/inventory-movement');
 const { checkPaymentInfo } = require('../lib/payment-readiness');
+const { audit } = require('../lib/audit');
+const { placeOrder, statusChange } = require('../lib/order-audit');
 const { METHODS, validateShipping, grandTotal } = require('../config/shipping');
 const { sellableVariant, SIZE_CONFIGURED_SQL, COLOR_CONFIGURED_SQL } = require('../lib/size-variants');
 const {
@@ -307,6 +309,12 @@ router.post('/', async (req, res) => {
       .input('uid', sql.Int, req.user.id)
       .query('DELETE FROM dbo.cart_items WHERE user_id = @uid;');
 
+    // 9) Audit ORDER_PLACE cùng tx, ngay trước commit, chỉ trường cho phép (không dữ liệu cá nhân / thẻ).
+    // Lỗi -> rollback cả đơn, kho, thanh toán và mã đơn (bộ đếm cấp trong cùng tx), trả 500 như cũ.
+    await audit(tx, req, { action: 'ORDER_PLACE', entityType: 'order', entityId: order.id,
+      ...placeOrder({ orderCode, totalAmount: order.total_amount, paymentMethod: order.PaymentMethod,
+        itemsCount: rows.length, voucherCode: order.VoucherCode, discountAmount: order.DiscountAmount }) });
+
     await tx.commit();
 
     res.status(201).json({
@@ -415,8 +423,13 @@ router.post('/:id/cancel', async (req, res) => {
   const reason = reasonCode === 'other' ? `Khác: ${shortDetails}` : CANCEL_REASONS[reasonCode];
   try {
     const pool = await getPool();
+    // Audit ORDER_CANCEL_BY_CUSTOMER qua hook cancelOrder (cùng tx, sau khi cộng lại kho). Chỉ route KHÁCH truyền
+    // hook này; route admin ghi ORDER_STATUS_CHANGE. cancel_reason lưu nguyên văn (thoát ký tự ở giao diện).
     const order = await cancelOrder(pool, { orderId: id, ownerId: req.user.id,
-      reason, actorUserId: req.user.id });
+      reason, actorUserId: req.user.id,
+      onCommitting: (tx, result, ctx) => audit(tx, req, { action: 'ORDER_CANCEL_BY_CUSTOMER', entityType: 'order',
+        entityId: id, ...statusChange({ orderCode: ctx.order_code, before: { status: ctx.before.status },
+          after: { status: result.status, cancel_reason: result.cancel_reason }, restored: ctx.restored }) }) });
     return res.json({ status: 'ok', order: { ...order, can_cancel: false } });
   } catch (error) {
     if (error instanceof CancelError && error.status < 500) {

@@ -1,0 +1,23 @@
+/* Tab "Nhật ký hoạt động" (js/admin-audit.js). CHỈ class riêng của tab này; bảng dùng .adm-table /
+   .adm-table-wrap / .adm-pager / .oi-detail (td.inner) sẵn có trong admin.css, không sửa CSS tab khác. */
+#view-auditlog [hidden] { display:none !important; }
+.audit-filters { margin-bottom:12px; align-items:flex-end; }
+.audit-filters label { display:inline-flex; flex-direction:column; gap:4px; font-size:12px; color:var(--c-muted); }
+.audit-filters input { font-family:inherit; font-size:13px; padding:6px 8px; border:1px solid var(--c-line);
+  background:var(--c-bg); color:var(--c-ink); min-width:120px; }
+.audit-note { font-size:12px; color:var(--c-muted); margin:0 0 10px; }
+.audit-filter-error { font-size:13px; color:var(--c-danger-text); margin:0 0 10px; }
+.audit-chip { display:inline-flex; align-items:center; gap:8px; padding:4px 10px; margin:0 0 12px; font-size:12.5px;
+  border:1px solid var(--c-line); background:var(--c-cream); color:var(--c-ink); }
+.audit-chip button { background:none; border:0; padding:0 2px; cursor:pointer; font-size:13px; color:var(--c-ink); }
+.audit-table .audit-time { white-space:nowrap; }
+.audit-entity-link { background:none; border:0; padding:0; cursor:pointer; font:inherit; color:var(--c-ink);
+  text-decoration:underline; text-align:left; word-break:break-word; }
+.audit-actor-name { word-break:break-word; }
+.audit-actor-sub { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:4px; font-size:12px; color:var(--c-muted); }
+.pill.role-cli { background:var(--c-bg); color:var(--c-muted); border:1px dashed var(--c-line); }
+.audit-meta { padding:10px 14px; font-size:12.5px; color:var(--c-muted); }
+.audit-meta div { white-space:pre-wrap; word-break:break-word; }
+.audit-diff td.inner { white-space:pre-wrap; word-break:break-word; vertical-align:top; }
+.audit-diff tr.audit-changed td.inner { background:var(--c-warning-bg); color:var(--c-ink); }
+.audit-empty-diff { margin:0; padding:10px 14px; font-size:12.5px; color:var(--c-muted); }

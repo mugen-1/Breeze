@@ -54,6 +54,7 @@ function world(opts = {}) {
         const row = { id: 501, firebase_uid: p.uid, email: p.email, display_name: p.displayName, role: opts.mergeRole || 'staff' };
         st.sqlRows.push(row); return result([row]);
       }
+      if (q.startsWith('INSERT INTO dbo.audit_logs')) return result([{ id: '1' }]);
       throw new Error('Unexpected SQL: ' + q);
     }
   }

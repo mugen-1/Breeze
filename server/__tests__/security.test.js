@@ -43,6 +43,7 @@ class Request {
       state.user.role = 'admin';
       return result([{ ...state.user }]);
     }
+    if (q.startsWith('INSERT INTO dbo.audit_logs')) return result([{ id: '1' }]);
     if (state.routeQuery) return state.routeQuery(q, p, this.tx);
     throw new Error('Unexpected SQL in test: ' + q);
   }

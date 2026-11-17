@@ -117,6 +117,7 @@ class Request {
     }
     if (q.includes('dbo.payment_transactions')) return { recordset: [], rowsAffected: [0] };
     if (state.list && q.includes('FROM dbo.order_items')) return { recordset: [] };
+    if (q.startsWith('INSERT INTO dbo.audit_logs')) return { recordset: [{ id: '1' }] };
     throw new Error('Unexpected SQL: ' + q);
   }
 }

@@ -41,6 +41,7 @@ class Request {
         (c.exp_year > p.y || (c.exp_year === p.y && c.exp_month >= p.m)));
       return result(ok ? [{ ok: 1 }] : []);
     }
+    if (q.startsWith('INSERT INTO dbo.audit_logs')) return result([{ id: '1' }]);
     const stage = q.startsWith('UPDATE dbo.order_code_counter') ? 'code'
       : q.startsWith('DELETE FROM dbo.cart_items') ? 'clear'
       : q.includes('FROM dbo.cart_items') ? 'cart'

@@ -1,15 +1,30 @@
 'use strict';
 
 // TASK 05: real SQL Server + HTTP route test with disposable users/products/orders.
-// All created rows are removed in finally, including audit rows for test products.
+// Chạy trên DATABASE TẠM riêng (setup-db --fresh), không bao giờ trên DB chính trong .env:
+// checkout tiêu hao order_code_counter (giới hạn 1100) và không trả lại. DB tạm xoá trong finally.
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env'), quiet: true });
 const assert = require('node:assert/strict');
 const express = require('express');
-const { spawnSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const path = require('node:path');
-const { getPool, sql } = require('../db');
+const mainDb = process.env.DB_NAME;
+const dbName = `BreezeInventoryTest_${process.pid}_${Date.now()}`;
+if (!/^BreezeInventoryTest_[0-9]+_[0-9]+$/.test(dbName) || dbName.toLowerCase() === String(mainDb).toLowerCase()) {
+  throw new Error('Unsafe test database');
+}
+process.env.DB_NAME = dbName; // trước require('../db'): getPool() của mọi route trỏ vào DB tạm
+const { getPool, sql, config } = require('../db');
+if (config.database !== dbName) throw new Error('Unsafe test database');
+const quotedDb = `[${dbName}]`;
+let createdDb = false;
+function adminSql(statement) {
+  execFileSync('sqlcmd', ['-E', '-S', config.server, '-d', 'master', '-No', '-b', '-Q', statement], { stdio: 'pipe' });
+}
+// POST /api/orders bắt buộc thông tin giao hàng (validateShipping) — dùng chung bộ mẫu với các test khác.
+const shipping = require('../__tests__/helpers/shipping');
 
-const tag = `inventory-test-${process.pid}-${Date.now()}`;
+const tag =`inventory-test-${process.pid}-${Date.now()}`;
 const actors = new Map();
 const users = [];
 const products = [];
@@ -139,14 +154,19 @@ async function cleanup() {
 
 async function main() {
   try {
+    adminSql(`CREATE DATABASE ${quotedDb};`); createdDb = true;
+    adminSql(`ALTER AUTHORIZATION ON DATABASE::${quotedDb} TO [${String(config.user).replace(/]/g, ']]')}];`);
+    console.log('Created disposable database:', dbName);
+    execFileSync(process.execPath, ['scripts/setup-db.js', '--fresh'], { cwd: path.join(__dirname, '..'),
+      env: { ...process.env, DB_NAME: dbName }, stdio: 'pipe', maxBuffer: 2 * 1024 * 1024 });
     pool = await getPool();
     server = app.listen(0, '127.0.0.1');
     await new Promise(resolve => server.once('listening', resolve));
     base = 'http://127.0.0.1:' + server.address().port;
     const { productId, categoryId } = await setup();
 
-    const checkout = () => call('POST', '/api/orders', users[0], { paymentMethod: 'cod' });
-    const otherCheckout = () => call('POST', '/api/orders', users[1], { paymentMethod: 'cod' });
+    const checkout = () => call('POST', '/api/orders', users[0], { ...shipping, paymentMethod: 'cod' });
+    const otherCheckout = () => call('POST', '/api/orders', users[1], { ...shipping, paymentMethod: 'cod' });
     const two = await Promise.all([checkout(), otherCheckout()]);
     assert.deepEqual(two.map(x => x.status).sort(), [201, 409]);
     const winner = two.find(x => x.status === 201);
@@ -227,7 +247,7 @@ async function main() {
 
     const race = await Promise.all([
       call('PUT', `/api/admin/products/${productId}`, admin, { stock: 10, stock_reason: 'Count correction' }),
-      call('POST', '/api/orders', loserUser, { paymentMethod: 'cod' }),
+      call('POST', '/api/orders', loserUser, { ...shipping, paymentMethod: 'cod' }),
     ]);
     assert.deepEqual(race.map(x => x.status).sort(), [200, 201]);
     orders.push(race.find(x => x.status === 201).body.order.id);
@@ -260,15 +280,23 @@ async function main() {
         VALUES (@pid, @vid, 'ADMIN_ADJUSTMENT', 0, @wrong, @wrong, N'Chain detector test');`))
       .recordset[0].id;
     const audit = spawnSync(process.execPath,
-      [path.join(__dirname, 'audit-inventory-movements.js')], { encoding: 'utf8' });
+      [path.join(__dirname, 'audit-inventory-movements.js')], { encoding: 'utf8', env: { ...process.env, DB_NAME: dbName } });
     assert.equal(audit.status, 1, audit.stderr);
     const auditResult = JSON.parse(audit.stdout.slice(audit.stdout.indexOf('{')));
     assert.ok(auditResult.issues.broken_chain.includes(broken));
     assert.ok(auditResult.issues.latest_variant_stock.includes(state.stock.variant_id));
     console.log('DB equation constraint and read-only chain detector negative control. PASS');
   } finally {
-    if (server) await new Promise(resolve => server.close(resolve));
-    await cleanup();
+    try {
+      if (server) await new Promise(resolve => server.close(resolve));
+      await cleanup();
+    } finally {
+      if (createdDb) {
+        if (pool && pool.connected) await pool.close();
+        adminSql(`ALTER DATABASE ${quotedDb} SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE ${quotedDb};`);
+        console.log('Removed disposable database:', dbName);
+      }
+    }
   }
 }
 
