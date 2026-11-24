@@ -1,4 +1,5 @@
 'use strict';
+const statsJobs = []; // job stats.recompute_day mà code nghiệp vụ đưa vào hàng (xem SQL giả bên dưới)
 
 // HTTP tests for both cancel routes with a transactional SQL double. Locking is
 // also checked independently against real SQL Server by test-cancel-sql.js.
@@ -11,7 +12,7 @@ let db, actor, failStage, events, queries, held, waiters;
 const clone = x => structuredClone(x);
 const result = (recordset = [], affected = recordset.length) => ({ recordset, rowsAffected: [affected] });
 function reset(status = 'pending', items = [{ product_id: 5, quantity: 2 }]) {
-  db = { order: { id: 7, user_id: 1, status, cancel_reason: null, cancelled_at: null },
+  db = { order: { id: 7, user_id: 1, status, cancel_reason: null, cancelled_at: null, created_at: '2026-10-11T00:00:00Z' },
     items: clone(items).map(x => ({ ...x, variant_id: x.variant_id ?? x.product_id * 10 })),
     products: [{ id: 5, stock: 3, is_active: false }, { id: 6, stock: 10, is_active: true }],
     variants: [{ id: 50, product_id: 5, stock: 3 }, { id: 60, product_id: 6, stock: 10 }],
@@ -92,6 +93,8 @@ class Request {
       return result([clone(data.order)]);
     }
     if (q.startsWith('INSERT INTO dbo.audit_logs')) return { recordset: [{ id: '1' }] };
+    // Job thống kê theo ngày (lib/stats-snapshot.js enqueueStatsDay): ghi lại để test kiểm, trả id giả.
+    if (q.includes('INSERT INTO dbo.jobs')) { statsJobs.push({ inTx: !!this.tx, type: p.type, payload: JSON.parse(p.payload), dedupe: p.dedupe }); return { recordset: [{ id: statsJobs.length }], recordsets: [[{ id: statsJobs.length }]], rowsAffected: [1] }; }
     throw new Error('Unexpected SQL: ' + q);
   }
 }

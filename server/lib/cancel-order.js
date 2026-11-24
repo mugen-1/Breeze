@@ -5,6 +5,7 @@ const { sql } = require('../db');
 const { canTransition, canCustomerCancel } = require('./order-state');
 const { recordInventoryMovement } = require('./inventory-movement');
 const { commitHook } = require('./commit-hook');
+const { enqueueStatsDay } = require('./stats-snapshot');
 
 class CancelError extends Error {
   constructor(status, code, message) {
@@ -101,6 +102,8 @@ async function cancelOrder(pool, { orderId, ownerId = null, reason = null, actor
     }
     const { order_code: orderCode, ...result } = updated.recordset[0];
     await cancelPendingPayment(tx, orderId);
+    // Thống kê tính sẵn (cả khách lẫn admin huỷ): ngày created_at của đơn, ngay trước hook audit.
+    await enqueueStatsDay(tx, result.created_at);
     if (hook) await hook(tx, result, { before: { status: order.status, user_id: order.user_id }, order_code: orderCode, restored });
     await tx.commit();
     return result;

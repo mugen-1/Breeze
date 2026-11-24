@@ -53,10 +53,11 @@ async function listAdminReviews(pool, { page, limit, status }) {
   const [meta] = recordsets[0];
   return { page: meta.page, limit, total: meta.total, totalPages: Math.ceil(meta.total / limit), reviews: recordsets[1].map(dto) };
 }
+// Chỉ ảnh 'ready': ảnh pending/failed chưa có file WebP để hiển thị.
 async function adminReviewDetail(pool, id) {
   const { recordsets } = await pool.request().input('rid', sql.Int, id).query(`
     SELECT ${columns} ${joins} WHERE r.id=@rid;
-    SELECT TOP(5) image_path,sort_order FROM dbo.review_images WHERE review_id=@rid ORDER BY sort_order,id;`);
+    SELECT TOP(5) image_path,sort_order FROM dbo.review_images WHERE review_id=@rid AND status='ready' ORDER BY sort_order,id;`);
   if (!recordsets[0].length) throw new ReviewError(404, 'REVIEW_NOT_FOUND', 'Không tìm thấy đánh giá');
   return { ...dto(recordsets[0][0]), images: recordsets[1].filter(i => /^\/review-images\/[a-f0-9]{32}\.webp$/.test(i.image_path)).map(i => ({ url: i.image_path })) };
 }

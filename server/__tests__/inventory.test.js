@@ -1,4 +1,5 @@
 'use strict';
+const statsJobs = []; // job stats.recompute_day mà code nghiệp vụ đưa vào hàng (xem SQL giả bên dưới)
 
 // HTTP checkout tests with a transactional SQL test double. The separate
 // test-inventory-sql.js exercises SQL Server locking with two real connections.
@@ -30,6 +31,8 @@ class Request {
   async query(query) {
     const q = query.replace(/\s+/g, ' ').trim();
     const p = this.params;
+    // Job thống kê theo ngày (lib/stats-snapshot.js enqueueStatsDay): ghi lại để test kiểm, trả id giả.
+    if (q.includes('INSERT INTO dbo.jobs')) { statsJobs.push({ inTx: !!this.tx, type: p.type, payload: JSON.parse(p.payload), dedupe: p.dedupe }); return { recordset: [{ id: statsJobs.length }], recordsets: [[{ id: statsJobs.length }]], rowsAffected: [1] }; }
     queries.push({ q, p, tx: this.tx });
     // Guard thông tin thanh toán (lib/payment-readiness.js): chạy TRƯỚC transaction, chỉ đọc.
     if (q.includes('FROM dbo.payment_methods')) {
@@ -102,7 +105,7 @@ class Request {
     }
     if (stage === 'order') {
       assert.match(q, /VALUES \(@uid, 'pending', @total/);
-      const order = { id: d.orders.length + 1, user_id: p.uid, status: 'pending',
+      const order = { id: d.orders.length + 1, user_id: p.uid, status: 'pending', created_at: '2026-10-11T00:00:00Z',
         order_code: p.ocode, shipping_version: 2, shipping_provider: p.sprovider, shipping_service: p.sservice,
         shipping_eta: p.seta, shipping_tracking_code: p.stracking, shipping_status: 'pending_pickup',
         total_amount: p.total, VoucherCode: p.vcode, DiscountAmount: p.discount,

@@ -190,12 +190,31 @@ app.use((err, req, res, next) => {
   res.status(500).json({ status: 'error', message: 'Lỗi máy chủ' });
 });
 
-let supportCleanup;
+let supportCleanup, jobsWorker;
 const HOST = process.env.HOST || '127.0.0.1';
 const httpServer = app.listen(PORT, HOST, () => {
   supportCleanup = require('./lib/support-session').startCleanup(require('./db').getPool);
+  // Worker hàng đợi trong process này: JOBS_WORKER=on|off (trống = off). Có thể chạy worker
+  // riêng bằng `node server/worker.js`; bật cả hai cùng lúc vẫn an toàn (nhận job nguyên tử).
+  // JOBS_MODE=async|sync (trống = sync): ảnh đánh giá xử lý nền hay ngay trong request.
+  const { parseWorkerFlag, startWorker } = require('./lib/jobs/worker');
+  const { parseJobsMode } = require('./lib/jobs/mode');
+  const jobsFlag = parseWorkerFlag(process.env.JOBS_WORKER);
+  const jobsMode = parseJobsMode(process.env.JOBS_MODE);
+  if (!jobsFlag.valid) console.warn(`[jobs] JOBS_WORKER="${jobsFlag.value}" không hợp lệ (on|off) -> off`);
+  if (!jobsMode.valid) console.warn(`[jobs] JOBS_MODE="${jobsMode.value}" không hợp lệ (async|sync) -> sync`);
+  if (jobsFlag.enabled) jobsWorker = startWorker(require('./db').getPool);
+  console.log(`[jobs] JOBS_MODE=${jobsMode.mode} JOBS_WORKER=${jobsFlag.enabled ? 'on' : 'off'}`);
+  if (jobsMode.mode === 'async' && !jobsFlag.enabled) {
+    console.warn('[jobs] CẢNH BÁO: JOBS_MODE=async nhưng JOBS_WORKER không phải on -> ảnh đánh giá mới sẽ '
+      + 'KHÔNG được xử lý nếu không chạy worker riêng: node server/worker.js');
+  }
   console.log(`[server] Breeze Shop API listening on http://${HOST}:${PORT}`);
   console.log(`[server] Health check: http://${HOST}:${PORT}/api/health`);
   console.log(`[server] Frontend:     http://${HOST}:${PORT}/index.html`);
 });
-httpServer.on('close', () => { if (supportCleanup) supportCleanup.stop(); require('./middleware/support-stream').stream.closeAll(); });
+httpServer.on('close', () => {
+  if (supportCleanup) supportCleanup.stop();
+  if (jobsWorker) jobsWorker.stop().catch(() => {});
+  require('./middleware/support-stream').stream.closeAll();
+});

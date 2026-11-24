@@ -15,8 +15,11 @@ function parseReviewQuery(query={}) {
 }
 // Only fixed SQL fragments are composed here; all request values are parameters.
 const visible='r.product_id=@pid AND r.is_hidden=0';
+// Công khai chỉ tính ảnh 'ready' (pending/failed chưa có file WebP để hiển thị): lọc hasImages,
+// đếm reviews_with_images và danh sách ảnh dùng cùng điều kiện.
+const readyImage="i.status='ready'";
 const filtered=visible+` AND (@rating IS NULL OR r.rating=@rating)
-  AND (@hasImages=0 OR EXISTS(SELECT 1 FROM dbo.review_images i WHERE i.review_id=r.id))`;
+  AND (@hasImages=0 OR EXISTS(SELECT 1 FROM dbo.review_images i WHERE i.review_id=r.id AND ${readyImage}))`;
 const LIST_SQL=`
   SELECT id FROM dbo.products WHERE id=@pid AND is_active=1;
   IF @@ROWCOUNT=0 RETURN;
@@ -28,7 +31,7 @@ const LIST_SQL=`
     COALESCE(SUM(CASE WHEN r.rating=5 THEN 1 ELSE 0 END),0) AS rating_5,
     COALESCE(SUM(COALESCE(image.has_image,0)),0) AS reviews_with_images
   FROM dbo.reviews r OUTER APPLY
-    (SELECT TOP(1) 1 AS has_image FROM dbo.review_images i WHERE i.review_id=r.id) image
+    (SELECT TOP(1) 1 AS has_image FROM dbo.review_images i WHERE i.review_id=r.id AND ${readyImage}) image
   WHERE ${visible};
   DECLARE @total INT=(SELECT COUNT(*) FROM dbo.reviews r WHERE ${filtered});
   DECLARE @pages INT=CEILING(@total/CAST(@limit AS FLOAT));
@@ -42,7 +45,7 @@ const LIST_SQL=`
     WHERE ${visible} ORDER BY r.created_at DESC,r.id DESC;
   SELECT i.review_id,i.image_path,i.sort_order FROM dbo.review_images i
     JOIN @selected p ON p.id=i.review_id JOIN dbo.reviews r ON r.id=p.id
-    WHERE ${visible} ORDER BY i.review_id,i.sort_order,i.id;`;
+    WHERE ${visible} AND ${readyImage} ORDER BY i.review_id,i.sort_order,i.id;`;
 async function getPublicReviews(pool,productId,options) {
   const {page,limit,rating,hasImages}=options;
   const {recordsets}=await pool.request().input('pid',sql.Int,productId).input('page',sql.Int,page)

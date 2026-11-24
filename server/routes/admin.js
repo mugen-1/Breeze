@@ -24,7 +24,8 @@ const { audit } = require('../lib/audit');
 const { productColumns, createSnapshot, variantChange } = require('../lib/product-audit');
 const { statusChange, shippingChange, deleteSnapshot, ORDER_FIELDS, ITEM_FIELDS, PAYMENT_FIELDS } = require('../lib/order-audit');
 const { blacklistChange } = require('../lib/user-review-audit');
-const businessReport = require('../lib/business-report');
+const statsSnapshot = require('../lib/stats-snapshot');
+const { jobsMode } = require('../lib/jobs/mode');
 const { fetchPayments, completeCodPayment } = require('../lib/order-payment');
 const { recordInventoryMovement } = require('../lib/inventory-movement');
 const { readSizes, changeSizes, SizeError, SIZE_CONFIGURED_SQL, COLOR_CONFIGURED_SQL, sizeProfile } = require('../lib/size-variants');
@@ -776,6 +777,8 @@ router.put('/orders/:id/status', requirePermission('order:update_status'), async
     const order = upd.recordset[0];
 
     if (status === 'completed') await completeCodPayment(tx, idc.value);
+    // Thống kê tính sẵn: tính lại ngày created_at của đơn (cuối transaction, ngay trước audit).
+    await statsSnapshot.enqueueStatsDay(tx, order.created_at);
     // Audit cùng tx: before = dòng đã khoá UPDLOCK, after = OUTPUT của UPDATE. Lỗi -> rollback, 500 như cũ.
     await audit(tx, req, { action: 'ORDER_STATUS_CHANGE', entityType: 'order', entityId: idc.value,
       ...statusChange({ orderCode: order.order_code,
@@ -818,12 +821,15 @@ router.patch('/orders/:id/shipping-status', requirePermission('order:update_stat
     }
     const orderStatus = target === 'delivered' ? 'completed' :
       (current.status === 'processing' ? 'shipping' : current.status);
-    const updated = (await new sql.Request(tx).input('id', sql.Int, id)
+    // created_at chỉ để đưa job thống kê đúng ngày; tách khỏi response (giữ nguyên JSON trả về).
+    const { created_at: createdAt, ...updated } = (await new sql.Request(tx).input('id', sql.Int, id)
       .input('status', sql.VarChar(20), orderStatus).input('shippingStatus', sql.VarChar(30), target)
       .query(`UPDATE dbo.orders SET status = @status, shipping_status = @shippingStatus
-        OUTPUT INSERTED.id, INSERTED.order_code, INSERTED.status, INSERTED.shipping_version, INSERTED.shipping_status
+        OUTPUT INSERTED.id, INSERTED.order_code, INSERTED.status, INSERTED.shipping_version, INSERTED.shipping_status,
+          INSERTED.created_at
         WHERE id = @id;`)).recordset[0];
     if (orderStatus === 'completed') await completeCodPayment(tx, id);
+    await statsSnapshot.enqueueStatsDay(tx, createdAt);
     // 1 dòng ORDER_SHIPPING_CHANGE chứa cả status đổi kèm (không sinh thêm ORDER_STATUS_CHANGE).
     await audit(tx, req, { action: 'ORDER_SHIPPING_CHANGE', entityType: 'order', entityId: id,
       ...shippingChange({ orderCode: updated.order_code,
@@ -883,6 +889,7 @@ router.delete('/orders/:id', requirePermission('order:delete'), async (req, res)
         OUTPUT DELETED.id
         WHERE id = @id;`);
     if (del.recordset.length !== 1) throw new Error('đơn đã khoá nhưng DELETE không xoá được dòng nào');
+    await statsSnapshot.enqueueStatsDay(tx, snap.recordsets[0][0].created_at);
     await audit(tx, req, { action: 'ORDER_DELETE', entityType: 'order', entityId: order.id, after: null,
       before: deleteSnapshot({ order: snap.recordsets[0][0], items: snap.recordsets[1], payments: snap.recordsets[2], restored }) });
     await tx.commit();
@@ -1082,9 +1089,19 @@ function resolveDateRange(query, anchorInstant) {
   };
 }
 
-// Reuse one KPI definition for Dashboard and CSV.
-async function rangeStats(pool, start, end) {
-  return businessReport.summary(pool, start, end);
+// Dashboard/CSV/Statistics đọc qua reader: JOBS_MODE=sync -> truy vấn trực tiếp như cũ; async -> thống kê tính
+// sẵn theo ngày (ngày thiếu hoặc đang có job chờ/chạy thì tính trực tiếp). Body y hệt giữa hai chế độ; hai
+// header cho biết nguồn số liệu: X-Stats-Source = snapshot|mixed|live, X-Stats-Updated-At = ISO 8601 UTC.
+function statsReader(pool) {
+  return statsSnapshot.createReader(pool, jobsMode());
+}
+function sendStats(res, reader, body) {
+  res.set(reader.headers());
+  return res.json(body);
+}
+// Khoảng [start, end) giờ VN -> dạng reader cần (from/to là ngày VN, end loại trừ).
+function dayRange(start, end) {
+  return { start, end, from: ymdVN(start), to: ymdVN(new Date(end.getTime() - 1)) };
 }
 
 // ---- GET /api/admin/stats/anchor -------------------------------------------------
@@ -1114,12 +1131,13 @@ router.get('/stats', requirePermission('dashboard:read'), async (req, res) => {
     const prevStart = new Date(rg.start.getTime() - N * 86400000);
     const prevEnd = rg.start; // exclusive = from
 
-    const current = await rangeStats(pool, rg.start, rg.end);
-    const previous = await rangeStats(pool, prevStart, prevEnd);
+    const reader = statsReader(pool);
+    const current = await reader.summary(rg);
+    const previous = await reader.summary(dayRange(prevStart, prevEnd));
 
-    const dailyRevenue = await businessReport.dailyRevenue(pool, rg);
+    const dailyRevenue = await reader.dailyRevenue(rg);
 
-    res.json({ range: { from: rg.from, to: rg.to }, current, previous, dailyRevenue });
+    sendStats(res, reader, { range: { from: rg.from, to: rg.to }, current, previous, dailyRevenue });
   } catch (err) {
     console.error('[admin] stats error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không tải được số liệu thống kê' });
@@ -1132,10 +1150,11 @@ router.get('/stats/business-report', requirePermission('dashboard:read'), async 
     const pool = await getPool();
     const rg = resolveDateRange(req.query, await getAnchorInstant(pool));
     if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
-    const summary = await businessReport.summary(pool, rg.start, rg.end);
-    const dailyRevenue = await businessReport.dailyRevenue(pool, rg);
-    const topProducts = await businessReport.products(pool, rg.start, rg.end, 10);
-    res.json({ range: { from: rg.from, to: rg.to }, summary, dailyRevenue, topProducts });
+    const reader = statsReader(pool);
+    const summary = await reader.summary(rg);
+    const dailyRevenue = await reader.dailyRevenue(rg);
+    const topProducts = await reader.products(rg, 10);
+    sendStats(res, reader, { range: { from: rg.from, to: rg.to }, summary, dailyRevenue, topProducts });
   } catch (err) {
     console.error('[admin] business report error:', err.code || 'database-error');
     res.status(500).json({ status: 'error', message: 'Không tải được báo cáo kinh doanh' });
@@ -1154,8 +1173,9 @@ router.get('/stats/top-products', requirePermission('dashboard:read'), async (re
     const rg = resolveDateRange(req.query, await getAnchorInstant(pool));
     if (!rg.ok) return res.status(400).json({ status: 'error', message: rg.error });
 
-    const items = await businessReport.products(pool, rg.start, rg.end, limit);
-    res.json(items);
+    const reader = statsReader(pool);
+    const items = await reader.products(rg, limit);
+    sendStats(res, reader, items);
   } catch (err) {
     console.error('[admin] top-products error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không tải được sản phẩm bán chạy' });
@@ -1234,11 +1254,12 @@ router.get('/statistics', requirePermission('dashboard:read'), async (req, res) 
   try {
     const pool = await getPool();
     const rg = resolveStatisticsRange(req.query.range, await getAnchorInstant(pool));
-    const products = await businessReport.products(pool, rg.start, rg.end, 2147483647, 'revenue');
+    const reader = statsReader(pool);
+    const products = await reader.products(rg, 2147483647, 'revenue');
     const items = products.map(row => ({ productName: row.name, quantity: row.unitsSold, revenue: row.revenue }));
     const totalRevenue = items.reduce((sum, it) => sum + it.revenue, 0);
 
-    res.json({ range: req.query.range, from: rg.from, to: rg.to, items, totalRevenue });
+    sendStats(res, reader, { range: req.query.range, from: rg.from, to: rg.to, items, totalRevenue });
   } catch (err) {
     console.error('[admin] statistics error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không tải được thống kê sản phẩm' });

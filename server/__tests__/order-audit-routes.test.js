@@ -66,7 +66,8 @@ function handle(q, p, d, inTx) {
     if (q.includes('AND status = @current') && o.status !== p.current) return rs([]);
     Object.assign(o, { status: p.status, shipping_status: p.shippingStatus });
     return rs([q.includes('INSERTED.shipping_version')
-      ? { id: o.id, order_code: o.order_code, status: o.status, shipping_version: o.shipping_version, shipping_status: o.shipping_status }
+      ? { id: o.id, order_code: o.order_code, status: o.status, shipping_version: o.shipping_version, shipping_status: o.shipping_status,
+        ...(q.includes('INSERTED.created_at') ? { created_at: o.created_at } : {}) }
       : { id: o.id, status: o.status, total_amount: o.total_amount, created_at: o.created_at, user_id: o.user_id,
         order_code: o.order_code, shipping_status: o.shipping_status }]);
   }
@@ -83,6 +84,8 @@ function handle(q, p, d, inTx) {
     d.orders = d.orders.filter(x => x.id !== p.id); d.items = d.items.filter(i => i.order_id !== p.id);
     d.payments = d.payments.filter(x => x.order_id !== p.id); return rs([{ id: p.id }]);
   }
+  // Job thống kê theo ngày: lưu trong dữ liệu của transaction (rollback thì mất theo), trả id giả.
+  if (q.includes('INSERT INTO dbo.jobs')) { (d.jobs || (d.jobs = [])).push({ type: p.type, payload: JSON.parse(p.payload), dedupe: p.dedupe }); return rs([{ id: d.jobs.length }]); }
   throw new Error('Unexpected SQL: ' + q);
 }
 require.cache[require.resolve('../db')] = { exports: {
@@ -269,3 +272,26 @@ test('ORDER_DELETE: snapshot từ dòng khoá trong tx (request khác vừa xác
   assert.equal((await del()).status, 200);
   assert.equal(db.audit[0].before.order.status, 'confirmed');
 });
+
+// ---------------- Thống kê tính sẵn: job stats.recompute_day trong cùng transaction ----------------
+// Đơn tạo lúc 17:30 UTC = 00:30 ngày hôm sau giờ VN: job phải tính lại NGÀY TẠO đơn theo giờ VN.
+const statsJob = day => ({ type: 'stats.recompute_day', payload: { day }, dedupe: 'stats:' + day });
+const AFTER_MIDNIGHT_VN = '2026-11-16T17:30:00.000Z';
+for (const [name, setup, run] of [
+  ['đổi trạng thái', () => {}, () => putStatus('confirmed')],
+  ['admin huỷ đơn', () => {}, () => putStatus('cancelled')],
+  ['trạng thái giao hàng', () => reset('processing', 'pending_pickup'), () => patchShip('picked_up')],
+  ['xoá đơn', () => {}, () => del()],
+  ['khách tự huỷ', () => { actor = CUSTOMER; }, () => call('POST', '/api/orders/7/cancel', { reason: 'wrong_item' })],
+]) {
+  test(`thống kê: ${name} đưa đúng 1 job tính lại ngày tạo đơn (giờ VN) cùng transaction`, async () => {
+    setup(); db.orders[0].created_at = AFTER_MIDNIGHT_VN;
+    assert.equal((await run()).status, 200);
+    assert.deepEqual(db.jobs, [statsJob('2026-11-17')]);
+  });
+  test(`thống kê: ${name} lỗi audit -> rollback, không còn job`, async t => {
+    quiet(t); setup(); failAudit = true;
+    assert.equal((await run()).status, 500);
+    assert.equal(db.jobs, undefined);
+  });
+}

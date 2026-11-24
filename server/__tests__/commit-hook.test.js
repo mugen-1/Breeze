@@ -39,7 +39,7 @@ const { commitHook } = require('../lib/commit-hook');
 
 function freshDb() {
   return {
-    order: { id: 7, user_id: 1, status: 'pending' },
+    order: { id: 7, user_id: 1, status: 'pending', created_at: '2026-10-11T00:00:00Z' },
     items: [{ product_id: 5, variant_id: 50, quantity: 2 }],
     payments: [{ order_id: 7, status: 'pending' }],
     products: [
@@ -58,7 +58,7 @@ function freshDb() {
     purchased: [{ order_item_id: 70, variant_id: 50, size_snapshot: 'M lúc mua', color_snapshot: null }],
     reviews: [{ id: 9, user_id: 1, product_id: 5, variant_id: 50, order_item_id: 70, size_snapshot: 'M lúc mua',
       color_snapshot: null, rating: 4, comment: 'Cũ', is_hidden: false, created_at: 'c', updated_at: 'u' }],
-    reviewImages: [{ id: 91, review_id: 9, image_path: '/review-images/' + 'a'.repeat(32) + '.webp', sort_order: 0 }],
+    reviewImages: [{ id: 91, review_id: 9, image_path: '/review-images/' + 'a'.repeat(32) + '.webp', sort_order: 0, status: 'ready' }],
   };
 }
 const product = (d, id) => d.products.find(p => p.id === id);
@@ -79,7 +79,7 @@ function handle(q, p, d) {
   if (q.startsWith("UPDATE dbo.orders SET status = 'cancelled'")) {
     if (d.order.status !== p.current) return rs([]);
     Object.assign(d.order, { status: 'cancelled', cancel_reason: p.reason, cancelled_at: 'db-time' });
-    return rs([{ id: d.order.id, status: 'cancelled', total_amount: 100, created_at: 'c', cancel_reason: p.reason, cancelled_at: 'db-time' }]);
+    return rs([{ id: d.order.id, status: 'cancelled', total_amount: 100, created_at: d.order.created_at, cancel_reason: p.reason, cancelled_at: 'db-time' }]);
   }
   if (q.startsWith('UPDATE dbo.payment_transactions')) {
     for (const pay of d.payments) if (pay.order_id === p.oid && pay.status === 'pending') pay.status = 'cancelled';
@@ -131,7 +131,7 @@ function handle(q, p, d) {
     const { user_id, is_hidden, ...r } = d.reviews.find(x => x.id === p.rid && x.user_id === p.uid && x.product_id === p.pid) || {};
     return rs(r.id ? [r] : []);
   }
-  if (q.startsWith('SELECT id,image_path,sort_order FROM dbo.review_images')) {
+  if (q.startsWith('SELECT id,image_path,sort_order,status FROM dbo.review_images')) {
     return rs(d.reviewImages.filter(i => i.review_id === p.rid).map(({ review_id, ...i }) => i));
   }
   if (q.startsWith('DELETE FROM dbo.reviews WHERE id=@rid')) {
@@ -143,8 +143,8 @@ function handle(q, p, d) {
   if (q.startsWith('UPDATE dbo.review_images SET sort_order=@sort')) {
     d.reviewImages.find(i => i.id === p.image).sort_order = p.sort; return rs([], 1);
   }
-  if (q.startsWith('INSERT INTO dbo.review_images(review_id,image_path,sort_order) OUTPUT')) {
-    const row = { id: 950 + d.reviewImages.length, review_id: p.rid, image_path: p.url, sort_order: p.sort };
+  if (q.startsWith("INSERT INTO dbo.review_images(review_id,image_path,sort_order,status) OUTPUT INSERTED.id VALUES(@rid,@url,@sort,'ready')")) {
+    const row = { id: 950 + d.reviewImages.length, review_id: p.rid, image_path: p.url, sort_order: p.sort, status: 'ready' };
     d.reviewImages.push(row); return rs([{ id: row.id }]);
   }
   if (q.startsWith('UPDATE dbo.reviews SET rating=@rating')) {
@@ -159,6 +159,8 @@ function handle(q, p, d) {
     const was = r.is_hidden; r.is_hidden = p.hidden; r.updated_at = 'vis';
     return rs([{ id: r.id, is_hidden: r.is_hidden, was_hidden: was }]);
   }
+  // Job thống kê theo ngày: lưu trong dữ liệu của transaction (rollback thì mất theo), trả id giả.
+  if (q.includes('INSERT INTO dbo.jobs')) { (d.jobs || (d.jobs = [])).push({ type: p.type, payload: JSON.parse(p.payload), dedupe: p.dedupe }); return rs([{ id: d.jobs.length }]); }
   throw new Error('Unexpected SQL: ' + q);
 }
 const storage = { saved: [], removed: [], async save() { const u = '/review-images/' + 'b'.repeat(32) + '.webp'; this.saved.push(u); return u; },
@@ -208,7 +210,7 @@ const CASES = {
       storage, ...o }), earlyCode: 'REVIEW_NOT_FOUND',
     before: { review: { id: 9, product_id: 5, variant_id: 50, order_item_id: 70, size_snapshot: 'M lúc mua', color_snapshot: null,
       rating: 4, comment: 'Cũ', created_at: 'c', updated_at: 'u' },
-    images: [{ id: 91, image_path: '/review-images/' + 'a'.repeat(32) + '.webp', sort_order: 0 }] },
+    images: [{ id: 91, image_path: '/review-images/' + 'a'.repeat(32) + '.webp', sort_order: 0, status: 'ready' }] },
   },
   'changeOwnerReview (xoá)': {
     run: o => changeOwnerReview(pool, { userId: 1, productId: 5, reviewId: 9, storage, removeReview: true, ...o }),

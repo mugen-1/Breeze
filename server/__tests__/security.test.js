@@ -1,4 +1,5 @@
 'use strict';
+const statsJobs = []; // job stats.recompute_day mà code nghiệp vụ đưa vào hàng (xem SQL giả bên dưới)
 
 // Real Express routers + middleware over HTTP. Only Firebase and SQL I/O are
 // substituted; no credentials, production records or external services are used.
@@ -22,6 +23,8 @@ class Request {
   async query(query) {
     const q = query.replace(/\s+/g, ' ').trim();
     const p = this.params;
+    // Job thống kê theo ngày (lib/stats-snapshot.js enqueueStatsDay): ghi lại để test kiểm, trả id giả.
+    if (q.includes('INSERT INTO dbo.jobs')) { statsJobs.push({ inTx: !!this.tx, type: p.type, payload: JSON.parse(p.payload), dedupe: p.dedupe }); return { recordset: [{ id: statsJobs.length }], recordsets: [[{ id: statsJobs.length }]], rowsAffected: [1] }; }
     state.queries.push({ q, p, tx: this.tx });
     if (q.startsWith('SELECT id FROM dbo.users WITH')) {
       assert.ok(this.tx.active);
@@ -355,7 +358,7 @@ test('order prices, discount, stock, owner and status come from server data', as
     if (q.startsWith('INSERT INTO dbo.orders')) {
       assert.match(q, /VALUES \(@uid, 'pending', @total/);
       writes.push({ q, p });
-      return result([{ id: 9, status: 'pending', total_amount: p.total, VoucherCode: p.vcode, DiscountAmount: p.discount, PaymentMethod: p.pmethod }]);
+      return result([{ id: 9, status: 'pending', total_amount: p.total, created_at: '2026-10-11T00:00:00Z', VoucherCode: p.vcode, DiscountAmount: p.discount, PaymentMethod: p.pmethod }]);
     }
     if (q.startsWith('INSERT INTO dbo.payment_transactions')) {
       assert.match(q, /PaymentMethod, total_amount FROM dbo.orders WHERE id = @oid/);

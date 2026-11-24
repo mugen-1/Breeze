@@ -107,7 +107,9 @@ async function main() {
     const detail = (await call('GET', 'admin/reviews/' + rid)).body;
     same('completed author/product relation is verified', detail.verifiedPurchase, true);
     same('detail preserves purchased variant snapshots', detail.variant, { id: p.variant, size: 'M lúc mua', color: 'Đen lúc mua' });
-    same('detail images follow original sort order', detail.images, one.body.images);
+    // Response tạo đánh giá trả thêm status cho chủ review; admin chỉ nhận URL của ảnh ready (chế độ sync: mọi ảnh).
+    same('created images are ready in sync mode', one.body.images.map(i => i.status), one.body.images.map(() => 'ready'));
+    same('detail images follow original sort order', detail.images, one.body.images.map(({ url }) => ({ url })));
     check('detail has real product image and public name', detail.product.imageUrl === 'img/ao1.png' && detail.user.displayName === 'Người mua <script>');
     check('Admin DTO contains no private fields', !/private@example|firebase_uid|password|payment|token|[A-Z]:\\/.test(JSON.stringify(detail)));
     const initialBusiness = await business(), files = await fs.readdir(directory);

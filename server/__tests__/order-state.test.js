@@ -1,4 +1,5 @@
 'use strict';
+const statsJobs = []; // job stats.recompute_day mà code nghiệp vụ đưa vào hàng (xem SQL giả bên dưới)
 
 const { test, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
@@ -118,6 +119,8 @@ class Request {
     if (q.includes('dbo.payment_transactions')) return { recordset: [], rowsAffected: [0] };
     if (state.list && q.includes('FROM dbo.order_items')) return { recordset: [] };
     if (q.startsWith('INSERT INTO dbo.audit_logs')) return { recordset: [{ id: '1' }] };
+    // Job thống kê theo ngày (lib/stats-snapshot.js enqueueStatsDay): ghi lại để test kiểm, trả id giả.
+    if (q.includes('INSERT INTO dbo.jobs')) { statsJobs.push({ inTx: !!this.tx, type: p.type, payload: JSON.parse(p.payload), dedupe: p.dedupe }); return { recordset: [{ id: statsJobs.length }], recordsets: [[{ id: statsJobs.length }]], rowsAffected: [1] }; }
     throw new Error('Unexpected SQL: ' + q);
   }
 }

@@ -1,6 +1,6 @@
 'use strict';
 const {sql}=require('../db');
-const {parseId,validateReview}=require('./review-create');
+const {parseId,validateReview,insertImage,enqueueImageJobs}=require('./review-create');
 const {getPurchasedProductVariants}=require('./review-eligibility');
 const {ReviewError}=require('./review-media');
 const {commitHook}=require('./commit-hook');
@@ -9,7 +9,8 @@ const columns='id,product_id,variant_id,order_item_id,size_snapshot,color_snapsh
 function dto(row,images){
   return {id:row.id,productId:row.product_id,isOwner:true,rating:row.rating,comment:row.comment,
     variant:{id:row.variant_id,orderItemId:row.order_item_id,size:row.size_snapshot,color:row.color_snapshot},
-    images:images.filter(image=>safeImage.test(image.image_path)).map(image=>({id:image.id,url:image.image_path})),
+    // Chủ review thấy MỌI ảnh kèm status (pending|ready|failed); API công khai/admin chỉ trả ảnh ready.
+    images:images.filter(image=>safeImage.test(image.image_path)).map(image=>({id:image.id,url:image.image_path,status:image.status})),
     createdAt:row.created_at,updatedAt:row.updated_at};
 }
 function validateUpdate(body={}){
@@ -26,7 +27,7 @@ async function getOwnerReview(pool,userId,productId){
   const {recordsets}=await pool.request().input('uid',sql.Int,userId).input('pid',sql.Int,productId).query(`
     SELECT id FROM dbo.products WHERE id=@pid AND is_active=1;
     SELECT ${columns} FROM dbo.reviews WHERE user_id=@uid AND product_id=@pid;
-    SELECT i.id,i.image_path,i.sort_order FROM dbo.review_images i JOIN dbo.reviews r ON r.id=i.review_id
+    SELECT i.id,i.image_path,i.sort_order,i.status FROM dbo.review_images i JOIN dbo.reviews r ON r.id=i.review_id
       WHERE r.user_id=@uid AND r.product_id=@pid ORDER BY i.sort_order,i.id;`);
   if(!recordsets[0].length)throw new ReviewError(404,'REVIEW_PRODUCT_NOT_FOUND','Không tìm thấy sản phẩm');
   return {review:recordsets[1].length?dto(recordsets[1][0],recordsets[2]):null,
@@ -34,7 +35,8 @@ async function getOwnerReview(pool,userId,productId){
 }
 // onCommitting (lib/commit-hook.js) ở CẢ 2 đường commit, ngay trước commit: xoá -> result null; sửa -> dto trả về.
 // ctx.before = { review, images }: dòng review cũ + ảnh cũ đã khoá trong tx.
-async function changeOwnerReview(pool,{userId,productId,reviewId,data,images=[],storage,removeReview=false,onCommitting}){
+// mode: 'sync' (images = WebP đã xử lý) | 'async' (images = { buffer gốc, ext }); giới hạn 5 ảnh tính cả pending và failed.
+async function changeOwnerReview(pool,{userId,productId,reviewId,data,images=[],storage,removeReview=false,onCommitting,mode='sync'}){
   const hook=commitHook({onCommitting});
   const tx=new sql.Transaction(pool),newPaths=[];
   let committed=false,oldPaths=[];
@@ -50,7 +52,7 @@ async function changeOwnerReview(pool,{userId,productId,reviewId,data,images=[],
       .query(`SELECT ${columns},is_hidden FROM dbo.reviews WITH (UPDLOCK,HOLDLOCK) WHERE id=@rid AND user_id=@uid AND product_id=@pid;`)).recordset[0];
     if(!row)throw new ReviewError(404,'REVIEW_NOT_FOUND','Không tìm thấy đánh giá của bạn');
     const existing=(await new sql.Request(tx).input('rid',sql.Int,reviewId)
-      .query('SELECT id,image_path,sort_order FROM dbo.review_images WITH (UPDLOCK,HOLDLOCK) WHERE review_id=@rid ORDER BY sort_order,id;')).recordset;
+      .query('SELECT id,image_path,sort_order,status FROM dbo.review_images WITH (UPDLOCK,HOLDLOCK) WHERE review_id=@rid ORDER BY sort_order,id;')).recordset;
     if(removeReview){
       await new sql.Request(tx).input('rid',sql.Int,reviewId).input('uid',sql.Int,userId)
         .query('DELETE FROM dbo.reviews WHERE id=@rid AND user_id=@uid;');
@@ -83,12 +85,19 @@ async function changeOwnerReview(pool,{userId,productId,reviewId,data,images=[],
     for(const [sort,image]of kept.entries())if(image.sort_order!==sort)await new sql.Request(tx)
       .input('rid',sql.Int,reviewId).input('image',sql.Int,image.id).input('sort',sql.TinyInt,sort)
       .query('UPDATE dbo.review_images SET sort_order=@sort WHERE id=@image AND review_id=@rid;');
-    for(const buffer of images){
-      const url=await storage.save(buffer);newPaths.push(url);
+    const added=[];
+    for(const image of images){
+      if(mode==='async'){
+        const item=await insertImage(tx,reviewId,kept.length,image,storage,'async',newPaths);
+        added.push(item);kept.push({id:item.id,image_path:item.url,status:item.status});continue;
+      }
+      const url=await storage.save(image);newPaths.push(url);
       const inserted=(await new sql.Request(tx).input('rid',sql.Int,reviewId).input('url',sql.NVarChar(500),url).input('sort',sql.TinyInt,kept.length)
-        .query('INSERT INTO dbo.review_images(review_id,image_path,sort_order) OUTPUT INSERTED.id VALUES(@rid,@url,@sort);')).recordset[0];
-      kept.push({id:inserted.id,image_path:url});
+        .query("INSERT INTO dbo.review_images(review_id,image_path,sort_order,status) OUTPUT INSERTED.id VALUES(@rid,@url,@sort,'ready');")).recordset[0];
+      kept.push({id:inserted.id,image_path:url,status:'ready'});
     }
+    // Cuối transaction, ngay trước hook audit: job chỉ tồn tại khi dòng ảnh pending được commit.
+    await enqueueImageJobs(tx,added);
     oldPaths=existing.filter(image=>data.removeIds.includes(image.id)).map(image=>image.image_path);
     const result=dto(updated,kept);
     if(hook)await hook(tx,result,{before:{review:row,images:existing}});

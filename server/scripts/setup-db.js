@@ -155,6 +155,12 @@ const STEPS = [
     desc: 'Thêm loại movement ORDER_DELETE (xoá đơn chưa rời kho cộng lại tồn); giữ 8 loại cũ' },
   { type: 'sql', file: 'db/migrations/025_audit_logs.sql',
     desc: 'Bảng audit_logs append-only (trigger chặn UPDATE/DELETE, không FK); không seed' },
+  { type: 'sql', file: 'db/migrations/026_jobs.sql',
+    desc: 'Bảng jobs cho hàng đợi xử lý nền (CHECK type/status/payload, chống trùng khi queued); không seed' },
+  { type: 'sql', file: 'db/migrations/027_review_image_status.sql',
+    desc: "Cột review_images.status (pending|ready|failed); ảnh đang có = 'ready'" },
+  { type: 'sql', file: 'db/migrations/028_stats_snapshots.sql',
+    desc: 'Bảng thống kê tính sẵn theo ngày (stats_snapshots, stats_snapshot_products) + chỉ mục orders/order_items; không seed' },
 ];
 
 if (FRESH) {
@@ -176,7 +182,7 @@ let done = 0, skipped = 0;
 
 for (let idx = 0; idx < STEPS.length; idx++) {
   const step = STEPS[idx];
-  if (BEFORE_VARIANTS && /db\/migrations\/(01[23456789]|02[0-5])_/.test(step.file)) {
+  if (BEFORE_VARIANTS && /db\/migrations\/(01[23456789]|02[0-8])_/.test(step.file)) {
     skipped++;
     continue;
   }

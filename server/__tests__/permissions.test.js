@@ -117,12 +117,12 @@ test('migration 023 idempotent, có SET XACT_ABORT + TRY/CATCH như 022', () => 
   assert.doesNotMatch(s, /\bUPDATE\b|\bDELETE\b|\bDROP\b/i, 'không sửa/xoá dữ liệu');
 });
 
-test('setup-db --before-variants bỏ qua 012..025 (chain test chạy riêng), vẫn chạy 011', () => {
+test('setup-db --before-variants bỏ qua 012..028 (chain test chạy riêng), vẫn chạy 011', () => {
   const setup = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'setup-db.js'), 'utf8');
   const m = setup.match(/if \(BEFORE_VARIANTS && (\/.+\/)\.test\(step\.file\)\)/);
   assert.ok(m, 'không tìm thấy regex BEFORE_VARIANTS');
   const re = new RegExp(m[1].slice(1, -1));
-  for (let n = 12; n <= 25; n++) {
+  for (let n = 12; n <= 28; n++) {
     assert.ok(re.test(`db/migrations/0${n}_x.sql`), `0${n} phải bị bỏ qua`);
   }
   for (const f of ['001_cart_items', '010_product_order_integrity', '011_inventory_movements']) {

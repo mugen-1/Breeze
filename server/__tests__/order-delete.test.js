@@ -1,4 +1,5 @@
 'use strict';
+const statsJobs = []; // job stats.recompute_day mà code nghiệp vụ đưa vào hàng (xem SQL giả bên dưới)
 
 // DELETE /api/admin/orders/:id — xoá đơn cộng lại tồn kho theo trạng thái (lib/order-state.js),
 // dùng chung restoreOrderStock với huỷ đơn. Router thật qua HTTP; chỉ thay Firebase và SQL bằng
@@ -17,7 +18,7 @@ let db, failStage, events, queries, held, waiters;
 const clone = x => structuredClone(x);
 const result = (recordset = [], affected = recordset.length) => ({ recordset, rowsAffected: [affected] });
 function reset(status = 'pending', items = [{ product_id: 5, variant_id: 50, quantity: 2 }]) {
-  db = { order: { id: 7, user_id: 1, status }, items: clone(items),
+  db = { order: { id: 7, user_id: 1, status, created_at: '2026-10-11T00:00:00Z' }, items: clone(items),
     products: [{ id: 5, stock: 3 }, { id: 6, stock: 10 }],
     variants: [{ id: 50, product_id: 5, stock: 3 }, { id: 60, product_id: 6, stock: 10 }],
     movements: [], payments: [{ order_id: 7, status: 'pending' }] };
@@ -87,6 +88,8 @@ class Request {
     }
     if (q.startsWith('INSERT INTO dbo.audit_logs')) return { recordset: [{ id: '1' }] };
     if (q.startsWith('SELECT order_code, user_id')) return { recordsets: [[clone(data.order)], clone(data.items), clone(data.payments)] };
+    // Job thống kê theo ngày (lib/stats-snapshot.js enqueueStatsDay): ghi lại để test kiểm, trả id giả.
+    if (q.includes('INSERT INTO dbo.jobs')) { statsJobs.push({ inTx: !!this.tx, type: p.type, payload: JSON.parse(p.payload), dedupe: p.dedupe }); return { recordset: [{ id: statsJobs.length }], recordsets: [[{ id: statsJobs.length }]], rowsAffected: [1] }; }
     throw new Error('Unexpected SQL: ' + q);
   }
 }

@@ -17,6 +17,7 @@ const { verifyFirebaseToken } = require('../middleware/auth');
 const { isBackOffice } = require('../lib/roles');
 const { canCustomerCancel } = require('../lib/order-state');
 const { cancelOrder, CancelError } = require('../lib/cancel-order');
+const { enqueueStatsDay } = require('../lib/stats-snapshot');
 const { createPayment, fetchPayments, COLUMNS } = require('../lib/order-payment');
 const { recordInventoryMovement } = require('../lib/inventory-movement');
 const { checkPaymentInfo } = require('../lib/payment-readiness');
@@ -308,6 +309,9 @@ router.post('/', async (req, res) => {
     await new sql.Request(tx)
       .input('uid', sql.Int, req.user.id)
       .query('DELETE FROM dbo.cart_items WHERE user_id = @uid;');
+
+    // Thống kê tính sẵn: tính lại ngày của đơn (cuối transaction, ngay trước audit).
+    await enqueueStatsDay(tx, order.created_at);
 
     // 9) Audit ORDER_PLACE cùng tx, ngay trước commit, chỉ trường cho phép (không dữ liệu cá nhân / thẻ).
     // Lỗi -> rollback cả đơn, kho, thanh toán và mã đơn (bộ đếm cấp trong cùng tx), trả 500 như cũ.

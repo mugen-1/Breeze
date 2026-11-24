@@ -50,14 +50,14 @@ class Request {
     if (q.startsWith('SELECT id FROM dbo.products WHERE id=@pid AND is_active=1; SELECT ')) { // GET /me
       const mine = d.reviews.filter(r => r.user_id === p.uid && r.product_id === p.pid);
       const sets = [d.products.filter(x => x.id === p.pid).map(x => ({ id: x.id })), mine.map(r => pick(r, colsOf(q.split('; ')[1]))),
-        d.images.filter(i => mine.some(r => r.id === i.review_id)).sort(bySort).map(i => pick(i, ['id', 'image_path', 'sort_order']))];
+        d.images.filter(i => mine.some(r => r.id === i.review_id)).sort(bySort).map(i => pick(i, colsOf(q.split('; ')[2]).map(c => c.replace(/^i\./, ''))))];
       return { recordset: sets[0], recordsets: sets };
     }
     if (q.startsWith('SELECT ') && q.endsWith(' FROM dbo.reviews WITH (UPDLOCK,HOLDLOCK) WHERE id=@rid AND user_id=@uid AND product_id=@pid;')) {
       return rs(d.reviews.filter(r => r.id === p.rid && r.user_id === p.uid && r.product_id === p.pid).map(r => pick(r, colsOf(q))));
     }
-    if (q.startsWith('SELECT id,image_path,sort_order FROM dbo.review_images WITH (UPDLOCK,HOLDLOCK) WHERE review_id=@rid')) {
-      return rs(d.images.filter(i => i.review_id === p.rid).sort(bySort).map(i => pick(i, ['id', 'image_path', 'sort_order'])));
+    if (q.startsWith('SELECT id,image_path,sort_order,status FROM dbo.review_images WITH (UPDLOCK,HOLDLOCK) WHERE review_id=@rid')) {
+      return rs(d.images.filter(i => i.review_id === p.rid).sort(bySort).map(i => pick(i, colsOf(q))));
     }
     assert.ok(this.tx, 'câu ghi phải chạy trong transaction: ' + q.slice(0, 60));
     if (q.startsWith('INSERT INTO dbo.reviews(')) {
@@ -67,7 +67,7 @@ class Request {
       return rs([pick(r, ['id', 'rating', 'comment', 'created_at', 'updated_at'])]);
     }
     if (q.startsWith('INSERT INTO dbo.review_images(')) {
-      const img = { id: ++d.seq.image, review_id: p.rid, image_path: p.url, sort_order: p.sort };
+      const img = { id: ++d.seq.image, review_id: p.rid, image_path: p.url, sort_order: p.sort, status: /,'ready'\)/.test(q) ? 'ready' : /,'pending'\)/.test(q) ? 'pending' : undefined };
       d.images.push(img);
       return rs(q.includes('OUTPUT INSERTED.id') ? [{ id: img.id }] : []);
     }
@@ -158,7 +158,7 @@ beforeEach(async () => {
       { id: 92, user_id: 4, product_id: 7, variant_id: 71, order_item_id: 41, size_snapshot: 'M', color_snapshot: 'Đen', rating: 2,
         comment: 'Của người khác', is_hidden: false, created_at: new Date(T0), updated_at: new Date(T0) }],
     images: [] };
-  const seed = async (id, review_id, sort_order) => db.images.push({ id, review_id, image_path: await media.storage.save(png), sort_order });
+  const seed = async (id, review_id, sort_order) => db.images.push({ id, review_id, image_path: await media.storage.save(png), sort_order, status: 'ready' });
   await seed(10, 91, 0); await seed(11, 91, 1); await seed(20, 92, 0);
 });
 
@@ -254,9 +254,18 @@ const OLD = {
   'update-500': {"status":500,"body":{"status":"error","code":"REVIEW_SERVER_ERROR","message":"Không gửi được đánh giá. Vui lòng thử lại"}},
   'delete-500': {"status":500,"body":{"status":"error","code":"REVIEW_SERVER_ERROR","message":"Không gửi được đánh giá. Vui lòng thử lại"}},
 };
+// Khác biệt CÓ CHỦ Ý so với 7d547cb: mỗi ảnh trả cho chủ review có thêm status (migration 027). Ở chế độ
+// mặc định JOBS_MODE=sync mọi ảnh phải là 'ready'; bỏ trường này đi thì JSON phải y như bản cũ.
+function withoutImageStatus(r) {
+  const copy = structuredClone(r);
+  for (const images of [copy.body && copy.body.images, copy.body && copy.body.review && copy.body.review.images]) {
+    for (const image of images || []) { assert.equal(image.status, 'ready', 'ảnh ở chế độ sync phải ready'); delete image.status; }
+  }
+  return copy;
+}
 async function sameAsOld(name, run) {
   const r = await run();
-  assert.deepEqual(r, OLD[name], 'JSON + mã HTTP y như bản cũ (7d547cb): ' + name);
+  assert.deepEqual(withoutImageStatus(r), OLD[name], 'JSON + mã HTTP y như bản cũ (7d547cb), trừ status của ảnh: ' + name);
   return r;
 }
 const files = () => fs.readdirSync(directory).sort();

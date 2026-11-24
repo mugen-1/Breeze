@@ -106,3 +106,14 @@ test('database error yields generic report failure without private details',asyn
   const logs=[];t.mock.method(console,'error',(...parts)=>logs.push(parts.join(' ')));fail=true;
   const r=await call();assert.equal(r.status,500);assert.doesNotMatch(JSON.stringify(r.body)+logs.join(' '),/PRIVATE_REPORT_SQL_CREDENTIAL/);
 });
+test('JOBS_MODE mặc định (sync): 4 API báo nguồn live + thời điểm ISO, order-status không có header nguồn', async () => {
+  for (const path of ['/stats?from=2026-10-01&to=2026-10-07', '/stats/business-report?from=2026-10-01&to=2026-10-07',
+    '/stats/top-products?from=2026-10-01&to=2026-10-07&limit=5', '/statistics?range=7d']) {
+    const r = await fetch(base + '/api/admin' + path, { headers: { Authorization: 'Bearer admin' } });
+    assert.equal(r.status, 200, path);
+    assert.equal(r.headers.get('x-stats-source'), 'live', path);
+    assert.match(r.headers.get('x-stats-updated-at'), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, path);
+  }
+  const status = await fetch(base + '/api/admin/stats/order-status?from=2026-10-01&to=2026-10-07', { headers: { Authorization: 'Bearer admin' } });
+  assert.equal(status.headers.get('x-stats-source'), null);
+});

@@ -94,7 +94,8 @@ async function main(){
     for(const row of all){
       const fixture=fixtures.find(f=>f.id===row.id);
       same('stored purchase snapshots survive current size changing to XL',row.variant,{id:p.m,size:'M',color:'Đen lúc mua'});
-      same('images retain original sort order and only their review association',row.images,fixture.images);
+      // createReview trả thêm status cho chủ review; API công khai chỉ trả URL của ảnh ready (chế độ sync: mọi ảnh).
+      same('images retain original sort order and only their review association',row.images,fixture.images.map(({url})=>({url})));
       check('public images are capped at five safe upload URLs',row.images.length<=5&&row.images.every(i=>/^\/review-images\/[a-f0-9]{32}\.webp$/.test(i.url)));
     }
     check('timestamps are ISO UTC data',all.every(row=>row.createdAt===fixtures.find(f=>f.id===row.id).createdAt));

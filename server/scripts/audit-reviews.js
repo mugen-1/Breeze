@@ -26,8 +26,14 @@ async function audit(pool) {
     ['FK_reviews_product',false,false,'NO_ACTION'], ['FK_reviews_user',false,false,'SET_NULL'],
     ['FK_reviews_variant_product',false,false,'NO_ACTION']
   ]);
+  // review_images.status (migration 027): DB đã chạy 027 thì cột phải NOT NULL và có CHECK riêng;
+  // kiểm chuỗi migration ở mốc 019 (chưa có 027) thì chưa có cột lẫn CHECK.
+  const imageStatus = (await pool.request().query(`SELECT t.name AS type, c.max_length, c.is_nullable FROM sys.columns c
+    JOIN sys.types t ON t.user_type_id=c.user_type_id WHERE c.object_id=OBJECT_ID('dbo.review_images') AND c.name='status';`)).recordset[0];
+  if (imageStatus) assert.deepEqual([imageStatus.type, imageStatus.max_length, imageStatus.is_nullable], ['varchar', 10, false]);
   assert.deepEqual(meta.recordsets[3].map(r => [r.name,r.is_disabled,r.is_not_trusted]), [
-    ['CK_review_images_path',false,false], ['CK_review_images_sort',false,false], ['CK_reviews_rating',false,false]
+    ['CK_review_images_path',false,false], ['CK_review_images_sort',false,false],
+    ...(imageStatus ? [['CK_review_images_status',false,false]] : []), ['CK_reviews_rating',false,false]
   ]);
   assert.equal(meta.recordsets[4].length, 2);
   for (const index of meta.recordsets[4]) { assert.equal(index.is_unique, true); assert.equal(index.is_disabled, false); }
@@ -44,7 +50,7 @@ async function audit(pool) {
   ]);
   const counts = (await pool.request().query(`SELECT (SELECT COUNT(*) FROM dbo.reviews) AS reviews,
     (SELECT COUNT(*) FROM dbo.review_images) AS review_images;`)).recordset[0];
-  return { ...counts, trusted_foreign_keys: 5, trusted_checks: 3, unique_indexes: 2 };
+  return { ...counts, trusted_foreign_keys: 5, trusted_checks: imageStatus ? 4 : 3, unique_indexes: 2 };
 }
 async function main() {
   const pool = await getPool();

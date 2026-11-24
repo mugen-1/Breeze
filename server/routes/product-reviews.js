@@ -5,7 +5,10 @@ const { verifyFirebaseToken } = require('../middleware/auth');
 const { buildUserActionLimiter } = require('../middleware/security');
 const { getPool } = require('../db');
 const { MAX_IMAGE_BYTES } = require('../lib/image-upload');
-const { ReviewError, prepareImages, storage } = require('../lib/review-media');
+const { ReviewError, prepareImages, inspectImages, storage } = require('../lib/review-media');
+const { jobsMode } = require('../lib/jobs/mode');
+// JOBS_MODE=sync: xử lý ảnh ngay (WebP); async: chỉ kiểm tra, lưu ảnh gốc, worker xử lý sau.
+const readImages = (mode, files) => (mode === 'async' ? inspectImages(files) : prepareImages(files));
 const { parseId, validateReview, createReview } = require('../lib/review-create');
 const {parseReviewQuery,getPublicReviews}=require('../lib/review-list');
 const {getOwnerReview,validateUpdate,changeOwnerReview}=require('../lib/review-owner');
@@ -41,9 +44,9 @@ function uploadBody(parser){return (req,res,next)=>parser(req,res,error=>{
 router.patch('/:reviewId',verifyFirebaseToken,ownerIds,limiter,uploadBody(editUpload),async(req,res)=>{
   res.set('Cache-Control','no-store');
   try{
-    const data=validateUpdate(req.body),images=await prepareImages(req.files||[]);
+    const mode=jobsMode(),data=validateUpdate(req.body),images=await readImages(mode,req.files||[]);
     // Audit REVIEW_UPDATE cùng tx qua hook; sửa không đổi gì vẫn ghi 1 dòng.
-    res.json(await changeOwnerReview(await getPool(),{userId:req.user.id,productId:req.reviewProductId,reviewId:req.reviewId,data,images,storage,
+    res.json(await changeOwnerReview(await getPool(),{userId:req.user.id,productId:req.reviewProductId,reviewId:req.reviewId,data,images,storage,mode,
       onCommitting:(tx,result,ctx)=>audit(tx,req,{action:'REVIEW_UPDATE',entityType:'review',entityId:req.reviewId,...reviewUpdate(ctx,result)})}));
   }catch(error){errorResponse(res,error);}
 });
@@ -84,10 +87,11 @@ router.post('/',verifyFirebaseToken,(req,res,next)=>{
 },async(req,res)=>{
   res.set('Cache-Control','no-store');
   try {
+    const mode = jobsMode();
     const data = validateReview(req.body);
-    const images = await prepareImages(req.files || []);
+    const images = await readImages(mode, req.files || []);
     // Audit REVIEW_CREATE cùng tx qua hook; lỗi -> rollback + xoá file vừa lưu (createReview đã xử lý).
-    const review = await createReview(await getPool(),{userId:req.user.id,productId:req.reviewProductId,data,images,storage,
+    const review = await createReview(await getPool(),{userId:req.user.id,productId:req.reviewProductId,data,images,storage,mode,
       onCommitting:(tx,result)=>audit(tx,req,{action:'REVIEW_CREATE',entityType:'review',entityId:result.id,...reviewCreate(result)})});
     res.status(201).json(review);
   } catch (error) { errorResponse(res,error); }

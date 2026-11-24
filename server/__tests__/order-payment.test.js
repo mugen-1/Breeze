@@ -1,4 +1,5 @@
 'use strict';
+const statsJobs = []; // job stats.recompute_day mà code nghiệp vụ đưa vào hàng (xem SQL giả bên dưới)
 
 // Real routers and Firebase/Auth middleware; SQL locks are verified separately
 // by verify-order-payment-sql.js against a disposable SQL Server database.
@@ -62,6 +63,8 @@ class Request {
       return result([clone(payment)]);
     }
     if (q.startsWith('INSERT INTO dbo.audit_logs')) return { recordset: [{ id: '1' }] };
+    // Job thống kê theo ngày (lib/stats-snapshot.js enqueueStatsDay): ghi lại để test kiểm, trả id giả.
+    if (q.includes('INSERT INTO dbo.jobs')) { statsJobs.push({ inTx: !!this.tx, type: p.type, payload: JSON.parse(p.payload), dedupe: p.dedupe }); return { recordset: [{ id: statsJobs.length }], recordsets: [[{ id: statsJobs.length }]], rowsAffected: [1] }; }
     throw new Error('Unexpected SQL: ' + q);
   }
 }
@@ -88,7 +91,7 @@ after(async () => {
   await new Promise(r => server.close(r));
 });
 beforeEach(() => {
-  db = { order: { id: 7, order_code: 1001, user_id: 1, status: 'pending', total_amount: 920000, payment_method: 'visa',
+  db = { order: { id: 7, order_code: 1001, user_id: 1, status: 'pending', total_amount: 920000, payment_method: 'visa', created_at: '2026-10-11T00:00:00Z',
     shipping_version: 2, shipping_status: 'pending_pickup' },
   payment: { id: 3, order_id: 7, transaction_code: 'PAY-1001-001', payment_method: 'visa', amount: 920000,
     status: 'pending', created_at: '2026-10-11T00:00:00Z', paid_at: null } };

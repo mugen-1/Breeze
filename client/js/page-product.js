@@ -655,7 +655,9 @@
             var url = typeof image === 'string' ? image : image && image.url;
             if (typeof url !== 'string' || !url) return;
             if (reviewImages.length >= 5) { reviewImageErrors = ['pd.reviewImageLimit']; return; }
-            reviewImages.push({ id:image.id,url: url.indexOf('/') === 0 ? (window.API_BASE || '') + url : url, local: false });
+            // status chỉ có 3 giá trị từ server; thiếu (API cũ) hoặc lạ thì coi như ảnh đã sẵn sàng.
+            var status = image.status === 'pending' || image.status === 'failed' ? image.status : 'ready';
+            reviewImages.push({ id:image.id,url: url.indexOf('/') === 0 ? (window.API_BASE || '') + url : url, local: false, status: status });
         });
         renderReviewMode(); renderReviewRating(); renderReviewImages(); updateReviewForm();
     }
@@ -832,14 +834,24 @@
         reviewPreviews.replaceChildren();
         reviewImages.forEach(function (image, i) {
             var card = document.createElement('div'); card.className = 'pd-review-preview';
-            var img = document.createElement('img'); img.src = image.url;
-            img.alt = t('pd.reviewPreview', { n: i + 1 });
             var remove = document.createElement('button'); remove.type = 'button';
             remove.className = 'pd-review-remove-image';
             remove.disabled = reviewSubmitting;
             remove.setAttribute('aria-label', t('pd.reviewRemoveImage', { n: i + 1 }));
             remove.innerHTML = '<span aria-hidden="true">&times;</span>';
             remove.addEventListener('click', function () { removeReviewImage(image); reviewAddImage.focus({ preventScroll: true }); });
+            if (!image.local && image.status !== 'ready') {
+                // Ảnh pending/failed chưa có file WebP: hiện ô chữ thay cho <img>, nên không có sự kiện
+                // lỗi tải ảnh nào tự gỡ nó khỏi bản nháp. Chỉ nút × mới bỏ được (vào remove_image_ids).
+                card.className += ' pd-review-preview-status';
+                card.setAttribute('data-status', image.status);
+                var note = document.createElement('span'); note.className = 'pd-review-preview-note';
+                note.textContent = t(image.status === 'pending' ? 'pd.reviewImageProcessing' : 'pd.reviewImageFailed');
+                card.appendChild(note); card.appendChild(remove); reviewPreviews.appendChild(card);
+                return;
+            }
+            var img = document.createElement('img'); img.src = image.url;
+            img.alt = t('pd.reviewPreview', { n: i + 1 });
             img.addEventListener('error', function () {
                 if (!reviewIsOpen || reviewImages.indexOf(image) === -1) return;
                 removeReviewImage(image); reviewImageErrors = ['pd.reviewPreviewError']; updateReviewForm();

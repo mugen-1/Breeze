@@ -104,6 +104,8 @@ function handle(q, p, d, inTx) {
   if (q.startsWith("UPDATE dbo.payment_transactions SET status = 'cancelled'")) {
     for (const x of d.payments) if (x.order_id === p.oid && x.status === 'pending') x.status = 'cancelled'; return rs([], 1);
   }
+  // Job thống kê theo ngày: lưu trong dữ liệu của transaction (rollback thì mất theo), trả id giả.
+  if (q.includes('INSERT INTO dbo.jobs')) { (d.jobs || (d.jobs = [])).push({ type: p.type, payload: JSON.parse(p.payload), dedupe: p.dedupe }); return rs([{ id: d.jobs.length }]); }
   throw new Error('Unexpected SQL: ' + q);
 }
 require.cache[require.resolve('../db')] = { exports: {
@@ -232,4 +234,15 @@ test('admin huỷ đơn (route quản trị) vẫn ghi ORDER_STATUS_CHANGE, KHÔ
   actor = { id: 1, email: 'admin@example.test', role: 'admin' };
   assert.equal((await call('PUT', `/api/admin/orders/${o.id}/status`, { status: 'cancelled' })).status, 200);
   assert.deepEqual(db.audit.map(a => [a.action, a.actor_role]), [['ORDER_STATUS_CHANGE', 'admin']]);
+});
+
+// ---------------- Thống kê tính sẵn: job stats.recompute_day khi đặt đơn ----------------
+test('thống kê: đặt đơn đưa đúng 1 job tính lại ngày tạo đơn (giờ VN) cùng transaction', async () => {
+  assert.equal((await checkout()).status, 201);
+  assert.deepEqual(db.jobs, [{ type: 'stats.recompute_day', payload: { day: '2026-11-16' }, dedupe: 'stats:2026-11-16' }]);
+});
+test('thống kê: đặt đơn lỗi audit -> rollback, không còn job', async (t) => {
+  quiet(t); failAudit = true;
+  assert.equal((await checkout()).status, 500);
+  assert.equal(db.jobs, undefined);
 });
