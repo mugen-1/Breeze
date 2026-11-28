@@ -37,6 +37,8 @@ router.use(verifyFirebaseToken, requireBackOffice);
 router.use('/reviews', require('./admin-reviews'));
 router.use('/support', require('./admin-support'));
 router.use('/audit-logs', require('./admin-audit-logs'));
+router.use('/suppliers', require('./admin-suppliers'));
+router.use('/receipts', require('./admin-receipts'));
 
 // Bộ lọc gồm cả trạng thái legacy; mục tiêu chuyển trạng thái do order-state.js quản lý.
 const ORDER_STATUSES = ALL_STATUSES;
@@ -189,8 +191,12 @@ router.get('/products', requirePermission('product:read'), async (req, res) => {
 });
 
 // ---- GET /api/admin/products/:id/inventory-movements -----------------------
+// id >= 0 (products.id bắt đầu từ 0, như PUT /products/:id). Mỗi dòng kèm receipt_id + receipt_code (phiếu nhập) khi DB
+// đã chạy migration 029; DB chưa có cột receipt_id -> câu SELECT cũ, receipt_id / receipt_code = null (popup không phụ
+// thuộc 029).
+const MOVEMENT_RECEIPT_COLS = `, m.receipt_id, (SELECT r.code FROM dbo.purchase_receipts r WHERE r.id = m.receipt_id) AS receipt_code`;
 router.get('/products/:id/inventory-movements', requirePermission('product:read'), async (req, res) => {
-  const idc = reqInt(req.params.id, 1, 'id');
+  const idc = reqInt(req.params.id, 0, 'id');
   if (!idc.ok) return res.status(400).json({ status: 'error', message: idc.error });
   const page = Number(req.query.page || 1);
   const limit = Number(req.query.limit || 20);
@@ -203,7 +209,9 @@ router.get('/products/:id/inventory-movements', requirePermission('product:read'
     const product = await loadProduct(pool, idc.value);
     if (!product) return res.status(404).json({ status: 'error', message: 'Không tìm thấy sản phẩm' });
     const count = await pool.request().input('pid', sql.Int, idc.value)
-      .query('SELECT COUNT(*) AS total FROM dbo.inventory_movements WHERE product_id = @pid;');
+      .query(`SELECT COUNT(*) AS total, CASE WHEN COL_LENGTH('dbo.inventory_movements', 'receipt_id') IS NULL THEN 0 ELSE 1 END
+        AS has_receipt FROM dbo.inventory_movements WHERE product_id = @pid;`);
+    const hasReceipt = count.recordset[0].has_receipt === 1;
     const history = await pool.request()
       .input('pid', sql.Int, idc.value)
       .input('offset', sql.Int, (page - 1) * limit)
@@ -213,6 +221,7 @@ router.get('/products/:id/inventory-movements', requirePermission('product:read'
                       ON c.product_id=v.product_id AND c.color_key=v.color WHERE v.id=m.variant_id) AS color,
                      created_at, movement_type, quantity_delta, stock_before, stock_after,
                      order_id, order_reference_id, (SELECT order_code FROM dbo.orders WHERE id = m.order_id) AS order_code, reason, actor_user_id
+                     ${hasReceipt ? MOVEMENT_RECEIPT_COLS : ''}
               FROM dbo.inventory_movements m
               WHERE product_id = @pid
               ORDER BY created_at DESC, id DESC
@@ -220,7 +229,9 @@ router.get('/products/:id/inventory-movements', requirePermission('product:read'
     res.json({ product: { id: product.id, name_vi: product.name_vi, name_en: product.name_en,
       stock: product.stock, is_active: !!product.is_active },
     page, limit, total: count.recordset[0].total,
-    total_pages: Math.ceil(count.recordset[0].total / limit), movements: history.recordset });
+    total_pages: Math.ceil(count.recordset[0].total / limit),
+    movements: history.recordset.map(m => ({ ...m, receipt_id: m.receipt_id == null ? null : m.receipt_id,
+      receipt_code: m.receipt_code == null ? null : m.receipt_code })) });
   } catch (err) {
     console.error('[admin] inventory history error:', err.message);
     res.status(500).json({ status: 'error', message: 'Không tải được lịch sử kho' });

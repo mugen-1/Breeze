@@ -73,6 +73,8 @@
             if (which !== 'panel' && window.BreezeAdminReviews) window.BreezeAdminReviews.reset();
             if (which !== 'panel' && window.BreezeAdminSupport) window.BreezeAdminSupport.reset();
             if (which !== 'panel' && window.BreezeAdminAudit) window.BreezeAdminAudit.reset();
+            if (which !== 'panel' && window.BreezeAdminSuppliers) window.BreezeAdminSuppliers.reset();
+            if (which !== 'panel' && window.BreezeAdminReceipts) window.BreezeAdminReceipts.reset();
             if (which === 'panel') {
                 $('panel').style.display = 'block';
                 $('bar-right').style.visibility = 'visible';
@@ -176,6 +178,8 @@
                 case 'reviews': break; // admin-reviews.js re-renders loaded data on language change.
                 case 'feedback': break; // Nhãn và dữ liệu chat do admin-support.js quản lý.
                 case 'auditlog': break; // admin-audit.js tự vẽ lại từ dữ liệu đã tải khi langchange.
+                case 'suppliers': break; // admin-suppliers.js tự vẽ lại từ dữ liệu đã tải khi langchange.
+                case 'receipts': break; // admin-receipts.js tự vẽ lại từ dữ liệu đã tải khi langchange.
                 default: loadDashboard();
             }
             if ($('inventory-modal').classList.contains('open') && _inventoryData) renderInventory(_inventoryData);
@@ -191,6 +195,8 @@
         var NAV_VIEWS = {
             dashboard: 'view-dashboard',
             products: 'tab-products',
+            suppliers: 'view-suppliers', // Nhà cung cấp (admin-suppliers.js)
+            receipts: 'view-receipts',   // Nhập kho (admin-receipts.js)
             orders: 'tab-orders',
             statistics: 'view-statistics',
             users: 'view-users',
@@ -225,6 +231,10 @@
             if (t === 'reviews' && window.BreezeAdminReviews) window.BreezeAdminReviews.load(1);
             // Tab Nhật ký: truyền BẢN SAO quyền từ /api/me (module tự quyết cột IP / ô chọn nhóm theo quyền, không theo role).
             if (t === 'auditlog' && window.BreezeAdminAudit) window.BreezeAdminAudit.load(1, _perms.slice());
+            // Nhà cung cấp: cũng nhận BẢN SAO quyền — có supplier:write mới hiện nút Thêm / Sửa / Ngừng – Mở lại.
+            if (t === 'suppliers' && window.BreezeAdminSuppliers) window.BreezeAdminSuppliers.load(1, _perms.slice());
+            // Nhập kho: nút theo quyền receipt:create / approve / receive (server kiểm lại).
+            if (t === 'receipts' && window.BreezeAdminReceipts) window.BreezeAdminReceipts.load(1, _perms.slice());
             if (t === 'feedback' && window.BreezeAdminSupport) window.BreezeAdminSupport.load(1);
             else if (window.BreezeAdminSupport) window.BreezeAdminSupport.hide();
         }
@@ -642,10 +652,23 @@
         // Cột Tham chiếu: đơn còn -> '#<mã đơn>' (đơn cũ chưa có mã -> '#<id>'). Đơn đã bị xoá:
         // FK order_id ON DELETE SET NULL nhưng order_reference_id vẫn giữ id -> '#<id> (đã xoá)'.
         // Không gắn đơn -> lý do điều chỉnh. Gán bằng textContent (reason do admin gõ).
+        // Nhập hàng từ NCC (PURCHASE_RECEIPT, có receipt_id từ migration 029) -> mã phiếu 'PN-000012' ('#<id>' nếu thiếu mã).
         function inventoryRef(m) {
+            if (m.receipt_id != null) return m.receipt_code || ('#' + m.receipt_id);
             if (m.order_reference_id == null) return m.reason || '—';
             if (m.order_id == null) return tr('adm.invRefDeleted', { id: m.order_reference_id }, '#' + m.order_reference_id + ' (đã xoá)');
             return '#' + (m.order_code == null ? m.order_reference_id : m.order_code);
+        }
+        // Dựng bằng createElement + textContent (mã phiếu là dữ liệu server, không đi qua innerHTML).
+        function receiptRefButton(m) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'inv-receipt-link';
+            b.textContent = m.receipt_code;
+            b.setAttribute('aria-label', tr('adm.invReceiptAria', { code: m.receipt_code }, m.receipt_code));
+            b.setAttribute('aria-haspopup', 'dialog');
+            b.addEventListener('click', function () { window.BreezeAdminReceipts.openFromHistory(m.receipt_id, b, _perms.slice()); });
+            return b;
         }
         function renderInventory(data) {
             var list = data.movements || [];
@@ -661,7 +684,14 @@
             }).join('') : '<tr><td colspan="6" class="adm-empty">' + tr('adm.inventoryEmpty') + '</td></tr>';
             Array.prototype.forEach.call($('inventory-body').querySelectorAll('[data-inv-ref]'), function (cell) {
                 var m = list[Number(cell.getAttribute('data-inv-ref'))];
-                if (m) cell.textContent = inventoryRef(m);
+                if (!m) return;
+                // Mã phiếu nhập: có receipt:read -> nút mở chi tiết phiếu (chỉ xem, chồng lên popup); không quyền -> chữ.
+                if (m.receipt_id != null && m.receipt_code && can('receipt:read') && window.BreezeAdminReceipts) {
+                    cell.textContent = '';
+                    cell.appendChild(receiptRefButton(m));
+                } else {
+                    cell.textContent = inventoryRef(m);
+                }
             });
             var pages = data.total_pages || 1;
             $('inventory-pager').innerHTML =

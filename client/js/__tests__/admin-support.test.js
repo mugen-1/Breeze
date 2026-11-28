@@ -42,7 +42,7 @@ const rows = [
         }
         if (c.url.startsWith('/api/admin/support/conversations/20/messages')) return response({ messages: [msg('4', 'Account text')], nextBefore: null });
     };
-    r.navs[7].click(); await wait();
+    r.navs.find(n => n.getAttribute('data-nav') === 'feedback').click(); await wait(); // theo data-nav, không theo vị trí trong menu
     check('feedback navigation still switches existing panels', r.get('view-feedback').style.display === 'block' && r.get('tab-products').style.display === 'none');
     eq('opening feedback fetches actual inbox endpoint', r.calls.filter(c => c.url.startsWith('/api/admin/support/conversations?')).length, 1);
     eq('real inbox response renders rows', r.get('admin-support-list').children.length, 2);

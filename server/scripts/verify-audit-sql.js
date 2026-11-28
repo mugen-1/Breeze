@@ -892,6 +892,415 @@ async function main() {
         created_at: createdAt.toISOString() }, media: [imageUrl] });
       assert.deepEqual([await reviewOf(reviewId), onDisk()], [undefined, []]);
     });
+    // ---- nhà cung cấp qua HTTP, router /api/admin/suppliers THẬT ----
+    const supplierLog = (rows, action, who, role, entityId) => {
+      assert.equal(rows.length, 1, `đúng 1 dòng ${action}`);
+      const r = rows[0];
+      assert.deepEqual([r.actor_user_id, r.actor_role, r.actor_email, r.action, r.entity_type, r.entity_id, r.ip],
+        [who, role, `${role}.http@example.test`, action, 'supplier', String(entityId), '127.0.0.1']);
+      assert.ok(r.after_ok === 1 && (r.before_json === null || r.before_ok === 1));
+      return r;
+    };
+    const supplierRow = async id => (await pool.request().input('id', sql.Int, id)
+      .query('SELECT code, name, contact_name, phone, email, address, tax_code, note, is_active, updated_at FROM dbo.suppliers WHERE id=@id;')).recordset[0];
+    const supplierCount = async () => (await pool.request().query('SELECT COUNT(*) AS n FROM dbo.suppliers;')).recordset[0].n;
+    let supplierId;
+
+    await item('44a. POST /suppliers (admin) -> 201, đúng 1 dòng SUPPLIER_CREATE, before NULL, XSS lưu nguyên văn', async () => {
+      const { out, rows } = await newLogs(() => http(adminId, 'POST', '/suppliers', { code: ' ncc-audit ', name: 'NCC ' + XSS,
+        phone: '090 123 4567', address: '12 Kho Test', email: '', tax_code: '0312345678' }));
+      assert.equal(out.status, 201, JSON.stringify(out.body)); supplierId = out.body.supplier.id;
+      const r = supplierLog(rows, 'SUPPLIER_CREATE', adminId, 'admin', supplierId); keep('SUPPLIER_CREATE', r);
+      assert.equal(r.before_json, null);
+      assert.deepEqual(JSON.parse(r.after_json), { id: supplierId, code: 'NCC-AUDIT', name: 'NCC ' + XSS, contact_name: null,
+        phone: '0901234567', email: null, address: '12 Kho Test', tax_code: '0312345678', note: null, is_active: true });
+      assert.ok(r.after_json.includes(XSS));
+      assert.deepEqual(await supplierRow(supplierId).then(s => [s.code, s.name, s.phone, s.email, s.is_active]),
+        ['NCC-AUDIT', 'NCC ' + XSS, '0901234567', null, true]);
+    });
+
+    await item('44b. POST /suppliers trùng mã (chữ thường) -> 409 SUPPLIER_CODE_EXISTS, 0 dòng log, không thêm NCC', async () => {
+      const n = await supplierCount();
+      const { out, rows } = await newLogs(() => http(adminId, 'POST', '/suppliers', { code: 'ncc-audit', name: 'Trùng mã' }));
+      assert.deepEqual(out, { status: 409, body: { status: 'error', code: 'SUPPLIER_CODE_EXISTS', message: 'Mã nhà cung cấp đã tồn tại' } });
+      assert.deepEqual([rows.length, await supplierCount()], [0, n]);
+    });
+
+    await item('44c. staff: GET /suppliers 200; POST / PUT / PATCH status -> 403 FORBIDDEN, 0 dòng log, NCC không đổi', async () => {
+      const list = await http(staffId, 'GET', '/suppliers?q=ncc-audit');
+      assert.deepEqual([list.status, list.body.total, list.body.suppliers[0].id], [200, 1, supplierId]);
+      const n = await supplierCount(), before = await supplierRow(supplierId);
+      for (const [method, url, body] of [['POST', '/suppliers', { code: 'NCC-STAFF', name: 'Staff tạo' }],
+        ['PUT', `/suppliers/${supplierId}`, { name: 'Staff sửa' }], ['PATCH', `/suppliers/${supplierId}/status`, { is_active: false }]]) {
+        const { out, rows } = await newLogs(() => http(staffId, method, url, body));
+        assert.deepEqual([out.status, out.body.code, rows.length], [403, 'FORBIDDEN', 0], method);
+      }
+      assert.deepEqual([await supplierCount(), await supplierRow(supplierId)], [n, before]);
+    });
+
+    await item('44d. PUT /suppliers/:id (admin) -> 200, đúng 1 dòng SUPPLIER_UPDATE chỉ cột đổi; tuỳ chọn "" -> NULL', async () => {
+      const { out, rows } = await newLogs(() => http(adminId, 'PUT', `/suppliers/${supplierId}`, { name: 'NCC mới', address: '',
+        note: 'Giao sáng', phone: '0901234567' }));
+      assert.equal(out.status, 200, JSON.stringify(out.body));
+      const r = supplierLog(rows, 'SUPPLIER_UPDATE', adminId, 'admin', supplierId); keep('SUPPLIER_UPDATE', r);
+      assert.deepEqual([JSON.parse(r.before_json), JSON.parse(r.after_json)],
+        [{ name: 'NCC ' + XSS, address: '12 Kho Test', note: null }, { name: 'NCC mới', address: null, note: 'Giao sáng' }]);
+      assert.deepEqual(await supplierRow(supplierId).then(s => [s.name, s.address, s.note]), ['NCC mới', null, 'Giao sáng']);
+    });
+
+    await item('44e. PUT /suppliers/:id không đổi gì -> 200, đúng 1 dòng SUPPLIER_UPDATE {} / {}', async () => {
+      const { out, rows } = await newLogs(() => http(adminId, 'PUT', `/suppliers/${supplierId}`, { name: 'NCC mới', code: 'ncc-audit' }));
+      assert.equal(out.status, 200, JSON.stringify(out.body));
+      const r = supplierLog(rows, 'SUPPLIER_UPDATE', adminId, 'admin', supplierId);
+      assert.deepEqual([r.before_json, r.after_json], ['{}', '{}']);
+    });
+
+    await item('44f. PUT /suppliers/:id đổi mã -> 400 SUPPLIER_CODE_IMMUTABLE, 0 dòng log, NCC không đổi', async () => {
+      const before = await supplierRow(supplierId);
+      const { out, rows } = await newLogs(() => http(adminId, 'PUT', `/suppliers/${supplierId}`, { code: 'NCC-KHAC', name: 'Đổi' }));
+      assert.deepEqual(out, { status: 400, body: { status: 'error', code: 'SUPPLIER_CODE_IMMUTABLE',
+        message: 'Mã nhà cung cấp không sửa được sau khi tạo', field: 'code' } });
+      assert.deepEqual([rows.length, await supplierRow(supplierId)], [0, before]);
+    });
+
+    await item('44g. PATCH /suppliers/:id/status ngừng -> 1 dòng SUPPLIER_STATUS; lặp lại -> 200, 0 dòng; mở lại -> 1 dòng', async () => {
+      const stop = await newLogs(() => http(adminId, 'PATCH', `/suppliers/${supplierId}/status`, { is_active: false }));
+      assert.deepEqual([stop.out.status, stop.out.body.supplier.is_active], [200, false]);
+      const r = supplierLog(stop.rows, 'SUPPLIER_STATUS', adminId, 'admin', supplierId); keep('SUPPLIER_STATUS', r);
+      assert.deepEqual([JSON.parse(r.before_json), JSON.parse(r.after_json)], [{ is_active: true }, { is_active: false }]);
+      const again = await newLogs(() => http(adminId, 'PATCH', `/suppliers/${supplierId}/status`, { is_active: false }));
+      assert.deepEqual([again.out.status, again.out.body.supplier.is_active, again.rows.length], [200, false, 0]);
+      const back = await newLogs(() => http(adminId, 'PATCH', `/suppliers/${supplierId}/status`, { is_active: true }));
+      assert.deepEqual(JSON.parse(supplierLog(back.rows, 'SUPPLIER_STATUS', adminId, 'admin', supplierId).after_json), { is_active: true });
+      assert.equal((await supplierRow(supplierId)).is_active, true);
+    });
+
+    await item('44h. PUT /suppliers/:id với audit() lỗi -> 500, NCC không đổi (kể cả updated_at), 0 dòng log', async () => {
+      const before = await supplierRow(supplierId);
+      await pool.request().query("ALTER TABLE dbo.audit_logs WITH NOCHECK ADD CONSTRAINT CK_inject_audit CHECK (action <> 'SUPPLIER_UPDATE');");
+      const saved = console.error; console.error = () => {};
+      let res;
+      try { res = await newLogs(() => http(adminId, 'PUT', `/suppliers/${supplierId}`, { name: 'Không được lưu' })); }
+      finally { console.error = saved; await pool.request().query('ALTER TABLE dbo.audit_logs DROP CONSTRAINT CK_inject_audit;'); }
+      assert.deepEqual(res.out, { status: 500, body: { status: 'error', code: 'SUPPLIER_ADMIN_ERROR',
+        message: 'Không xử lý được nhà cung cấp. Vui lòng thử lại' } });
+      assert.deepEqual([res.rows.length, await supplierRow(supplierId)], [0, before]);
+    });
+
+    // ---- phiếu nhập qua HTTP, router /api/admin/receipts THẬT (chưa có nhận hàng) ----
+    const receiptLog = (rows, action, who, role, entityId) => {
+      assert.equal(rows.length, 1, `đúng 1 dòng ${action}: ${JSON.stringify(rows.map(r => r.action))}`);
+      const r = rows[0];
+      assert.deepEqual([r.actor_user_id, r.actor_role, r.actor_email, r.action, r.entity_type, r.entity_id, r.ip],
+        [who, role, `${role}.http@example.test`, action, 'receipt', String(entityId), '127.0.0.1']);
+      assert.ok(r.after_ok === 1 && (r.before_json === null || r.before_ok === 1));
+      return r;
+    };
+    const receiptRow = async id => (await pool.request().input('id', sql.Int, id).query(`SELECT status, supplier_id, note,
+      submitted_by, approved_by, rejected_by, reject_reason, cancelled_by, cancel_reason FROM dbo.purchase_receipts WHERE id=@id;`)).recordset[0];
+    const receiptCount = async () => (await pool.request().query(`SELECT (SELECT COUNT(*) FROM dbo.purchase_receipts) AS r,
+      (SELECT COUNT(*) FROM dbo.purchase_receipt_items) AS i;`)).recordset[0];
+    const rc = (who, method, url, body) => http(who, method, '/receipts' + url, body);
+    let sizeLeaf, colorLeaf, rStaff, rAdmin, rLate, rLeaf;
+    const items = (qty = 5) => [{ product_id: apparel.id, variant_id: sizeLeaf.id, quantity: qty, unit_cost: 85000 },
+      { product_id: plain.id, variant_id: colorLeaf.id, quantity: 3, unit_cost: 120000 }];
+    const draft = (over = {}) => ({ supplier_id: supplierId, note: 'Phiếu kiểm tra', expected_date: '2026-12-05', items: items(), ...over });
+
+    await item('44i. staff: receivable-variants đúng chế độ (size / màu); POST /receipts -> 201, 1 dòng RECEIPT_CREATE, snapshot lấy từ DB (bỏ tên / SKU client gửi)', async () => {
+      const sizes = (await rc(staffId, 'GET', `/receivable-variants?product_id=${apparel.id}`)).body;
+      const colors = (await rc(staffId, 'GET', `/receivable-variants?product_id=${plain.id}`)).body;
+      assert.ok(sizes.product && colors.product, JSON.stringify([sizes, colors]));
+      assert.deepEqual([sizes.status, sizes.product.mode, colors.product.mode], ['ok', 'size', 'color']);
+      assert.ok(sizes.variants.length > 0 && sizes.variants.every(v => v.size && v.color_key === null), JSON.stringify(sizes.variants));
+      assert.ok(colors.variants.length > 0 && colors.variants.every(v => v.color_key && v.size === null), JSON.stringify(colors.variants));
+      sizeLeaf = sizes.variants[0]; colorLeaf = colors.variants[0];
+      const body = draft();
+      body.items = body.items.map(i => ({ ...i, name: 'GIẢ ' + XSS, sku: 'GIẢ', size: 'XXL' }));
+      const { out, rows } = await newLogs(() => rc(staffId, 'POST', '', body));
+      assert.equal(out.status, 201, JSON.stringify(out.body)); rStaff = out.body.receipt.id;
+      assert.deepEqual([out.body.receipt.status, out.body.receipt.code], ['draft', 'PN-' + String(rStaff).padStart(6, '0')]);
+      const r = receiptLog(rows, 'RECEIPT_CREATE', staffId, 'staff', rStaff); keep('RECEIPT_CREATE', r);
+      const a = JSON.parse(r.after_json);
+      assert.deepEqual([r.before_json, a.status, a.supplier_id, a.items.map(i => [i.variant_id, i.sku, i.quantity])],
+        [null, 'draft', supplierId, [[sizeLeaf.id, sizeLeaf.sku, 5], [colorLeaf.id, colorLeaf.sku, 3]]]);
+      const saved = (await pool.request().input('id', sql.Int, rStaff).query(`SELECT i.variant_id, i.name_snapshot, i.sku_snapshot, i.size_snapshot,
+        i.color_snapshot, p.name_vi, v.sku, v.size, c.label FROM dbo.purchase_receipt_items i JOIN dbo.products p ON p.id = i.product_id
+        JOIN dbo.product_variants v ON v.id = i.variant_id LEFT JOIN dbo.product_colors c ON c.product_id = v.product_id AND c.color_key = v.color
+        WHERE i.receipt_id = @id ORDER BY i.id;`)).recordset;
+      assert.equal(saved.length, 2);
+      for (const s of saved) assert.deepEqual([s.name_snapshot, s.sku_snapshot, s.size_snapshot, s.color_snapshot], [s.name_vi, s.sku, s.size, s.label]);
+    });
+
+    await item('44j. POST /receipts với NCC đã ngừng -> 409 RECEIPT_SUPPLIER_INACTIVE, 0 dòng log, không có phiếu / dòng hàng mới', async () => {
+      const off = (await http(adminId, 'POST', '/suppliers', { code: 'NCC-RCPT-OFF', name: 'NCC ngừng' })).body.supplier.id;
+      assert.equal((await http(adminId, 'PATCH', `/suppliers/${off}/status`, { is_active: false })).status, 200);
+      const n = await receiptCount();
+      const { out, rows } = await newLogs(() => rc(staffId, 'POST', '', draft({ supplier_id: off })));
+      assert.deepEqual([out.status, out.body.code, rows.length], [409, 'RECEIPT_SUPPLIER_INACTIVE', 0]);
+      assert.deepEqual(await receiptCount(), n);
+    });
+
+    await item('44k. staff sửa phiếu nháp admin lập -> 1 dòng RECEIPT_UPDATE (chỉ items đổi); sửa không đổi gì -> 1 dòng {} / {}', async () => {
+      rAdmin = (await rc(adminId, 'POST', '', draft())).body.receipt.id;
+      const { out, rows } = await newLogs(() => rc(staffId, 'PUT', `/${rAdmin}`, draft({ items: items(9) })));
+      assert.equal(out.status, 200, JSON.stringify(out.body));
+      const r = receiptLog(rows, 'RECEIPT_UPDATE', staffId, 'staff', rAdmin); keep('RECEIPT_UPDATE', r);
+      const [b, a] = [JSON.parse(r.before_json), JSON.parse(r.after_json)];
+      assert.deepEqual([Object.keys(b), b.items[0].quantity, a.items[0].quantity], [['items'], 5, 9]);
+      const same = await newLogs(() => rc(staffId, 'PUT', `/${rAdmin}`, draft({ items: items(9) })));
+      assert.equal(same.out.status, 200);
+      const s = receiptLog(same.rows, 'RECEIPT_UPDATE', staffId, 'staff', rAdmin);
+      assert.deepEqual([s.before_json, s.after_json], ['{}', '{}']);
+    });
+
+    await item('44l. gửi duyệt -> 1 dòng RECEIPT_SUBMIT; gửi lần 2 -> 409, 0 dòng; sửa khi pending -> 409, 0 dòng', async () => {
+      const { out, rows } = await newLogs(() => rc(staffId, 'POST', `/${rAdmin}/submit`));
+      assert.deepEqual([out.status, out.body.receipt.status], [200, 'pending']);
+      const r = receiptLog(rows, 'RECEIPT_SUBMIT', staffId, 'staff', rAdmin); keep('RECEIPT_SUBMIT', r);
+      assert.deepEqual([JSON.parse(r.before_json), JSON.parse(r.after_json)], [{ status: 'draft' }, { status: 'pending' }]);
+      assert.equal((await receiptRow(rAdmin)).submitted_by, staffId);
+      for (const [method, url, body] of [['POST', `/${rAdmin}/submit`], ['PUT', `/${rAdmin}`, draft()]]) {
+        const x = await newLogs(() => rc(staffId, method, url, body));
+        assert.deepEqual([x.out.status, x.out.body.code, x.out.body.current_status, x.rows.length], [409, 'RECEIPT_INVALID_STATE', 'pending', 0], method);
+      }
+    });
+
+    await item('44m. staff duyệt / từ chối -> 403 FORBIDDEN, 0 dòng log, phiếu vẫn pending', async () => {
+      for (const step of ['approve', 'reject']) {
+        const { out, rows } = await newLogs(() => rc(staffId, 'POST', `/${rAdmin}/${step}`, { reason: 'x' }));
+        assert.deepEqual([out.status, out.body.code, rows.length], [403, 'FORBIDDEN', 0], step);
+      }
+      assert.equal((await receiptRow(rAdmin)).status, 'pending');
+    });
+
+    await item('44n. từ chối thiếu lý do -> 400, 0 dòng; admin từ chối -> 1 dòng RECEIPT_REJECT, lý do lưu nguyên văn, về draft', async () => {
+      const no = await newLogs(() => rc(adminId, 'POST', `/${rAdmin}/reject`, { reason: '   ' }));
+      assert.deepEqual([no.out.status, no.out.body.field, no.rows.length], [400, 'reason', 0]);
+      const { out, rows } = await newLogs(() => rc(adminId, 'POST', `/${rAdmin}/reject`, { reason: 'Sai giá ' + XSS }));
+      assert.equal(out.status, 200, JSON.stringify(out.body));
+      const r = receiptLog(rows, 'RECEIPT_REJECT', adminId, 'admin', rAdmin); keep('RECEIPT_REJECT', r);
+      assert.deepEqual(JSON.parse(r.after_json), { status: 'draft', reject_reason: 'Sai giá ' + XSS });
+      const row = await receiptRow(rAdmin);
+      assert.deepEqual([row.status, row.reject_reason, row.rejected_by, row.submitted_by], ['draft', 'Sai giá ' + XSS, adminId, staffId]);
+    });
+
+    await item('44o. gửi lại + admin duyệt phiếu chính mình lập -> 1 dòng RECEIPT_APPROVE; staff huỷ phiếu approved -> 403, 0 dòng; admin huỷ -> 1 dòng', async () => {
+      assert.equal((await rc(adminId, 'POST', `/${rAdmin}/submit`)).status, 200);
+      const { out, rows } = await newLogs(() => rc(adminId, 'POST', `/${rAdmin}/approve`));
+      assert.deepEqual([out.status, out.body.receipt.status, out.body.receipt.actors.approved.id], [200, 'approved', adminId]);
+      const r = receiptLog(rows, 'RECEIPT_APPROVE', adminId, 'admin', rAdmin); keep('RECEIPT_APPROVE', r);
+      assert.deepEqual([JSON.parse(r.before_json), JSON.parse(r.after_json)], [{ status: 'pending' }, { status: 'approved' }]);
+      const denied = await newLogs(() => rc(staffId, 'POST', `/${rAdmin}/cancel`, { reason: 'Staff huỷ' }));
+      assert.deepEqual([denied.out.status, denied.out.body, denied.rows.length],
+        [403, { status: 'error', code: 'FORBIDDEN', message: 'Tài khoản không có quyền thực hiện thao tác này' }, 0]);
+      assert.equal((await receiptRow(rAdmin)).status, 'approved');
+      const cancel = await newLogs(() => rc(adminId, 'POST', `/${rAdmin}/cancel`, { reason: 'Hết nhu cầu' }));
+      assert.equal(cancel.out.status, 200);
+      const c = receiptLog(cancel.rows, 'RECEIPT_CANCEL', adminId, 'admin', rAdmin); keep('RECEIPT_CANCEL', c);
+      assert.deepEqual([JSON.parse(c.before_json), JSON.parse(c.after_json)], [{ status: 'approved' }, { status: 'cancelled', cancel_reason: 'Hết nhu cầu' }]);
+    });
+
+    await item('44p. NCC bị ngừng SAU khi lập phiếu -> gửi duyệt và duyệt vẫn thành công, mỗi lần đúng 1 dòng', async () => {
+      rLate = (await rc(staffId, 'POST', '', draft())).body.receipt.id;
+      assert.equal((await http(adminId, 'PATCH', `/suppliers/${supplierId}/status`, { is_active: false })).status, 200);
+      try {
+        const s = await newLogs(() => rc(staffId, 'POST', `/${rLate}/submit`));
+        assert.deepEqual([s.out.status, s.out.body.receipt.supplier.is_active], [200, false], JSON.stringify(s.out.body));
+        receiptLog(s.rows, 'RECEIPT_SUBMIT', staffId, 'staff', rLate);
+        const a = await newLogs(() => rc(adminId, 'POST', `/${rLate}/approve`));
+        assert.equal(a.out.status, 200, JSON.stringify(a.out.body));
+        receiptLog(a.rows, 'RECEIPT_APPROVE', adminId, 'admin', rLate);
+        assert.equal((await receiptRow(rLate)).status, 'approved');
+      } finally {
+        assert.equal((await http(adminId, 'PATCH', `/suppliers/${supplierId}/status`, { is_active: true })).status, 200);
+      }
+    });
+
+    await item('44q. duyệt khi 1 dòng không còn là biến thể lá -> 409 RECEIPT_ITEMS_INVALID chỉ đúng dòng đó, 0 dòng log, vẫn pending', async () => {
+      rLeaf = (await rc(staffId, 'POST', '', draft())).body.receipt.id;
+      assert.equal((await rc(staffId, 'POST', `/${rLeaf}/submit`)).status, 200);
+      // Đổi danh mục sản phẩm áo sang danh mục không có size -> biến thể size không còn là lá; trả lại ngay sau đó.
+      const oldCat = (await pool.request().input('pid', sql.Int, apparel.id).query('SELECT category_id AS c FROM dbo.products WHERE id=@pid;')).recordset[0].c;
+      await pool.request().input('pid', sql.Int, apparel.id).input('cat', sql.Int, catId).query('UPDATE dbo.products SET category_id=@cat WHERE id=@pid;');
+      try {
+        const { out, rows } = await newLogs(() => rc(adminId, 'POST', `/${rLeaf}/approve`));
+        assert.deepEqual([out.status, out.body.code, out.body.items, rows.length], [409, 'RECEIPT_ITEMS_INVALID',
+          [{ index: 0, product_id: apparel.id, variant_id: sizeLeaf.id, reason: 'NOT_LEAF' }], 0]);
+        assert.equal((await receiptRow(rLeaf)).status, 'pending');
+      } finally {
+        await pool.request().input('pid', sql.Int, apparel.id).input('cat', sql.Int, oldCat).query('UPDATE dbo.products SET category_id=@cat WHERE id=@pid;');
+      }
+    });
+
+    await item('44r. staff huỷ phiếu pending -> 200, đúng 1 dòng RECEIPT_CANCEL (staff)', async () => {
+      const { out, rows } = await newLogs(() => rc(staffId, 'POST', `/${rLeaf}/cancel`, { reason: 'Sai mẫu' }));
+      assert.deepEqual([out.status, out.body.receipt.status], [200, 'cancelled']);
+      const r = receiptLog(rows, 'RECEIPT_CANCEL', staffId, 'staff', rLeaf);
+      assert.deepEqual([JSON.parse(r.before_json), JSON.parse(r.after_json)], [{ status: 'pending' }, { status: 'cancelled', cancel_reason: 'Sai mẫu' }]);
+      const row = await receiptRow(rLeaf);
+      assert.deepEqual([row.cancelled_by, row.cancel_reason], [staffId, 'Sai mẫu']);
+    });
+
+    await item('44s. staff xem chi tiết phiếu -> email người lập / gửi / duyệt là null; admin xem -> có email', async () => {
+      const s = await rc(staffId, 'GET', `/${rAdmin}`);
+      const a = await rc(adminId, 'GET', `/${rAdmin}`);
+      assert.deepEqual([s.status, a.status], [200, 200]);
+      for (const k of ['created', 'submitted', 'approved', 'rejected', 'cancelled']) {
+        assert.ok(s.body.receipt.actors[k], k);
+        assert.equal(s.body.receipt.actors[k].email, null, 'staff: ' + k);
+        assert.equal(s.body.receipt.actors[k].deleted, false);
+      }
+      assert.deepEqual([a.body.receipt.actors.created.email, a.body.receipt.actors.approved.email],
+        ['admin.http@example.test', 'admin.http@example.test']);
+      const own = await rc(adminId, 'GET', `/${rStaff}`), ownStaff = await rc(staffId, 'GET', `/${rStaff}`);
+      assert.deepEqual([own.body.receipt.actors.created.email, ownStaff.body.receipt.actors.created.email,
+        ownStaff.body.receipt.actors.created.display_name === own.body.receipt.actors.created.display_name], ['staff.http@example.test', null, true],
+        'staff xem phiếu chính mình lập cũng không có email (quyết theo quyền, không theo người)');
+      const list = await rc(staffId, 'GET', `?q=${encodeURIComponent(s.body.receipt.code)}`);
+      assert.deepEqual([list.body.total, list.body.receipts[0].created_by.email], [1, null]);
+    });
+
+    await item('44s2. tiền lớn: 1 dòng 100 cái × 25.000.000 -> total_cost 2.500.000.000 ở chi tiết và danh sách (SQL tính BIGINT, INT * INT sẽ tràn)', async () => {
+      const big = await rc(staffId, 'POST', '', draft({ items: [{ product_id: apparel.id, variant_id: sizeLeaf.id, quantity: 100, unit_cost: 25000000 }] }));
+      assert.equal(big.status, 201, JSON.stringify(big.body));
+      const id = big.body.receipt.id;
+      assert.deepEqual([big.body.receipt.total_cost, big.body.receipt.items[0].line_total], [2500000000, 2500000000]);
+      const list = await rc(staffId, 'GET', `?q=${encodeURIComponent(big.body.receipt.code)}`);
+      assert.deepEqual([list.status, list.body.total, list.body.receipts[0].total_cost, list.body.receipts[0].total_quantity], [200, 1, 2500000000, 100]);
+      await assert.rejects(pool.request().input('id', sql.Int, id)
+        .query('SELECT SUM(i.quantity * i.unit_cost) AS t FROM dbo.purchase_receipt_items i WHERE i.receipt_id = @id;'),
+      e => e.number === 8115, 'đối chứng: INT * INT tràn số (8115) trên SQL Server thật');
+      assert.equal(Number((await rc(staffId, 'POST', `/${id}/cancel`, { reason: 'Dọn dữ liệu kiểm tra' })).body.receipt.total_cost), 2500000000);
+    });
+
+    await item('44t. POST /receipts với audit() lỗi -> 500, không có phiếu / dòng hàng mới, 0 dòng log', async () => {
+      const n = await receiptCount();
+      await pool.request().query("ALTER TABLE dbo.audit_logs WITH NOCHECK ADD CONSTRAINT CK_inject_audit CHECK (action <> 'RECEIPT_CREATE');");
+      const saved = console.error; console.error = () => {};
+      let res;
+      try { res = await newLogs(() => rc(staffId, 'POST', '', draft())); }
+      finally { console.error = saved; await pool.request().query('ALTER TABLE dbo.audit_logs DROP CONSTRAINT CK_inject_audit;'); }
+      assert.deepEqual(res.out, { status: 500, body: { status: 'error', code: 'RECEIPT_ADMIN_ERROR', message: 'Không xử lý được phiếu nhập. Vui lòng thử lại' } });
+      assert.deepEqual([res.rows.length, await receiptCount()], [0, n]);
+    });
+
+    // ---- nhận hàng theo phiếu: POST /api/admin/receipts/:id/receive ----
+    const stockSnap = async () => (await pool.request().input('a', sql.Int, apparel.id).input('b', sql.Int, plain.id).query(`
+      SELECT v.id, v.product_id, v.stock, v.is_active FROM dbo.product_variants v WHERE v.product_id IN (@a, @b) ORDER BY v.id;
+      SELECT p.id, p.stock FROM dbo.products p WHERE p.id IN (@a, @b) ORDER BY p.id;
+      SELECT COUNT(*) AS n FROM dbo.inventory_movements;`)).recordsets;
+    const receiptMoves = async id => (await pool.request().input('id', sql.Int, id).query(`SELECT product_id, variant_id, receipt_id,
+      movement_type, quantity_delta, stock_before, stock_after, reason, actor_user_id FROM dbo.inventory_movements
+      WHERE receipt_id = @id ORDER BY variant_id;`)).recordset;
+    const approvedReceipt = async () => {
+      const id = (await rc(staffId, 'POST', '', draft())).body.receipt.id;
+      assert.equal((await rc(staffId, 'POST', `/${id}/submit`)).status, 200);
+      assert.equal((await rc(adminId, 'POST', `/${id}/approve`)).status, 200);
+      return id;
+    };
+    let rRecv;
+
+    await item('44u. staff nhận phiếu approved -> 200, 1 dòng RECEIPT_RECEIVE, 2 dòng sổ kho PURCHASE_RECEIPT có receipt_id, tồn biến thể + sản phẩm tăng đúng; biến thể đang tắt vẫn nhận và vẫn tắt', async () => {
+      rRecv = await approvedReceipt();
+      await pool.request().input('vid', sql.Int, sizeLeaf.id).query('UPDATE dbo.product_variants SET is_active = 0 WHERE id = @vid;');
+      try {
+        const [vBefore, pBefore] = await stockSnap();
+        const { out, rows } = await newLogs(() => rc(staffId, 'POST', `/${rRecv}/receive`));
+        assert.equal(out.status, 200, JSON.stringify(out.body));
+        assert.deepEqual([out.body.receipt.status, out.body.receipt.actors.received.id], ['received', staffId]);
+        const r = receiptLog(rows, 'RECEIPT_RECEIVE', staffId, 'staff', rRecv); keep('RECEIPT_RECEIVE', r);
+        const vOf = (list, id) => list.find(v => v.id === id), pOf = (list, id) => list.find(p => p.id === id);
+        const want = [{ product_id: apparel.id, variant_id: sizeLeaf.id, quantity: 5 }, { product_id: plain.id, variant_id: colorLeaf.id, quantity: 3 }]
+          .sort((a, b) => a.variant_id - b.variant_id)
+          .map(x => ({ ...x, stock_before: vOf(vBefore, x.variant_id).stock, stock_after: vOf(vBefore, x.variant_id).stock + x.quantity }));
+        assert.deepEqual(out.body.stock_changes, want);
+        assert.deepEqual([JSON.parse(r.before_json), JSON.parse(r.after_json)], [{ status: 'approved' }, { status: 'received', stock: want }]);
+        const [vAfter, pAfter] = await stockSnap();
+        for (const x of want) assert.equal(vOf(vAfter, x.variant_id).stock, x.stock_after);
+        assert.equal(pOf(pAfter, apparel.id).stock, pOf(pBefore, apparel.id).stock + 5);
+        assert.equal(pOf(pAfter, plain.id).stock, pOf(pBefore, plain.id).stock + 3);
+        assert.equal(vOf(vAfter, sizeLeaf.id).is_active, false, 'không tự bật lại');
+        assert.deepEqual(await receiptMoves(rRecv), want.map(x => ({ product_id: x.product_id, variant_id: x.variant_id, receipt_id: rRecv,
+          movement_type: 'PURCHASE_RECEIPT', quantity_delta: x.quantity, stock_before: x.stock_before, stock_after: x.stock_after, reason: null,
+          actor_user_id: staffId })));
+      } finally {
+        await pool.request().input('vid', sql.Int, sizeLeaf.id).query('UPDATE dbo.product_variants SET is_active = 1 WHERE id = @vid;');
+      }
+    });
+
+    await item('44v. sau khi nhận: SUM(product_variants.stock) = products.stock của từng sản phẩm trong phiếu', async () => {
+      const r = (await pool.request().input('id', sql.Int, rRecv).query(`SELECT p.id, p.stock,
+        (SELECT SUM(CAST(v.stock AS BIGINT)) FROM dbo.product_variants v WHERE v.product_id = p.id) AS variant_sum
+        FROM dbo.products p WHERE p.id IN (SELECT product_id FROM dbo.purchase_receipt_items WHERE receipt_id = @id) ORDER BY p.id;`)).recordset;
+      assert.equal(r.length, 2);
+      for (const x of r) assert.equal(Number(x.variant_sum), x.stock, `sản phẩm ${x.id}: tổng biến thể ${x.variant_sum} ≠ products.stock ${x.stock}`);
+      console.log(`   ${r.map(x => `sản phẩm ${x.id}: SUM(variants) ${x.variant_sum} = products.stock ${x.stock}`).join('; ')}`);
+    });
+
+    await item('44w. nhận lần 2 -> 409 RECEIPT_INVALID_STATE (received), 0 dòng log, tồn + sổ kho không đổi; nhận draft / pending / cancelled -> 409', async () => {
+      const before = await stockSnap();
+      const again = await newLogs(() => rc(adminId, 'POST', `/${rRecv}/receive`));
+      assert.deepEqual([again.out.status, again.out.body.code, again.out.body.current_status, again.rows.length], [409, 'RECEIPT_INVALID_STATE', 'received', 0]);
+      const draftId = (await rc(staffId, 'POST', '', draft())).body.receipt.id;
+      const pendingId = (await rc(staffId, 'POST', '', draft())).body.receipt.id;
+      assert.equal((await rc(staffId, 'POST', `/${pendingId}/submit`)).status, 200);
+      const cancelledId = (await rc(staffId, 'POST', '', draft())).body.receipt.id;
+      assert.equal((await rc(staffId, 'POST', `/${cancelledId}/cancel`, { reason: 'x' })).status, 200);
+      for (const [id, status] of [[draftId, 'draft'], [pendingId, 'pending'], [cancelledId, 'cancelled']]) {
+        const x = await newLogs(() => rc(staffId, 'POST', `/${id}/receive`));
+        assert.deepEqual([x.out.status, x.out.body.current_status, x.rows.length], [409, status, 0], status);
+      }
+      assert.equal((await rc(staffId, 'POST', `/${pendingId}/cancel`, { reason: 'Dọn' })).status, 200);
+      assert.equal((await rc(staffId, 'POST', `/${draftId}/cancel`, { reason: 'Dọn' })).status, 200);
+      assert.deepEqual(await stockSnap(), before);
+    });
+
+    await item('44x. nhận khi 1 dòng không còn là biến thể lá -> 409 RECEIPT_ITEMS_INVALID, không sổ kho, tồn không đổi, vẫn approved', async () => {
+      const id = await approvedReceipt();
+      const oldCat = (await pool.request().input('pid', sql.Int, apparel.id).query('SELECT category_id AS c FROM dbo.products WHERE id=@pid;')).recordset[0].c;
+      await pool.request().input('pid', sql.Int, apparel.id).input('cat', sql.Int, catId).query('UPDATE dbo.products SET category_id=@cat WHERE id=@pid;');
+      try {
+        const before = await stockSnap();
+        const { out, rows } = await newLogs(() => rc(staffId, 'POST', `/${id}/receive`));
+        assert.deepEqual([out.status, out.body.code, out.body.items, rows.length], [409, 'RECEIPT_ITEMS_INVALID',
+          [{ index: 0, product_id: apparel.id, variant_id: sizeLeaf.id, reason: 'NOT_LEAF' }], 0]);
+        assert.deepEqual([await stockSnap(), await receiptMoves(id), (await receiptRow(id)).status], [before, [], 'approved']);
+      } finally {
+        await pool.request().input('pid', sql.Int, apparel.id).input('cat', sql.Int, oldCat).query('UPDATE dbo.products SET category_id=@cat WHERE id=@pid;');
+      }
+      assert.equal((await rc(adminId, 'POST', `/${id}/cancel`, { reason: 'Dọn' })).status, 200);
+    });
+
+    await item('44y. nhận khi audit() lỗi -> 500, tồn, sổ kho, trạng thái đều không đổi, 0 dòng log; customer -> 403', async () => {
+      const id = await approvedReceipt();
+      const before = await stockSnap();
+      await pool.request().query("ALTER TABLE dbo.audit_logs WITH NOCHECK ADD CONSTRAINT CK_inject_audit CHECK (action <> 'RECEIPT_RECEIVE');");
+      const saved = console.error; console.error = () => {};
+      let res;
+      try { res = await newLogs(() => rc(staffId, 'POST', `/${id}/receive`)); }
+      finally { console.error = saved; await pool.request().query('ALTER TABLE dbo.audit_logs DROP CONSTRAINT CK_inject_audit;'); }
+      assert.deepEqual(res.out, { status: 500, body: { status: 'error', code: 'RECEIPT_ADMIN_ERROR', message: 'Không xử lý được phiếu nhập. Vui lòng thử lại' } });
+      assert.deepEqual([res.rows.length, await stockSnap(), await receiptMoves(id), (await receiptRow(id)).status], [0, before, [], 'approved']);
+      const c = await newLogs(() => rc(customerId, 'POST', `/${id}/receive`));
+      assert.deepEqual([c.out.status, c.rows.length], [403, 0]);
+      assert.equal((await rc(adminId, 'POST', `/${id}/cancel`, { reason: 'Dọn' })).status, 200);
+    });
+
+    await item('44z. GET /products/:id/inventory-movements: dòng PURCHASE_RECEIPT có receipt_id + receipt_code; sản phẩm id 0 xem được', async () => {
+      const code = 'PN-' + String(rRecv).padStart(6, '0');
+      for (const pid of [apparel.id, plain.id]) {
+        const r = await http(adminId, 'GET', `/products/${pid}/inventory-movements?limit=100`);
+        assert.equal(r.status, 200, JSON.stringify(r.body));
+        const m = r.body.movements.filter(x => x.movement_type === 'PURCHASE_RECEIPT');
+        assert.deepEqual(m.map(x => [x.receipt_id, x.receipt_code]), [[rRecv, code]], 'sản phẩm ' + pid);
+        assert.ok(r.body.movements.filter(x => x.movement_type !== 'PURCHASE_RECEIPT').every(x => x.receipt_id === null && x.receipt_code === null));
+      }
+      const zero = (await pool.request().query('SELECT COUNT(*) AS n FROM dbo.products WHERE id = 0;')).recordset[0].n;
+      const r0 = await http(adminId, 'GET', '/products/0/inventory-movements');
+      assert.equal(r0.status, zero ? 200 : 404, JSON.stringify(r0.body));
+      console.log(`   sản phẩm id 0 ${zero ? 'có' : 'không có'} trong DB tạm -> ${r0.status}; apparel.id = ${apparel.id}`);
+    });
+
     // ---- GET /api/admin/audit-logs qua router /api/admin THẬT, đăng nhập giả admin / staff / khách ----
     // Dùng các dòng log mục 1–44 sinh ra + vài dòng INSERT thẳng (ngày giờ VN cố định, khách đã xoá tài khoản).
     const { permsFor } = require('../lib/permissions');
@@ -990,7 +1399,8 @@ async function main() {
 
     const staffFull = async () => { // quyền staff vẫn đủ (mặc định) và staff vẫn gọi được API
       assert.deepEqual([...permsFor('staff')], STAFF_PERMS);
-      assert.ok(STAFF_PERMS.includes('audit:read_customer') && STAFF_PERMS.length === 10);
+      assert.ok(STAFF_PERMS.includes('audit:read_customer') && STAFF_PERMS.length === 14);
+      for (const p of ['supplier:read', 'receipt:read', 'receipt:create', 'receipt:receive']) assert.ok(STAFF_PERMS.includes(p), p);
       assert.equal((await logsApi(staffId, '?page=1')).status, 200);
     };
     // Staff KHÔNG có cả 2 quyền audit -> 403 + PERMISSION_DENIED trong dbo.SecurityEvents. Tiến trình cha chạy NODE_ENV=production

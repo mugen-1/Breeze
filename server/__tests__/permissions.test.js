@@ -27,17 +27,29 @@ test('isBackOffice: chỉ admin và staff, so khớp chính xác', () => {
   }
 });
 
-test('danh sách permission đúng 16 mục (Phase C thêm view_admin_detail, blacklist_release; thêm audit:read_admin, audit:read_customer)', () => {
+test('danh sách permission đúng 22 mục (Phase C thêm view_admin_detail, blacklist_release; thêm audit:read_admin, audit:read_customer; thêm 6 quyền nhà cung cấp / phiếu nhập)', () => {
   assert.deepEqual([...PERMISSIONS], ['dashboard:read', 'product:read', 'product:write', 'product:delete',
     'order:read', 'order:update_status', 'order:delete', 'user:read', 'user:view_admin_detail',
     'user:blacklist', 'user:blacklist_release', 'user:manage_role', 'review:moderate', 'support:reply',
-    'audit:read_admin', 'audit:read_customer']);
+    'audit:read_admin', 'audit:read_customer',
+    'supplier:read', 'supplier:write', 'receipt:read', 'receipt:create', 'receipt:approve', 'receipt:receive']);
+});
+
+// Quyền nhà cung cấp / phiếu nhập: staff có đúng 4, không có supplier:write và receipt:approve.
+const SUPPLY_PERMS = ['supplier:read', 'supplier:write', 'receipt:read', 'receipt:create', 'receipt:approve', 'receipt:receive'];
+const STAFF_SUPPLY = ['supplier:read', 'receipt:read', 'receipt:create', 'receipt:receive'];
+test('quyền nhà cung cấp / phiếu nhập: admin đủ 6, staff đúng 4, customer không có', () => {
+  for (const p of SUPPLY_PERMS) assert.equal(can('admin', p), true, 'admin ' + p);
+  assert.deepEqual([...permsFor('staff')].filter(p => SUPPLY_PERMS.includes(p)), STAFF_SUPPLY);
+  for (const p of ['supplier:write', 'receipt:approve']) assert.equal(can('staff', p), false, 'staff ' + p);
+  for (const p of SUPPLY_PERMS) assert.equal(can('customer', p), false, 'customer ' + p);
+  assert.equal(permsFor('customer').size, 0);
 });
 
 // Ma trận Phase C — bảng này cũng là bảng đưa vào khoá luận; đổi quyền phải sửa cả đây.
 const STAFF_DENIED = ['product:delete', 'order:delete', 'user:view_admin_detail', 'user:blacklist_release', 'user:manage_role',
-  'audit:read_admin'];
-test('admin có tất cả; staff = tất cả trừ 6 quyền (5 quyền Phase C; thêm audit:read_admin); customer rỗng', () => {
+  'audit:read_admin', 'supplier:write', 'receipt:approve'];
+test('admin có tất cả; staff = tất cả trừ 8 quyền (5 quyền Phase C; thêm audit:read_admin, supplier:write, receipt:approve); customer rỗng', () => {
   assert.deepEqual([...permsFor('admin')].sort(), [...PERMISSIONS].sort());
   assert.deepEqual([...permsFor('staff')].sort(), PERMISSIONS.filter(p => !STAFF_DENIED.includes(p)).sort());
   assert.equal(permsFor('customer').size, 0);
@@ -46,7 +58,8 @@ test('admin có tất cả; staff = tất cả trừ 6 quyền (5 quyền Phase 
     assert.equal(can('staff', p), false, 'staff ' + p);
   }
   for (const p of ['dashboard:read', 'product:read', 'product:write', 'order:read', 'order:update_status',
-    'user:read', 'user:blacklist', 'review:moderate', 'support:reply', 'audit:read_customer']) {
+    'user:read', 'user:blacklist', 'review:moderate', 'support:reply', 'audit:read_customer',
+    'supplier:read', 'receipt:read', 'receipt:create', 'receipt:receive']) {
     assert.equal(can('staff', p), true, 'staff vẫn giữ ' + p);
   }
   assert.equal(can('customer', 'order:read'), false);

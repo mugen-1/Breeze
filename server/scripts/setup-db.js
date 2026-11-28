@@ -62,6 +62,9 @@ const DROP_DEPENDENTS_SQL = [
   "IF OBJECT_ID('dbo.payment_methods','U')       IS NOT NULL DROP TABLE dbo.payment_methods;",
   "IF OBJECT_ID('dbo.user_privacy_settings','U') IS NOT NULL DROP TABLE dbo.user_privacy_settings;",
   "IF OBJECT_ID('dbo.inventory_movements','U') IS NOT NULL DROP TABLE dbo.inventory_movements;",
+  "IF OBJECT_ID('dbo.purchase_receipt_items','U') IS NOT NULL DROP TABLE dbo.purchase_receipt_items;",
+  "IF OBJECT_ID('dbo.purchase_receipts','U') IS NOT NULL DROP TABLE dbo.purchase_receipts;",
+  "IF OBJECT_ID('dbo.suppliers','U') IS NOT NULL DROP TABLE dbo.suppliers;",
   "IF OBJECT_ID('dbo.order_items','U') IS NOT NULL DROP TABLE dbo.order_items;",
   "IF OBJECT_ID('dbo.product_variants','U') IS NOT NULL DROP TABLE dbo.product_variants;",
   "IF OBJECT_ID('dbo.product_color_images','U') IS NOT NULL DROP TABLE dbo.product_color_images;",
@@ -161,6 +164,8 @@ const STEPS = [
     desc: "Cột review_images.status (pending|ready|failed); ảnh đang có = 'ready'" },
   { type: 'sql', file: 'db/migrations/028_stats_snapshots.sql',
     desc: 'Bảng thống kê tính sẵn theo ngày (stats_snapshots, stats_snapshot_products) + chỉ mục orders/order_items; không seed' },
+  { type: 'sql', file: 'db/migrations/029_suppliers_purchase_receipts.sql',
+    desc: 'Nhà cung cấp + phiếu nhập kho (suppliers, purchase_receipts, purchase_receipt_items) + loại PURCHASE_RECEIPT; không seed' },
 ];
 
 if (FRESH) {

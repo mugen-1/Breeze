@@ -1,0 +1,57 @@
+/* Trang "Nhà cung cấp" (admin-suppliers.js). Nạp SAU admin.css; chỉ token --c-*, chỉ light mode (admin.html ép sáng).
+   Dùng lại .adm-table / .pill / .modal-backdrop / .modal-card / .fld của admin.css, ở đây chỉ phần riêng:
+   lỗi theo ô, chế độ xem, nhãn ẩn cho trình đọc màn hình, viền focus rõ (WCAG 2.4.7). */
+
+/* [hidden] phải thắng display của .adm-pager (flex) / .adm-btn (inline-block) — không có rule này thì pager vẫn hiện khi
+   danh sách rỗng và nút Lưu vẫn hiện ở chế độ xem. Cùng cách #view-auditlog trong admin-audit.css. */
+#view-suppliers [hidden], #sup-modal [hidden], #sup-confirm [hidden] { display:none !important; }
+
+/* Thanh lọc theo kiểu trang Nhật ký hoạt động: nhãn nhỏ trên ô, ô trơn, nút Tìm nền đen; không khung, ít khoảng trống. */
+.sup-head { display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:12px; }
+.sup-filters { align-items:flex-end; gap:10px; }
+.sup-filter { display:flex; flex-direction:column; gap:4px; }
+.sup-filter label { font-size:12px; color:var(--c-muted); }
+.sup-filter input, .sup-filter select { box-sizing:border-box; height:34px; font-family:inherit; font-size:13.5px; padding:6px 10px;
+    border:1px solid var(--c-line); background:var(--c-bg); color:var(--c-ink); }
+.sup-filter input { width:260px; max-width:100%; }
+.sup-filter select { min-width:170px; cursor:pointer; }
+#sup-search-btn, #sup-add { height:34px; padding:0 18px; }
+
+/* Bảng: bỏ khung ngoài + đường kẻ dòng, dòng thoáng 16px như các tab khác; chữ lớn hơn mặc định .adm-table (13.5px). */
+#view-suppliers .adm-table-wrap { border:none; }
+#view-suppliers table.adm-table { font-size:14.5px; }
+#view-suppliers table.adm-table td { padding-top:16px; padding-bottom:16px; border-bottom:none; }
+#view-suppliers td.sup-code { font-weight:600; letter-spacing:.3px; white-space:nowrap; }
+#view-suppliers td.adm-empty, #view-suppliers td.adm-loading { padding:36px 0; font-size:14.5px; }
+#view-suppliers .adm-actions { flex-wrap:wrap; }
+#view-suppliers .sup-retry { margin-left:10px; }
+
+/* Lỗi theo ô: chữ đỏ dưới ô + viền đỏ ô (aria-invalid do JS gắn). */
+.sup-field-err { color:var(--c-danger-text); font-size:12.5px; margin:5px 0 0; }
+.sup-field-err[hidden] { display:none; }
+#sup-form .fld input[aria-invalid="true"], #sup-form .fld textarea[aria-invalid="true"] { border-color:var(--c-danger); }
+#sup-form .fld input[readonly] { background:var(--c-surface); color:var(--c-muted); cursor:not-allowed; }
+#sup-form[hidden], .sup-view[hidden] { display:none; }
+
+/* Chế độ xem: danh sách nhãn / giá trị. */
+.sup-view { display:grid; grid-template-columns:minmax(140px, 32%) 1fr; gap:0; margin:0 0 8px; }
+.sup-view-row { display:contents; }
+.sup-view dt, .sup-view dd { padding:9px 0; border-bottom:1px solid var(--c-line); margin:0; font-size:14px; }
+.sup-view dt { font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:var(--c-muted); padding-right:12px; }
+.sup-view dd { color:var(--c-ink); overflow-wrap:anywhere; }
+
+.sup-confirm-err { margin:0 0 12px; }
+
+/* Focus rõ trên mọi điều khiển của trang và 2 modal. */
+#view-suppliers button:focus-visible, #view-suppliers select:focus-visible, #view-suppliers input:focus-visible,
+#view-suppliers .adm-table-wrap:focus-visible,
+#sup-modal button:focus-visible, #sup-confirm button:focus-visible,
+#sup-form .fld input:focus-visible, #sup-form .fld textarea:focus-visible {
+    outline:2px solid var(--c-ink); outline-offset:2px;
+}
+
+@media (max-width:640px) {
+    .sup-filters, .sup-filter, .sup-filter input, .sup-filter select { width:100%; }
+    .sup-view { grid-template-columns:1fr; }
+    .sup-view dt { border-bottom:none; padding-bottom:0; }
+}

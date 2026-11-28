@@ -17,13 +17,19 @@ const PERMISSIONS = Object.freeze([
   'support:reply',
   'audit:read_admin',         // xem audit log nhóm Quản trị (admin / staff / cli) + ip, user_agent — chỉ admin
   'audit:read_customer',      // xem audit log nhóm Khách hàng
+  'supplier:read',            // xem danh sách / chi tiết nhà cung cấp
+  'supplier:write',           // thêm, sửa, ngừng / mở lại hợp tác nhà cung cấp — chỉ admin
+  'receipt:read',             // xem phiếu nhập kho
+  'receipt:create',           // lập, sửa, gửi duyệt, huỷ phiếu nhập
+  'receipt:approve',          // duyệt / từ chối phiếu nhập — chỉ admin
+  'receipt:receive',          // nhận hàng theo phiếu đã duyệt (cộng tồn kho)
 ]);
 
 const MATRIX = Object.freeze({
   admin: PERMISSIONS,
   // Phase C: liệt kê RÕ quyền được phép (quyền mới thêm sau này mặc định staff KHÔNG có).
   // Staff KHÔNG có: product:delete, order:delete, user:view_admin_detail,
-  // user:blacklist_release, user:manage_role, audit:read_admin.
+  // user:blacklist_release, user:manage_role, audit:read_admin, supplier:write, receipt:approve.
   staff: Object.freeze([
     'dashboard:read',
     'product:read', 'product:write',
@@ -32,6 +38,8 @@ const MATRIX = Object.freeze({
     'review:moderate',
     'support:reply',
     'audit:read_customer',
+    'supplier:read',
+    'receipt:read', 'receipt:create', 'receipt:receive',
   ]),
   customer: [],
 });

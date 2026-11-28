@@ -1,0 +1,106 @@
+/* Trang "Nhập kho" (admin-receipts.js). Nạp SAU admin.css + admin-suppliers.css; dùng lại thanh lọc .sup-head / .sup-filter
+   và .sup-field-err của trang Nhà cung cấp, .adm-table / .pill / .modal-* của admin.css. Chỉ token --c-*, chỉ light mode. */
+
+/* [hidden] phải thắng display của .adm-pager / .adm-btn / .modal-err. */
+#view-receipts [hidden], #rcp-editor [hidden], #rcp-detail [hidden], #rcp-action [hidden] { display:none !important; }
+
+.rcp-sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0, 0, 0, 0);
+    white-space:nowrap; border:0; }
+#rcp-search-btn, #rcp-add { height:34px; padding:0 18px; }
+#rcp-supplier { min-width:220px; max-width:320px; }
+
+/* Bảng danh sách: không khung, không kẻ dòng, chữ 14.5px như trang Nhà cung cấp. */
+#view-receipts .adm-table-wrap { border:none; }
+#view-receipts table.adm-table { font-size:14.5px; }
+#view-receipts table.adm-table td { padding-top:16px; padding-bottom:16px; border-bottom:none; }
+#view-receipts td.adm-empty, #view-receipts td.adm-loading { padding:36px 0; font-size:14.5px; }
+.rcp-code { font-weight:600; letter-spacing:.3px; white-space:nowrap; }
+.rcp-time { white-space:nowrap; }
+.rcp-retry { margin-left:10px; }
+
+/* Badge 5 trạng thái (token sẵn có, không có xanh dương). */
+.pill.rcp-st-draft { background:var(--c-surface); color:var(--c-muted); }
+.pill.rcp-st-pending { background:var(--c-warning-bg); color:var(--c-warning-text); }
+.pill.rcp-st-approved { background:var(--c-bg); color:var(--c-ink); border:1px solid var(--c-ink); }
+.pill.rcp-st-received { background:var(--c-success-bg); color:var(--c-success-text); }
+.pill.rcp-st-cancelled { background:var(--c-danger-bg); color:var(--c-danger-text); }
+.pill.rcp-warn { background:var(--c-warning-bg); color:var(--c-warning-text); text-transform:none; letter-spacing:0; margin:0 4px 2px 0; }
+.pill.rcp-bad { background:var(--c-danger-bg); color:var(--c-danger-text); text-transform:none; letter-spacing:0; margin:0 4px 2px 0; }
+
+/* Modal rộng cho form + chi tiết. */
+.rcp-card { max-width:1000px; box-sizing:border-box; }
+#rcp-action .rcp-card { max-width:760px; }
+/* Tiêu đề section (h4): global.css có h4 { color:#fff !important; border… padding:10px 20px } cho trang chủ nền tối —
+   không ghi đè thì ra chữ trắng trên nền trắng + 2 vạch viền dọc. */
+.rcp-sub { display:block; padding:0; border:none !important; font-size:12px; letter-spacing:.8px; text-transform:uppercase;
+    color:var(--c-muted) !important; margin:22px 0 10px; font-weight:700; }
+.rcp-muted { color:var(--c-muted); font-size:13px; margin:6px 0; }
+.rcp-card table.adm-table { min-width:0; font-size:13.5px; }
+.rcp-card .adm-table-wrap { max-height:42vh; overflow:auto; }
+#rcp-form .fld input[type=date] { width:100%; box-sizing:border-box; padding:9px 12px; border:1px solid var(--c-line); font-family:inherit;
+    font-size:14px; color:var(--c-ink); }
+#rcp-form .fld select[aria-invalid="true"], #rcp-form .fld input[aria-invalid="true"], #rcp-form textarea[aria-invalid="true"],
+#rcp-action textarea[aria-invalid="true"] { border-color:var(--c-danger); }
+
+/* Kết quả tìm sản phẩm: danh sách nút không khung, chữ 14.5px; đang chọn = nền nhạt + chữ đậm. */
+.rcp-product-results { display:flex; flex-wrap:wrap; gap:6px; margin:-6px 0 8px; }
+.rcp-product-btn { background:var(--c-bg); border:none; padding:7px 12px; font-family:inherit; font-size:14.5px;
+    color:var(--c-ink); cursor:pointer; text-align:left; }
+.rcp-product-btn:hover { background:var(--c-surface); }
+.rcp-product-btn.is-selected { background:var(--c-surface); font-weight:600; }
+/* Form lập phiếu: bảng biến thể + bảng dòng hàng không khung ngoài, chữ 14.5px đều với nút kết quả. */
+#rcp-editor .adm-table-wrap { border:none; }
+#rcp-editor table.adm-table { font-size:14.5px; }
+#rcp-editor .rcp-amount { font-size:14.5px; }
+.rcp-variants { margin-top:6px; }
+.rcp-variants-title { font-weight:600; margin:6px 0; }
+
+/* Dòng hàng: ô SL / giá gọn, lỗi ngay dưới ô, dòng không còn hợp lệ tô đỏ nhạt. */
+.rcp-amount { width:110px; box-sizing:border-box; padding:7px 9px; border:1px solid var(--c-line); font-family:inherit; font-size:13.5px;
+    text-align:right; color:var(--c-ink); background:var(--c-bg); }
+.rcp-amount[aria-invalid="true"] { border-color:var(--c-danger); }
+.rcp-row-err { color:var(--c-danger-text); font-size:12px; margin:4px 0 0; max-width:220px; }
+tr.rcp-row-bad > td { background:var(--c-danger-bg); }
+.rcp-line-total { white-space:nowrap; }
+.rcp-remove { background:none; border:1px solid transparent; padding:6px 9px; cursor:pointer; color:var(--c-danger-text); font-size:15px; }
+.rcp-remove:hover { border-color:var(--c-line); }
+.rcp-totals { text-align:right; font-weight:600; margin:10px 0 0; font-variant-numeric:tabular-nums; }
+
+/* Chi tiết: danh sách nhãn / giá trị, hộp lý do từ chối nổi bật, nút thao tác. */
+.rcp-dl { display:grid; grid-template-columns:minmax(150px, 28%) 1fr; margin:0; }
+.rcp-dl-row { display:contents; }
+.rcp-dl dt, .rcp-dl dd { padding:8px 0; border-bottom:1px solid var(--c-line); margin:0; font-size:14px; }
+.rcp-dl dt { font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:var(--c-muted); padding-right:12px; }
+.rcp-dl dd { overflow-wrap:anywhere; }
+.rcp-deleted { color:var(--c-muted); font-style:italic; }
+.rcp-reject-box { background:var(--c-warning-bg); color:var(--c-warning-text); border-left:4px solid var(--c-warning-text); padding:12px 16px;
+    margin:0 0 16px; }
+.rcp-reject-box p { margin:6px 0 0; color:var(--c-ink); overflow-wrap:anywhere; }
+.rcp-reject-box .rcp-muted { color:var(--c-warning-text); margin-top:4px; }
+#rcp-detail .modal-foot { justify-content:space-between; flex-wrap:wrap; }
+.rcp-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.adm-btn.ghost.rcp-danger { color:var(--c-danger-text); border-color:var(--c-danger); }
+.rcp-err-line { display:block; margin-top:4px; }
+.rcp-after { font-weight:700; }
+
+/* Popup Lịch sử tồn kho (admin.js): mã phiếu nhập ở cột Tham chiếu là nút trông như link, mở chi tiết phiếu (chỉ xem). */
+.inv-receipt-link { background:none; border:0; padding:0; cursor:pointer; font:inherit; font-weight:600; color:var(--c-ink);
+    text-decoration:underline; text-underline-offset:2px; }
+.inv-receipt-link:hover { color:var(--c-muted); }
+.inv-receipt-link:focus-visible { outline:2px solid var(--c-ink); outline-offset:2px; }
+
+/* Focus rõ (WCAG 2.4.7). */
+#view-receipts button:focus-visible, #view-receipts select:focus-visible, #view-receipts input:focus-visible,
+#view-receipts .adm-table-wrap:focus-visible,
+#rcp-editor button:focus-visible, #rcp-editor input:focus-visible, #rcp-editor select:focus-visible, #rcp-editor textarea:focus-visible,
+#rcp-detail button:focus-visible, #rcp-action button:focus-visible, #rcp-action textarea:focus-visible,
+#rcp-editor-err:focus-visible {
+    outline:2px solid var(--c-ink); outline-offset:2px;
+}
+
+@media (max-width:640px) {
+    #rcp-supplier { min-width:0; max-width:none; }
+    .rcp-dl { grid-template-columns:1fr; }
+    .rcp-dl dt { border-bottom:none; padding-bottom:0; }
+    .rcp-amount { width:90px; }
+}

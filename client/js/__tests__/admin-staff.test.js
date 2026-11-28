@@ -22,13 +22,15 @@ console.log('admin-staff.js');
 const NAV = [...html.matchAll(/<button type="button" class="adm-nav-item[^"]*" data-nav="([a-z]+)"(?: data-perm="([a-z_:|]+)")?/g)]
   .map(m => [m[1], m[2] || null]);
 eq('mục menu trái mang data-perm theo bảng quyền', NAV, [
-  ['dashboard', 'dashboard:read'], ['products', 'product:read'], ['orders', 'order:read'], ['statistics', 'dashboard:read'],
+  ['dashboard', 'dashboard:read'], ['products', 'product:read'], ['suppliers', 'supplier:read'], ['receipts', 'receipt:read'], ['orders', 'order:read'], ['statistics', 'dashboard:read'],
   ['users', 'user:read'], ['reviews', 'review:moderate'], ['blacklist', 'user:read'], ['feedback', 'support:reply'],
   ['auditlog', 'audit:read_admin|audit:read_customer']]);
 check('nút Thêm sản phẩm cần product:write', /id="btn-add-prod" data-perm="product:write"/.test(html));
 const htmlPerms = [...html.matchAll(/data-perm="([^"]+)"/g)].map(m => m[1]);
 const jsPerms = [...js.matchAll(/(?:permAttrs|can)\('([^']+)'\)/g)].map(m => m[1]);
-check('mọi data-perm trong admin.html là permission có thật ở server', htmlPerms.length === 10 && htmlPerms.every(p => p.split('|').every(x => PERMISSIONS.includes(x))), htmlPerms.join(','));
+check('nút Thêm nhà cung cấp cần supplier:write', /id="sup-add" data-perm="supplier:write"/.test(html));
+check('nút Lập phiếu nhập cần receipt:create', /id="rcp-add" data-perm="receipt:create"/.test(html));
+check('mọi data-perm trong admin.html là permission có thật ở server', htmlPerms.length === 14 && htmlPerms.every(p => p.split('|').every(x => PERMISSIONS.includes(x))), htmlPerms.join(','));
 check('mọi permAttrs()/can() trong admin.js là permission có thật', jsPerms.length > 10 && jsPerms.every(p => PERMISSIONS.includes(p)),
   jsPerms.filter(p => !PERMISSIONS.includes(p)).join(','));
 check('pill Nhân viên nằm ngay sau tên trong user card, mặc định ẩn, chữ qua data-i18n',

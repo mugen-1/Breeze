@@ -17,8 +17,11 @@ const ACTIONS = Object.freeze([
   'ORDER_STATUS_CHANGE', 'ORDER_SHIPPING_CHANGE', 'ORDER_DELETE',
   'USER_BLACKLIST', 'USER_UNBLACKLIST', 'REVIEW_VISIBILITY', 'ROLE_CHANGE',
   'ORDER_PLACE', 'ORDER_CANCEL_BY_CUSTOMER', 'REVIEW_CREATE', 'REVIEW_UPDATE', 'REVIEW_DELETE',
+  'SUPPLIER_CREATE', 'SUPPLIER_UPDATE', 'SUPPLIER_STATUS',
+  'RECEIPT_CREATE', 'RECEIPT_UPDATE', 'RECEIPT_SUBMIT', 'RECEIPT_APPROVE', 'RECEIPT_REJECT', 'RECEIPT_CANCEL',
+  'RECEIPT_RECEIVE',
 ]);
-const ENTITY_TYPES = Object.freeze(['order', 'product', 'user', 'review']);
+const ENTITY_TYPES = Object.freeze(['order', 'product', 'user', 'review', 'supplier', 'receipt']);
 const REQ_ROLES = Object.freeze(['admin', 'staff', 'customer']); // khớp CK_audit_logs_actor_role (+ 'cli')
 
 // Khóa chứa các chuỗi này (không phân biệt hoa/thường) bị XOÁ HẲN, đệ quy qua object/mảng.

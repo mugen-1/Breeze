@@ -23,11 +23,30 @@ const row = (req, over) => buildAuditRow(req, base(over));
 const parse = s => (s === null ? null : JSON.parse(s));
 const SECRETS = { card_number: '4111111111111111', cvv: '123', idToken: 'tok', firebase_uid: 'fb', password: 'pw' };
 
+const SUPPLY_ACTIONS = ['SUPPLIER_CREATE', 'SUPPLIER_UPDATE', 'SUPPLIER_STATUS', 'RECEIPT_CREATE', 'RECEIPT_UPDATE',
+  'RECEIPT_SUBMIT', 'RECEIPT_APPROVE', 'RECEIPT_REJECT', 'RECEIPT_CANCEL', 'RECEIPT_RECEIVE'];
+
 test('ACTIONS / ENTITY_TYPES đúng danh sách, không sửa được', () => {
-  assert.equal(ACTIONS.length, 16);
+  assert.equal(ACTIONS.length, 26);
   assert.ok(ACTIONS.includes('ORDER_DELETE') && ACTIONS.includes('REVIEW_DELETE'));
-  assert.deepEqual([...ENTITY_TYPES], ['order', 'product', 'user', 'review']);
+  assert.deepEqual(ACTIONS.slice(-10), SUPPLY_ACTIONS, '10 action nhà cung cấp / phiếu nhập ở cuối danh sách');
+  assert.equal(new Set(ACTIONS).size, ACTIONS.length, 'không trùng');
+  assert.deepEqual([...ENTITY_TYPES], ['order', 'product', 'user', 'review', 'supplier', 'receipt']);
   assert.ok(Object.isFrozen(ACTIONS) && Object.isFrozen(ENTITY_TYPES));
+});
+
+test('action nhà cung cấp / phiếu nhập: buildAuditRow nhận với entity supplier / receipt (admin, staff, cli)', () => {
+  for (const action of SUPPLY_ACTIONS) {
+    const entityType = action.startsWith('SUPPLIER_') ? 'supplier' : 'receipt';
+    for (const req of [mkReq('admin'), mkReq('staff')]) {
+      const r = row(req, { action, entityType, entityId: 12, before: null, after: { status: 'draft' } });
+      assert.deepEqual([r.action, r.entity_type, r.entity_id, r.actor_role], [action, entityType, '12', req.user.role]);
+    }
+    const c = row(null, { action, entityType, entityId: 12, actor: { role: 'cli' } });
+    assert.deepEqual([c.action, c.entity_type, c.actor_role], [action, entityType, 'cli']);
+  }
+  assert.throws(() => row(mkReq('admin'), { action: 'RECEIPT_DELETE', entityType: 'receipt' }), /action không hợp lệ/);
+  assert.throws(() => row(mkReq('admin'), { action: 'RECEIPT_CREATE', entityType: 'purchase_receipt' }), /entityType/);
 });
 
 test('action / entityType sai -> throw; entityId > 50 ký tự -> throw; số -> chuỗi; rỗng -> NULL', () => {
@@ -160,4 +179,17 @@ test('audit(): INSERT tham số hoá trong ĐÚNG tx, trả id; thiếu tx / ent
   await assert.rejects(audit(null, mkReq('staff'), base()), /transaction/);
   await assert.rejects(audit(tx, mkReq('staff'), base({ action: 'NOPE' })), /action/);
   assert.equal(executed.length, 1, 'entry sai không được chạm DB');
+});
+
+test('audit(): RECEIPT_RECEIVE / SUPPLIER_STATUS ghi 1 INSERT trong đúng tx, đúng action + entity_type', async () => {
+  executed.length = 0;
+  const tx = { name: 'receipt-tx' };
+  await audit(tx, mkReq('staff'), { action: 'RECEIPT_RECEIVE', entityType: 'receipt', entityId: 3,
+    before: { status: 'approved' }, after: { status: 'received' } });
+  await audit(tx, mkReq('admin'), { action: 'SUPPLIER_STATUS', entityType: 'supplier', entityId: 8,
+    before: { is_active: true }, after: { is_active: false } });
+  assert.equal(executed.length, 2);
+  assert.deepEqual(executed.map(e => [e.tx, e.inputs.action.value, e.inputs.entity_type.value, e.inputs.entity_id.value,
+    e.inputs.actor_role.value]), [[tx, 'RECEIPT_RECEIVE', 'receipt', '3', 'staff'], [tx, 'SUPPLIER_STATUS', 'supplier', '8', 'admin']]);
+  assert.equal(executed[0].inputs.after_json.value, JSON.stringify({ status: 'received' }));
 });

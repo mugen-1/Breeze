@@ -20,6 +20,8 @@
     <link rel="stylesheet" type="text/css" href="css/admin.css">
     <link rel="stylesheet" href="css/admin-support.css">
     <link rel="stylesheet" href="css/admin-audit.css">
+    <link rel="stylesheet" href="css/admin-suppliers.css">
+    <link rel="stylesheet" href="css/admin-receipts.css">
     <link rel="stylesheet" href="css/order-payment.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,6 +60,12 @@
             </button>
             <button type="button" class="adm-nav-item" data-nav="products" data-perm="product:read">
                 <i class="fa fa-shopping-bag" aria-hidden="true"></i> <span data-i18n="adm.products">Sản phẩm</span>
+            </button>
+            <button type="button" class="adm-nav-item" data-nav="suppliers" data-perm="supplier:read" aria-controls="view-suppliers">
+                <i class="fa fa-truck" aria-hidden="true"></i> <span data-i18n="admSup.title">Nhà cung cấp</span>
+            </button>
+            <button type="button" class="adm-nav-item" data-nav="receipts" data-perm="receipt:read" aria-controls="view-receipts">
+                <i class="fa fa-archive" aria-hidden="true"></i> <span data-i18n="admRcp.title">Nhập kho</span>
             </button>
             <button type="button" class="adm-nav-item" data-nav="orders" data-perm="order:read">
                 <i class="fa fa-file-text-o" aria-hidden="true"></i> <span data-i18n="adm.orders">Hoá đơn</span>
@@ -282,6 +290,95 @@
                         <tr><td colspan="10" class="adm-loading" data-i18n="com.loading">Đang tải…</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </section>
+
+        <!-- Nhà cung cấp (admin-suppliers.js). Server là lớp chặn quyền; nút ghi chỉ hiện khi có supplier:write. -->
+        <section id="view-suppliers" style="display:none;" aria-labelledby="sup-title">
+            <h1 class="adm-page-title" tabindex="-1" id="sup-title" data-i18n="admSup.title">Nhà cung cấp</h1>
+            <div class="sup-head">
+                <form class="adm-toolbar sup-filters" id="sup-search-form" role="search" novalidate>
+                    <div class="sup-filter">
+                        <label for="sup-q" data-i18n="admSup.searchLabel">Tìm kiếm</label>
+                        <input type="text" id="sup-q" maxlength="100" autocomplete="off" placeholder="Mã, tên hoặc SĐT" data-i18n-ph="admSup.search">
+                    </div>
+                    <div class="sup-filter">
+                        <label for="sup-status" data-i18n="admSup.status">Trạng thái</label>
+                        <select id="sup-status">
+                            <option value="all" data-i18n="admSup.statusAll">Tất cả</option>
+                            <option value="active" data-i18n="admSup.statusActive">Đang hợp tác</option>
+                            <option value="inactive" data-i18n="admSup.statusInactive">Ngừng hợp tác</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="adm-btn small" id="sup-search-btn" data-i18n="admSup.searchBtn">Tìm</button>
+                </form>
+                <button type="button" class="adm-btn small" id="sup-add" data-perm="supplier:write" aria-haspopup="dialog" aria-controls="sup-modal"><i class="fa fa-plus" aria-hidden="true"></i> <span data-i18n="admSup.add">Thêm nhà cung cấp</span></button>
+            </div>
+            <div class="adm-table-wrap" tabindex="0" role="region" aria-labelledby="sup-title">
+                <table class="adm-table">
+                    <thead><tr>
+                        <th scope="col" data-i18n="admSup.thCode">Mã</th><th scope="col" data-i18n="admSup.thName">Tên</th>
+                        <th scope="col" data-i18n="admSup.thContact">Người liên hệ</th><th scope="col" data-i18n="admSup.thPhone">Số điện thoại</th>
+                        <th scope="col" data-i18n="admSup.thEmail">Email</th><th scope="col" data-i18n="admSup.thStatus">Trạng thái</th>
+                        <th scope="col" data-i18n="admSup.thActions">Thao tác</th>
+                    </tr></thead>
+                    <tbody id="sup-body">
+                        <tr><td colspan="7" class="adm-loading" data-i18n="com.loading">Đang tải…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="adm-pager" id="sup-pager" hidden>
+                <button type="button" id="sup-prev" data-i18n="adm.pgPrev">Trước</button>
+                <span id="sup-page" aria-live="polite"></span>
+                <button type="button" id="sup-next" data-i18n="adm.pgNext">Sau</button>
+            </div>
+        </section>
+
+        <!-- Nhập kho (admin-receipts.js). Nút thao tác theo trạng thái + quyền; server kiểm lại tất cả. -->
+        <section id="view-receipts" style="display:none;" aria-labelledby="rcp-title">
+            <h1 class="adm-page-title" tabindex="-1" id="rcp-title" data-i18n="admRcp.title">Nhập kho</h1>
+            <div class="sup-head">
+                <form class="adm-toolbar sup-filters" id="rcp-filter-form" role="search" novalidate>
+                    <div class="sup-filter">
+                        <label for="rcp-q" data-i18n="admRcp.searchLabel">Mã phiếu</label>
+                        <input type="text" id="rcp-q" maxlength="100" autocomplete="off" placeholder="VD: PN-000012" data-i18n-ph="admRcp.searchPh">
+                    </div>
+                    <div class="sup-filter">
+                        <label for="rcp-status" data-i18n="admRcp.status">Trạng thái</label>
+                        <select id="rcp-status">
+                            <option value="all" data-i18n="admRcp.all">Tất cả</option>
+                            <option value="draft" data-i18n="admRcp.st.draft">Nháp</option>
+                            <option value="pending" data-i18n="admRcp.st.pending">Chờ duyệt</option>
+                            <option value="approved" data-i18n="admRcp.st.approved">Đã duyệt</option>
+                            <option value="received" data-i18n="admRcp.st.received">Đã nhận hàng</option>
+                            <option value="cancelled" data-i18n="admRcp.st.cancelled">Đã huỷ</option>
+                        </select>
+                    </div>
+                    <div class="sup-filter">
+                        <label for="rcp-supplier" data-i18n="admRcp.f.supplier">Nhà cung cấp</label>
+                        <select id="rcp-supplier"></select>
+                    </div>
+                    <button type="submit" class="adm-btn small" id="rcp-search-btn" data-i18n="admRcp.searchBtn">Tìm</button>
+                </form>
+                <button type="button" class="adm-btn small" id="rcp-add" data-perm="receipt:create" aria-haspopup="dialog" aria-controls="rcp-editor"><i class="fa fa-plus" aria-hidden="true"></i> <span data-i18n="admRcp.add">Lập phiếu nhập</span></button>
+            </div>
+            <div class="adm-table-wrap" tabindex="0" role="region" aria-labelledby="rcp-title">
+                <table class="adm-table">
+                    <thead><tr>
+                        <th scope="col" data-i18n="admRcp.thCode">Mã phiếu</th><th scope="col" data-i18n="admRcp.f.supplier">Nhà cung cấp</th>
+                        <th scope="col" class="num" data-i18n="admRcp.thLines">Số dòng</th><th scope="col" class="num" data-i18n="admRcp.thQty">Tổng SL</th>
+                        <th scope="col" class="num" data-i18n="admRcp.thTotal">Tổng tiền</th><th scope="col" data-i18n="admRcp.status">Trạng thái</th>
+                        <th scope="col" data-i18n="admRcp.thCreated">Ngày tạo</th><th scope="col" data-i18n="admRcp.thActions">Thao tác</th>
+                    </tr></thead>
+                    <tbody id="rcp-body">
+                        <tr><td colspan="8" class="adm-loading" data-i18n="com.loading">Đang tải…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="adm-pager" id="rcp-pager" hidden>
+                <button type="button" id="rcp-prev" data-i18n="adm.pgPrev">Trước</button>
+                <span id="rcp-page" aria-live="polite"></span>
+                <button type="button" id="rcp-next" data-i18n="adm.pgNext">Sau</button>
             </div>
         </section>
 
@@ -796,6 +893,203 @@
         </div>
     </div>
 
+    <!-- Nhà cung cấp: thêm / sửa / xem (admin-suppliers.js). Chế độ xem ẩn form, hiện #sup-view. Lỗi theo ô ở
+         #sup-e-<trường> (aria-describedby + aria-invalid); lỗi chung ở #sup-modal-err. -->
+    <div class="modal-backdrop" id="sup-modal" role="dialog" aria-modal="true" aria-labelledby="sup-modal-title">
+        <div class="modal-card">
+            <h3 id="sup-modal-title" data-i18n="admSup.modalAdd">Thêm nhà cung cấp</h3>
+            <div class="modal-err" id="sup-modal-err" role="alert"></div>
+            <dl class="sup-view" id="sup-view" hidden></dl>
+            <form id="sup-form" autocomplete="off" novalidate>
+                <div class="fld-row">
+                    <div class="fld">
+                        <label for="sup-f-code"><span data-i18n="admSup.f.code">Mã nhà cung cấp</span> <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" id="sup-f-code" maxlength="20" required aria-required="true" aria-describedby="sup-h-code sup-e-code" autocapitalize="characters" spellcheck="false">
+                        <div class="hint" id="sup-h-code" data-i18n="admSup.codeHint">Chữ, số hoặc dấu gạch ngang, 2–20 ký tự. Không sửa được sau khi tạo.</div>
+                        <p class="sup-field-err" id="sup-e-code" hidden></p>
+                    </div>
+                    <div class="fld">
+                        <label for="sup-f-tax_code" data-i18n="admSup.f.tax_code">Mã số thuế</label>
+                        <input type="text" id="sup-f-tax_code" maxlength="14" inputmode="numeric" aria-describedby="sup-e-tax_code" spellcheck="false">
+                        <p class="sup-field-err" id="sup-e-tax_code" hidden></p>
+                    </div>
+                </div>
+                <div class="fld">
+                    <label for="sup-f-name"><span data-i18n="admSup.f.name">Tên nhà cung cấp</span> <span class="req" aria-hidden="true">*</span></label>
+                    <input type="text" id="sup-f-name" maxlength="200" required aria-required="true" aria-describedby="sup-e-name">
+                    <p class="sup-field-err" id="sup-e-name" hidden></p>
+                </div>
+                <div class="fld-row">
+                    <div class="fld">
+                        <label for="sup-f-contact_name" data-i18n="admSup.f.contact_name">Người liên hệ</label>
+                        <input type="text" id="sup-f-contact_name" maxlength="120" aria-describedby="sup-e-contact_name">
+                        <p class="sup-field-err" id="sup-e-contact_name" hidden></p>
+                    </div>
+                    <div class="fld">
+                        <label for="sup-f-phone" data-i18n="admSup.f.phone">Số điện thoại</label>
+                        <input type="text" id="sup-f-phone" maxlength="30" inputmode="tel" autocomplete="off" aria-describedby="sup-e-phone">
+                        <p class="sup-field-err" id="sup-e-phone" hidden></p>
+                    </div>
+                </div>
+                <div class="fld">
+                    <label for="sup-f-email" data-i18n="admSup.f.email">Email</label>
+                    <input type="text" id="sup-f-email" maxlength="255" inputmode="email" spellcheck="false" aria-describedby="sup-e-email">
+                    <p class="sup-field-err" id="sup-e-email" hidden></p>
+                </div>
+                <div class="fld">
+                    <label for="sup-f-address" data-i18n="admSup.f.address">Địa chỉ</label>
+                    <input type="text" id="sup-f-address" maxlength="300" aria-describedby="sup-e-address">
+                    <p class="sup-field-err" id="sup-e-address" hidden></p>
+                </div>
+                <div class="fld">
+                    <label for="sup-f-note" data-i18n="admSup.f.note">Ghi chú</label>
+                    <textarea id="sup-f-note" maxlength="500" aria-describedby="sup-e-note"></textarea>
+                    <p class="sup-field-err" id="sup-e-note" hidden></p>
+                </div>
+            </form>
+            <div class="modal-foot">
+                <button type="button" class="adm-btn ghost small" id="sup-cancel" data-i18n="com.cancel">Hủy</button>
+                <button type="submit" form="sup-form" class="adm-btn small" id="sup-save" data-i18n="admSup.save">Lưu</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop" id="sup-confirm" role="alertdialog" aria-modal="true" aria-labelledby="sup-confirm-title" aria-describedby="sup-confirm-msg" tabindex="-1">
+        <div class="modal-card">
+            <h3 id="sup-confirm-title" data-i18n="admSup.confirmStopTitle">Ngừng hợp tác?</h3>
+            <p id="sup-confirm-msg"></p>
+            <p class="modal-err sup-confirm-err" id="sup-confirm-err" role="alert"></p>
+            <div class="modal-foot">
+                <button type="button" class="adm-btn ghost small" id="sup-confirm-cancel" data-i18n="com.cancel">Hủy</button>
+                <button type="button" class="adm-btn small" id="sup-confirm-ok" data-i18n="admSup.stop">Ngừng hợp tác</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nhập kho: lập / sửa phiếu nháp (admin-receipts.js). Biến thể lá lấy từ /receipts/receivable-variants. -->
+    <div class="modal-backdrop" id="rcp-editor" role="dialog" aria-modal="true" aria-labelledby="rcp-editor-title">
+        <div class="modal-card rcp-card">
+            <h3 id="rcp-editor-title" data-i18n="admRcp.editorAdd">Lập phiếu nhập</h3>
+            <div class="modal-err" id="rcp-editor-err" role="alert" tabindex="-1"></div>
+            <form id="rcp-form" autocomplete="off" novalidate>
+                <div class="fld-row">
+                    <div class="fld">
+                        <label for="rcp-f-supplier"><span data-i18n="admRcp.f.supplier">Nhà cung cấp</span> <span class="req" aria-hidden="true">*</span></label>
+                        <select id="rcp-f-supplier" required aria-required="true" aria-describedby="rcp-h-supplier rcp-e-supplier"></select>
+                        <div class="hint" id="rcp-h-supplier" data-i18n="admRcp.supplierLocked" hidden>NCC này đã ngừng hợp tác: chỉ giữ nguyên được; muốn đổi thì chọn NCC đang hợp tác.</div>
+                        <p class="sup-field-err" id="rcp-e-supplier" hidden></p>
+                    </div>
+                    <div class="fld">
+                        <label for="rcp-f-expected" data-i18n="admRcp.f.expected">Ngày dự kiến nhận</label>
+                        <input type="date" id="rcp-f-expected" aria-describedby="rcp-e-expected_date">
+                        <p class="sup-field-err" id="rcp-e-expected_date" hidden></p>
+                    </div>
+                </div>
+                <div class="fld">
+                    <label for="rcp-f-note" data-i18n="admRcp.f.note">Ghi chú</label>
+                    <textarea id="rcp-f-note" maxlength="500" aria-describedby="rcp-e-note"></textarea>
+                    <p class="sup-field-err" id="rcp-e-note" hidden></p>
+                </div>
+                <div class="fld">
+                    <label for="rcp-product-q" data-i18n="admRcp.productSearch">Tìm sản phẩm</label>
+                    <input type="text" id="rcp-product-q" maxlength="100" placeholder="Tên, slug hoặc mã sản phẩm" data-i18n-ph="admRcp.productSearchPh" aria-controls="rcp-product-results">
+                </div>
+                <div class="rcp-product-results" id="rcp-product-results" aria-live="polite"></div>
+                <div class="rcp-variants" id="rcp-variants-wrap" hidden>
+                    <p class="rcp-variants-title" id="rcp-variants-title"></p>
+                    <p class="rcp-muted" id="rcp-variants-msg" role="status" hidden></p>
+                    <div class="adm-table-wrap">
+                        <table class="adm-table rcp-mini">
+                            <thead><tr>
+                                <th scope="col" data-i18n="admRcp.thSku">SKU</th><th scope="col" data-i18n="admRcp.thSize">Size</th>
+                                <th scope="col" data-i18n="admRcp.thColor">Màu</th><th scope="col" class="num" data-i18n="admRcp.thStock">Tồn hiện tại</th>
+                                <th scope="col" data-i18n="admRcp.thWarn">Cảnh báo</th><th scope="col"><span class="rcp-sr-only" data-i18n="admRcp.thActions">Thao tác</span></th>
+                            </tr></thead>
+                            <tbody id="rcp-variants-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <p class="sup-field-err" id="rcp-e-items" hidden></p>
+                <div class="adm-table-wrap">
+                    <table class="adm-table rcp-items">
+                        <thead><tr>
+                            <th scope="col" data-i18n="admRcp.thProduct">Sản phẩm</th><th scope="col" data-i18n="admRcp.thSku">SKU</th>
+                            <th scope="col" data-i18n="admRcp.thSize">Size</th><th scope="col" data-i18n="admRcp.thColor">Màu</th>
+                            <th scope="col" data-i18n="admRcp.thWarn">Cảnh báo</th><th scope="col" data-i18n="admRcp.thQtyCol">Số lượng</th>
+                            <th scope="col" data-i18n="admRcp.thUnitCost">Giá nhập (₫)</th><th scope="col" class="num" data-i18n="admRcp.thLineTotal">Thành tiền</th>
+                            <th scope="col"><span class="rcp-sr-only" data-i18n="admRcp.thActions">Thao tác</span></th>
+                        </tr></thead>
+                        <tbody id="rcp-items-body"></tbody>
+                    </table>
+                </div>
+                <p class="rcp-totals" id="rcp-totals" aria-live="polite"></p>
+            </form>
+            <div class="modal-foot">
+                <button type="button" class="adm-btn ghost small" id="rcp-editor-cancel" data-i18n="com.cancel">Hủy</button>
+                <button type="submit" form="rcp-form" class="adm-btn small" id="rcp-editor-save" data-i18n="admRcp.saveDraft">Lưu nháp</button>
+            </div>
+        </div>
+    </div>
+    <!-- Nhập kho: chi tiết phiếu + nút thao tác theo trạng thái / quyền. -->
+    <div class="modal-backdrop" id="rcp-detail" role="dialog" aria-modal="true" aria-labelledby="rcp-detail-title">
+        <div class="modal-card rcp-card">
+            <h3 id="rcp-detail-title" data-i18n="admRcp.title">Nhập kho</h3>
+            <div class="modal-err" id="rcp-detail-err" role="alert"></div>
+            <p class="rcp-muted" id="rcp-detail-loading" role="status" data-i18n="com.loading" hidden>Đang tải…</p>
+            <button type="button" class="adm-btn ghost small" id="rcp-detail-retry" data-i18n="admRcp.retry" hidden>Thử lại</button>
+            <div id="rcp-detail-body" hidden>
+                <div class="rcp-reject-box" id="rcp-reject-box" role="note" hidden>
+                    <strong data-i18n="admRcp.rejectedBox">Bị từ chối lần gần nhất</strong>
+                    <p id="rcp-reject-reason"></p>
+                    <p class="rcp-muted" id="rcp-reject-by"></p>
+                </div>
+                <dl class="rcp-dl" id="rcp-detail-info"></dl>
+                <h4 class="rcp-sub" id="rcp-detail-items-h" data-i18n="admRcp.detailItems">Dòng hàng</h4>
+                <div class="adm-table-wrap" id="rcp-detail-items-wrap">
+                    <table class="adm-table rcp-items">
+                        <thead><tr>
+                            <th scope="col" data-i18n="admRcp.thProduct">Sản phẩm</th><th scope="col" data-i18n="admRcp.thSku">SKU</th>
+                            <th scope="col" data-i18n="admRcp.thSize">Size</th><th scope="col" data-i18n="admRcp.thColor">Màu</th>
+                            <th scope="col" class="num" data-i18n="admRcp.thQtyCol">Số lượng</th><th scope="col" class="num" data-i18n="admRcp.thUnitCost">Giá nhập (₫)</th>
+                            <th scope="col" class="num" data-i18n="admRcp.thLineTotal">Thành tiền</th>
+                        </tr></thead>
+                        <tbody id="rcp-detail-items"></tbody>
+                    </table>
+                </div>
+                <p class="rcp-totals" id="rcp-detail-totals"></p>
+                <h4 class="rcp-sub" id="rcp-detail-actors-h" data-i18n="admRcp.timeline">Lịch sử xử lý</h4>
+                <dl class="rcp-dl" id="rcp-detail-actors"></dl>
+            </div>
+            <div class="modal-foot">
+                <div class="rcp-actions" id="rcp-detail-actions"></div>
+                <button type="button" class="adm-btn ghost small" id="rcp-detail-close" data-i18n="com.close">Đóng</button>
+            </div>
+        </div>
+    </div>
+    <!-- Nhập kho: xác nhận gửi duyệt / duyệt, lý do từ chối / huỷ, xác nhận + kết quả nhận hàng (tồn trước -> sau). -->
+    <div class="modal-backdrop" id="rcp-action" role="dialog" aria-modal="true" aria-labelledby="rcp-action-title" aria-describedby="rcp-action-msg">
+        <div class="modal-card rcp-card">
+            <h3 id="rcp-action-title"></h3>
+            <p id="rcp-action-msg"></p>
+            <div class="fld" id="rcp-action-reason-wrap" hidden>
+                <label for="rcp-action-reason"><span data-i18n="admRcp.reasonLabel">Lý do</span> <span class="req" aria-hidden="true">*</span></label>
+                <textarea id="rcp-action-reason" maxlength="250" aria-required="true" aria-describedby="rcp-action-count rcp-action-reason-err"></textarea>
+                <div class="hint" id="rcp-action-count"></div>
+                <p class="sup-field-err" id="rcp-action-reason-err" hidden></p>
+            </div>
+            <div class="adm-table-wrap" id="rcp-action-table" hidden>
+                <table class="adm-table rcp-mini">
+                    <thead id="rcp-action-head"></thead>
+                    <tbody id="rcp-action-body"></tbody>
+                </table>
+            </div>
+            <p class="modal-err" id="rcp-action-err" role="alert"></p>
+            <div class="modal-foot">
+                <button type="button" class="adm-btn ghost small" id="rcp-action-cancel" data-i18n="com.cancel">Hủy</button>
+                <button type="button" class="adm-btn small" id="rcp-action-ok">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal xác nhận dùng chung (thay window.confirm): xoá sản phẩm/đơn, thêm/gỡ
          blacklist. Tái dùng nguyên class .modal-backdrop/.modal-card của #prod-modal. -->
     <div class="modal-backdrop" id="confirm-modal">
@@ -913,6 +1207,8 @@
     <script src="js/support-session.js"></script>
     <script src="js/admin-support.js"></script>
     <script src="js/admin-audit.js"></script>
+    <script src="js/admin-suppliers.js"></script>
+    <script src="js/admin-receipts.js"></script>
     <script src="js/account-details.js"></script>
     <script src="js/admin.js"></script>
     <script src="js/change-password.js"></script>

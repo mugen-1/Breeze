@@ -58,6 +58,8 @@ const SUB_ROUTERS = new Map([
   [require('../routes/admin-reviews'), '/reviews'],
   [require('../routes/admin-support'), '/support'],
   [require('../routes/admin-audit-logs'), '/audit-logs'],
+  [require('../routes/admin-suppliers'), '/suppliers'],
+  [require('../routes/admin-receipts'), '/receipts'],
 ]);
 
 const app = express();
@@ -167,6 +169,21 @@ const EXPECTED = {
   'POST /support/conversations/:conversationId/read': 'support:reply',
   'POST /support/conversations/:conversationId/messages': 'support:reply',
   'GET /audit-logs/': 'audit:read_admin|audit:read_customer',   // cần ÍT NHẤT 1 trong 2 quyền
+  'GET /suppliers/': 'supplier:read',
+  'GET /suppliers/:id': 'supplier:read',
+  'POST /suppliers/': 'supplier:write',
+  'PUT /suppliers/:id': 'supplier:write',
+  'PATCH /suppliers/:id/status': 'supplier:write',
+  'GET /receipts/': 'receipt:read',
+  'GET /receipts/receivable-variants': 'receipt:create',
+  'GET /receipts/:id': 'receipt:read',
+  'POST /receipts/': 'receipt:create',
+  'PUT /receipts/:id': 'receipt:create',
+  'POST /receipts/:id/submit': 'receipt:create',
+  'POST /receipts/:id/approve': 'receipt:approve',
+  'POST /receipts/:id/reject': 'receipt:approve',
+  'POST /receipts/:id/cancel': 'receipt:create',   // huỷ phiếu approved: handler kiểm thêm receipt:approve
+  'POST /receipts/:id/receive': 'receipt:receive',
 };
 
 test('cổng chung của router admin: verifyFirebaseToken rồi requireBackOffice, trước mọi route', () => {
@@ -338,7 +355,7 @@ test('GET /api/me trả permissions theo role (đúng thứ tự khai báo)', as
   const expected = {
     admin: [...PERMISSIONS],
     staff: PERMISSIONS.filter(p => !['product:delete', 'order:delete', 'user:view_admin_detail',
-      'user:blacklist_release', 'user:manage_role', 'audit:read_admin'].includes(p)),
+      'user:blacklist_release', 'user:manage_role', 'audit:read_admin', 'supplier:write', 'receipt:approve'].includes(p)),
     customer: [],
   };
   for (const [role, perms] of Object.entries(expected)) {
@@ -347,6 +364,21 @@ test('GET /api/me trả permissions theo role (đúng thứ tự khai báo)', as
     assert.equal(r.status, 200);
     assert.equal(r.body.role, role);
     assert.deepEqual(r.body.permissions, perms, role);
+  }
+});
+
+test('GET /api/me: quyền nhà cung cấp / phiếu nhập — admin 6, staff đúng 4 (không supplier:write, receipt:approve), customer 0', async () => {
+  const supply = p => /^(supplier|receipt):/.test(p);
+  const expected = {
+    admin: ['supplier:read', 'supplier:write', 'receipt:read', 'receipt:create', 'receipt:approve', 'receipt:receive'],
+    staff: ['supplier:read', 'receipt:read', 'receipt:create', 'receipt:receive'],
+    customer: [],
+  };
+  for (const [role, perms] of Object.entries(expected)) {
+    state.role = role;
+    const r = await call('GET', '/api/me');
+    assert.equal(r.status, 200, role);
+    assert.deepEqual(r.body.permissions.filter(supply), perms, role);
   }
 });
 

@@ -101,6 +101,16 @@ test('buildAuditQuery staff: luôn có actor_role = customer, KHÔNG đọc ip /
   assert.deepEqual(a.params.map(p => p.name), ['offset']);
 });
 
+test('action / entity nhà cung cấp + phiếu nhập: lọc được; staff lọc theo chúng vẫn chỉ ra nhóm Khách hàng', () => {
+  const f = ok({ action: 'RECEIPT_APPROVE', entity_type: 'receipt', entity_id: '9' });
+  assert.deepEqual([f.action, f.entityType, f.entityId], ['RECEIPT_APPROVE', 'receipt', '9']);
+  assert.equal(ok({ entity_type: 'supplier' }).entityType, 'supplier');
+  assert.equal(ok({ action: 'SUPPLIER_STATUS' }).action, 'SUPPLIER_STATUS');
+  const s = buildAuditQuery(ok({ group: 'admin', action: 'RECEIPT_RECEIVE', entity_type: 'receipt' }, STAFF), STAFF).sql;
+  assert.match(s, /l\.actor_role = 'customer'/);
+  assert.doesNotMatch(s, /IN \('admin'/);
+});
+
 test('entity_id khớp NGUYÊN VĂN trên SQL: thêm so nhị phân (BIN2) + DATALENGTH, giữ vế = để dùng index', () => {
   const { sql } = buildAuditQuery(ok({ entity_type: 'order', entity_id: '5' }), ADMIN);
   assert.match(sql, /\(l\.entity_id = @entity_id AND l\.entity_id COLLATE Latin1_General_BIN2 = @entity_id AND DATALENGTH\(l\.entity_id\) = DATALENGTH\(@entity_id\)\)/);

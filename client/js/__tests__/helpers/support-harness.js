@@ -9,7 +9,7 @@ const response = (data, status = 200) => ({ ok: status >= 200 && status < 300, s
 const defer = () => { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; };
 const text = el => el.textContent + el.children.map(text).join('');
 const i18n = () => { const value = load('i18n.js').win.__i18n; value.current = 'vi'; return value; };
-const navigation = ['dashboard', 'products', 'orders', 'statistics', 'users', 'reviews', 'blacklist', 'feedback'];
+const navigation = ['dashboard', 'products', 'suppliers', 'receipts', 'orders', 'statistics', 'users', 'reviews', 'blacklist', 'feedback'];
 function setup(kind, opts = {}) {
     const doc = makeDoc(), calls = [], writes = [], callbacks = [];
     const state = { user: null, role: 'admin', roleResult: null, handle: null, token: null, valid: true };

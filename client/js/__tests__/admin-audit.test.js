@@ -284,9 +284,9 @@ const ADMIN_PERMS = ['audit:read_admin', 'audit:read_customer'], STAFF_PERMS = [
     if (!m) throw new Error('KHÔNG cắt được ' + name + ' từ server/lib/audit.js — test phải FAIL');
     return [...m[1].matchAll(/'([A-Za-z_]+)'/g)].map(x => x[1]);
   };
-  eq('16 ACTIONS khớp server/lib/audit.js (đúng thứ tự)', r.util.ACTIONS, block('ACTIONS'));
+  eq('26 ACTIONS khớp server/lib/audit.js (đúng thứ tự)', [r.util.ACTIONS.length, r.util.ACTIONS], [26, block('ACTIONS')]);
   eq('ENTITY_TYPES khớp server', r.util.ENTITY_TYPES, block('ENTITY_TYPES'));
-  eq('ô chọn hành động: Tất cả + 16 hành động theo thứ tự ACTIONS', r.get('audit-action').children.map(o => o.value), [''].concat(block('ACTIONS')));
+  eq('ô chọn hành động: Tất cả + 26 hành động theo thứ tự ACTIONS', r.get('audit-action').children.map(o => o.value), [''].concat(block('ACTIONS')));
   const UI = r.i18n.UI;
   const used = new Set([...auditJs.matchAll(/'(admAudit\.[A-Za-z]+)'/g)].map(m => m[1])
     .concat([...html.matchAll(/data-i18n(?:-[a-z]+)?="(admAudit\.[A-Za-z.]+)"/g)].map(m => m[1]))
@@ -324,7 +324,7 @@ const ADMIN_PERMS = ['audit:read_admin', 'audit:read_customer'], STAFF_PERMS = [
       active: () => { const a = navs.find(n => n.classList.contains('active')); return g('view-profile').style.display === 'block' ? 'profile' : a && a.getAttribute('data-nav'); },
       login: async () => { auth({ uid: 'u1' }); await wait(50); } };
   }
-  const OLD_TABS = ['dashboard', 'products', 'orders', 'statistics', 'users', 'reviews', 'blacklist', 'feedback'];
+  const OLD_TABS = ['dashboard', 'products', 'suppliers', 'receipts', 'orders', 'statistics', 'users', 'reviews', 'blacklist', 'feedback'];
   for (const [who, me] of [['admin', adminMe()], ['staff', staffMe()]]) {
     const a = setupAdmin(me); await a.login();
     eq(who + ': tab như trước + auditlog', a.visible(), OLD_TABS.concat('auditlog'));
